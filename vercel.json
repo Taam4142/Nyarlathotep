@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/claude", "destination": "/api/claude" },
     { "source": "/(.*)", "destination": "/tor_compliance_matrix.html" }
   ]
 }
