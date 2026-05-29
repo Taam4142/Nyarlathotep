@@ -17,6 +17,7 @@ This constraint exists because the compliance matrix is a legal/contractual docu
 If a requirement is reworded, the client can dispute the compliance claim.
 
 **Enforce this with three layers:**
+
 1. Explicit instruction in system prompt ("Copy VERBATIM")
 2. Explicit prohibition ("Do NOT translate, paraphrase, summarize, or reword")
 3. Example in prompt showing correct vs incorrect output
@@ -26,12 +27,13 @@ If a requirement is reworded, the client can dispute the compliance claim.
 ## System Prompt — Full Extraction
 
 ### Base (no translation)
+
 ```
 You are an expert automation engineer reading a Thai Terms of Reference (TOR) document.
 Your job is to extract every requirement, specification, clause, and condition.
 
 CRITICAL RULE — VERBATIM COPY:
-The "requirement" field must be copied CHARACTER FOR CHARACTER exactly as it appears 
+The "requirement" field must be copied CHARACTER FOR CHARACTER exactly as it appears
 in the source document.
 - Thai text → copy exactly in Thai
 - English text → copy exactly in English
@@ -70,6 +72,7 @@ Extract every identifiable requirement. Include ALL of:
 ```
 
 ### With translation enabled (append to base)
+
 ```
 Additionally, for each requirement, provide an English translation in the "translation" field.
 
@@ -88,7 +91,39 @@ Extended object format:
 
 ---
 
-## System Prompt — Scanned PDF (post-OCR text)
+## Scanned PDF — Two OCR Engine Options
+
+### Engine A: Claude Vision (default, recommended)
+
+- No extra credentials — uses the same Claude API already in use
+- Rasterizes each PDF page to PNG via PDF.js (scale=2 for quality)
+- Sends each page image to Claude as `type: "image"` with a verbatim-extraction prompt
+- Thai text read directly from the image — no intermediate OCR step
+- Billed as normal Claude API tokens (image tokens)
+- Best for: most TORs, quick setup, single API billing
+
+```js
+// Per-page prompt sent with each image
+`This is page ${p} of a scanned Thai TOR document.
+Extract ALL text from this page exactly as written — verbatim, including Thai text.
+Preserve paragraph structure, numbering, and formatting.
+Return only the extracted text, no commentary.`;
+```
+
+### Engine B: Google Document AI
+
+- Requires Google Cloud billing + DOCUMENT_OCR processor
+- User pastes Bearer Token (from `gcloud auth print-access-token`), Project ID, Location, Processor ID
+- Token expires ~1 hour — user must refresh manually
+- Best for: heavily degraded scans, very low DPI, or crumpled/skewed pages
+- Superior OCR accuracy on worst-case physical documents
+
+### How engine selection works in UI
+
+- Tab toggle appears only when scanned PDF is detected
+- Claude Vision tab: shows green "no credentials needed" panel
+- Google Doc AI tab: shows 4-field credential form
+- Default: Claude Vision
 
 When the input is OCR text (from Google Document AI) rather than a native PDF,
 prefix the user message with context so Claude understands the source:
@@ -98,8 +133,8 @@ User message prefix:
 ---
 The following text was extracted via OCR from a scanned Thai TOR document.
 There may be minor OCR errors in the text (e.g. incorrect characters, broken words).
-Use your understanding of Thai language and engineering context to identify 
-the intended meaning, but STILL copy the text verbatim as it appears — 
+Use your understanding of Thai language and engineering context to identify
+the intended meaning, but STILL copy the text verbatim as it appears —
 including any apparent OCR artifacts. Do not silently correct OCR errors.
 If a word looks like an OCR error, copy it as-is and the engineer will review it.
 ---
@@ -109,6 +144,7 @@ If a word looks like an OCR error, copy it as-is and the engineer will review it
 ```
 
 **Rationale:** Claude should not silently fix OCR errors because:
+
 1. The engineer needs to see what was actually in the document
 2. Silent "corrections" could introduce wrong requirements
 3. Obvious OCR errors are easier to spot and fix in the editable table
@@ -118,6 +154,7 @@ If a word looks like an OCR error, copy it as-is and the engineer will review it
 ## Model Selection Guide
 
 ### claude-sonnet-4-20250514 (default)
+
 - Use for: Most TORs, daily workflow, time-sensitive bids
 - Speed: Fast (~10–20 seconds for a 30-page TOR)
 - Cost: Lower
@@ -125,6 +162,7 @@ If a word looks like an OCR error, copy it as-is and the engineer will review it
 - Verbatim fidelity: Very high
 
 ### claude-opus-4-5
+
 - Use for: Complex TORs with ambiguous structure, critical bids, large documents
 - Speed: Slower (~30–60 seconds)
 - Cost: Higher
@@ -132,6 +170,7 @@ If a word looks like an OCR error, copy it as-is and the engineer will review it
 - Verbatim fidelity: Highest — better at resisting urge to paraphrase
 
 **Recommendation:** Default to Sonnet. Switch to Opus only when:
+
 - TOR has deeply nested clause numbering
 - Mixed Thai/English/Japanese or Thai/English/metric specs
 - Previous Sonnet extraction had paraphrasing issues
@@ -147,26 +186,36 @@ After parsing Claude's response, validate each row:
 function validateRow(item) {
   const errors = [];
 
-  if (!item.ref || typeof item.ref !== 'string') {
-    errors.push('Missing ref');
+  if (!item.ref || typeof item.ref !== "string") {
+    errors.push("Missing ref");
   }
 
   if (!item.requirement || item.requirement.trim().length === 0) {
-    errors.push('Empty requirement');
+    errors.push("Empty requirement");
   }
 
   // Detect potential paraphrasing (English in a Thai doc)
   // Flag for user review — don't auto-reject
   if (isLikelyThai(sourceDoc) && isAllEnglish(item.requirement)) {
-    item._warning = 'Requirement appears to be translated rather than verbatim Thai — please verify';
+    item._warning =
+      "Requirement appears to be translated rather than verbatim Thai — please verify";
   }
 
   const validCategories = [
-    'General','Mechanical','Electrical','Control/PLC',
-    'IIoT/SCADA','BMS','Network','Safety','Documentation','Testing','Other'
+    "General",
+    "Mechanical",
+    "Electrical",
+    "Control/PLC",
+    "IIoT/SCADA",
+    "BMS",
+    "Network",
+    "Safety",
+    "Documentation",
+    "Testing",
+    "Other",
   ];
   if (!validCategories.includes(item.category)) {
-    item.category = 'Other'; // safe fallback
+    item.category = "Other"; // safe fallback
   }
 
   return { valid: errors.length === 0, errors };
@@ -189,79 +238,79 @@ since Thai TORs sometimes require Thai remarks too.
 const DEFAULT_LIBRARY = [
   // --- COMPLY ---
   {
-    id: 'lib-001',
-    label: 'Comply — Standard',
-    status: 'comply',
-    text: 'Comply. Refer to system design documentation and technical proposal.'
+    id: "lib-001",
+    label: "Comply — Standard",
+    status: "comply",
+    text: "Comply. Refer to system design documentation and technical proposal.",
   },
   {
-    id: 'lib-002',
-    label: 'Comply — PLC/TIA Portal',
-    status: 'comply',
-    text: 'Comply. Implemented via Siemens TIA Portal programming. Refer to PLC logic documentation.'
+    id: "lib-002",
+    label: "Comply — PLC/TIA Portal",
+    status: "comply",
+    text: "Comply. Implemented via Siemens TIA Portal programming. Refer to PLC logic documentation.",
   },
   {
-    id: 'lib-003',
-    label: 'Comply — GX Works2',
-    status: 'comply',
-    text: 'Comply. Implemented via Mitsubishi GX Works2. Refer to ladder diagram documentation.'
+    id: "lib-003",
+    label: "Comply — GX Works2",
+    status: "comply",
+    text: "Comply. Implemented via Mitsubishi GX Works2. Refer to ladder diagram documentation.",
   },
   {
-    id: 'lib-004',
-    label: 'Comply — MQTT',
-    status: 'comply',
-    text: 'Comply. Real-time data pipeline configured via MQTT protocol to central SCADA/cloud server.'
+    id: "lib-004",
+    label: "Comply — MQTT",
+    status: "comply",
+    text: "Comply. Real-time data pipeline configured via MQTT protocol to central SCADA/cloud server.",
   },
   {
-    id: 'lib-005',
-    label: 'Comply — Modbus',
-    status: 'comply',
-    text: 'Comply. Hardware communication implemented via Modbus RTU/TCP protocol.'
+    id: "lib-005",
+    label: "Comply — Modbus",
+    status: "comply",
+    text: "Comply. Hardware communication implemented via Modbus RTU/TCP protocol.",
   },
   {
-    id: 'lib-006',
-    label: 'Comply — BMS',
-    status: 'comply',
-    text: 'Comply. Integrated into Building Management System architecture per client specification.'
+    id: "lib-006",
+    label: "Comply — BMS",
+    status: "comply",
+    text: "Comply. Integrated into Building Management System architecture per client specification.",
   },
   {
-    id: 'lib-007',
-    label: 'Comply — SCADA',
-    status: 'comply',
-    text: 'Comply. Data acquisition and monitoring interface configured in SCADA system.'
+    id: "lib-007",
+    label: "Comply — SCADA",
+    status: "comply",
+    text: "Comply. Data acquisition and monitoring interface configured in SCADA system.",
   },
   {
-    id: 'lib-008',
-    label: 'Comply — Thai (มาตรฐาน)',
-    status: 'comply',
-    text: 'ปฏิบัติตามข้อกำหนด ดูรายละเอียดในเอกสารการออกแบบระบบและข้อเสนอทางเทคนิค'
+    id: "lib-008",
+    label: "Comply — Thai (มาตรฐาน)",
+    status: "comply",
+    text: "ปฏิบัติตามข้อกำหนด ดูรายละเอียดในเอกสารการออกแบบระบบและข้อเสนอทางเทคนิค",
   },
   // --- PARTIAL ---
   {
-    id: 'lib-009',
-    label: 'Partial — Pending Detail',
-    status: 'partial',
-    text: 'Partially comply. Final implementation subject to detailed engineering review and client confirmation.'
+    id: "lib-009",
+    label: "Partial — Pending Detail",
+    status: "partial",
+    text: "Partially comply. Final implementation subject to detailed engineering review and client confirmation.",
   },
   {
-    id: 'lib-010',
-    label: 'Partial — Alternative Proposed',
-    status: 'partial',
-    text: 'Partially comply. Alternative solution proposed — equivalent performance, different make/model. Pending client approval.'
+    id: "lib-010",
+    label: "Partial — Alternative Proposed",
+    status: "partial",
+    text: "Partially comply. Alternative solution proposed — equivalent performance, different make/model. Pending client approval.",
   },
   // --- NOT COMPLY ---
   {
-    id: 'lib-011',
-    label: 'Not Comply — Out of Scope',
-    status: 'notcomply',
-    text: 'Not in scope of this contract. To be confirmed with client during detailed design phase.'
+    id: "lib-011",
+    label: "Not Comply — Out of Scope",
+    status: "notcomply",
+    text: "Not in scope of this contract. To be confirmed with client during detailed design phase.",
   },
   // --- N/A ---
   {
-    id: 'lib-012',
-    label: 'N/A — Not Applicable',
-    status: 'na',
-    text: 'Not applicable to this project scope.'
+    id: "lib-012",
+    label: "N/A — Not Applicable",
+    status: "na",
+    text: "Not applicable to this project scope.",
   },
 ];
 ```
@@ -272,11 +321,11 @@ const DEFAULT_LIBRARY = [
 
 For budget awareness when using Opus on large TORs:
 
-| Document | Pages | Approx tokens in | Approx tokens out | Sonnet cost | Opus cost |
-|----------|-------|-------------------|-------------------|-------------|-----------|
-| Small TOR | 10 | ~8,000 | ~2,000 | ~$0.03 | ~$0.18 |
-| Medium TOR | 30 | ~24,000 | ~5,000 | ~$0.08 | ~$0.54 |
-| Large TOR | 80 | ~64,000 | ~12,000 | ~$0.22 | ~$1.44 |
+| Document   | Pages | Approx tokens in | Approx tokens out | Sonnet cost | Opus cost |
+| ---------- | ----- | ---------------- | ----------------- | ----------- | --------- |
+| Small TOR  | 10    | ~8,000           | ~2,000            | ~$0.03      | ~$0.18    |
+| Medium TOR | 30    | ~24,000          | ~5,000            | ~$0.08      | ~$0.54    |
+| Large TOR  | 80    | ~64,000          | ~12,000           | ~$0.22      | ~$1.44    |
 
 Prices approximate based on Claude API pricing as of May 2026.
 Scanned PDFs add Google Document AI cost: ~$0.065/page.
@@ -287,11 +336,11 @@ Scanned PDFs add Google Document AI cost: ~$0.065/page.
 
 Use this section to track prompt changes and why they were made.
 
-| Date | Change | Reason |
-|------|--------|--------|
-| 2026-05-29 | Initial prompt — verbatim rule added | Core requirement from engineer |
-| 2026-05-29 | Added correct/incorrect example to system prompt | Reduce paraphrasing on Thai text |
-| 2026-05-29 | Added OCR-aware prefix for scanned path | Claude was over-correcting OCR artifacts |
+| Date       | Change                                           | Reason                                   |
+| ---------- | ------------------------------------------------ | ---------------------------------------- |
+| 2026-05-29 | Initial prompt — verbatim rule added             | Core requirement from engineer           |
+| 2026-05-29 | Added correct/incorrect example to system prompt | Reduce paraphrasing on Thai text         |
+| 2026-05-29 | Added OCR-aware prefix for scanned path          | Claude was over-correcting OCR artifacts |
 
 ---
 
