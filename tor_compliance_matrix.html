@@ -1,431 +1,1253 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TOR Compliance Matrix</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body,#root{height:100%;overflow:hidden}
-body{
-  font-family:'JetBrains Mono',monospace;
-  background:#0c0e14;color:#dde1ec;
-  font-size:13px;
-}
-:root{
-  --amber:#f0a500;--amber-d:#c47f00;--amber-bg:rgba(240,165,0,0.08);--amber-bg2:rgba(240,165,0,0.14);
-  --sur0:#0c0e14;--sur1:#13161f;--sur2:#1a1e2b;--sur3:#222636;--sur4:#2b3045;
-  --bdr:rgba(240,165,0,0.18);--bdr2:rgba(255,255,255,0.07);--bdr3:rgba(255,255,255,0.12);
-  --txt:#dde1ec;--txt2:#9aa3be;--txt3:#5c6480;
-  --comply:#22c55e;--comply-bg:rgba(34,197,94,0.1);--comply-bdr:rgba(34,197,94,0.35);
-  --partial:#f0a500;--partial-bg:rgba(240,165,0,0.1);--partial-bdr:rgba(240,165,0,0.35);
-  --notcomply:#ef4444;--notcomply-bg:rgba(239,68,68,0.1);--notcomply-bdr:rgba(239,68,68,0.35);
-  --na:#5c6480;--na-bg:rgba(92,100,128,0.1);--na-bdr:rgba(92,100,128,0.3);
-  --warn:#f59e0b;--warn-bg:rgba(245,158,11,0.1);
-  --info:#38bdf8;--info-bg:rgba(56,189,248,0.08);--info-bdr:rgba(56,189,248,0.25);
-  --danger:#ef4444;--danger-bg:rgba(239,68,68,0.08);
-  --sb:260px;
-}
-/* scrollbars */
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:var(--sur1)}
-::-webkit-scrollbar-thumb{background:var(--sur4);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--amber-d)}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TOR Compliance Matrix</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body,
+      #root {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        font-family: "JetBrains Mono", monospace;
+        background: #0c0e14;
+        color: #dde1ec;
+        font-size: 13px;
+      }
+      :root {
+        --amber: #f0a500;
+        --amber-d: #c47f00;
+        --amber-bg: rgba(240, 165, 0, 0.08);
+        --amber-bg2: rgba(240, 165, 0, 0.14);
+        --sur0: #0c0e14;
+        --sur1: #13161f;
+        --sur2: #1a1e2b;
+        --sur3: #222636;
+        --sur4: #2b3045;
+        --bdr: rgba(240, 165, 0, 0.18);
+        --bdr2: rgba(255, 255, 255, 0.07);
+        --bdr3: rgba(255, 255, 255, 0.12);
+        --txt: #dde1ec;
+        --txt2: #9aa3be;
+        --txt3: #5c6480;
+        --comply: #22c55e;
+        --comply-bg: rgba(34, 197, 94, 0.1);
+        --comply-bdr: rgba(34, 197, 94, 0.35);
+        --partial: #f0a500;
+        --partial-bg: rgba(240, 165, 0, 0.1);
+        --partial-bdr: rgba(240, 165, 0, 0.35);
+        --notcomply: #ef4444;
+        --notcomply-bg: rgba(239, 68, 68, 0.1);
+        --notcomply-bdr: rgba(239, 68, 68, 0.35);
+        --na: #5c6480;
+        --na-bg: rgba(92, 100, 128, 0.1);
+        --na-bdr: rgba(92, 100, 128, 0.3);
+        --warn: #f59e0b;
+        --warn-bg: rgba(245, 158, 11, 0.1);
+        --info: #38bdf8;
+        --info-bg: rgba(56, 189, 248, 0.08);
+        --info-bdr: rgba(56, 189, 248, 0.25);
+        --danger: #ef4444;
+        --danger-bg: rgba(239, 68, 68, 0.08);
+        --sb: 260px;
+      }
+      /* scrollbars */
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--sur1);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--sur4);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--amber-d);
+      }
 
-/* layout */
-.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.topbar{
-  height:50px;flex-shrink:0;
-  background:var(--sur1);border-bottom:1px solid var(--bdr);
-  display:flex;align-items:center;gap:12px;padding:0 16px;
-}
-.brand{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.brand-pulse{width:7px;height:7px;background:var(--amber);border-radius:50%;animation:pulse 2.4s infinite}
-@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(240,165,0,0.5)}60%{opacity:.5;box-shadow:0 0 0 4px rgba(240,165,0,0)}}
-.brand-name{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
-.brand-sep{width:1px;height:18px;background:var(--bdr2);margin:0 4px}
-.proj-input{
-  font-family:inherit;font-size:12px;color:var(--txt);
-  background:var(--sur2);border:1px solid var(--bdr2);border-radius:4px;
-  padding:5px 10px;outline:none;width:200px;
-  transition:border-color .15s;
-}
-.proj-input:focus{border-color:var(--amber)}
-.proj-input::placeholder{color:var(--txt3)}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.model-sel{
-  font-family:inherit;font-size:11px;font-weight:600;
-  background:var(--sur2);border:1px solid var(--bdr2);border-radius:4px;
-  color:var(--txt2);padding:5px 8px;outline:none;cursor:pointer;
-  transition:border-color .15s;
-}
-.model-sel:focus{border-color:var(--amber)}
-.model-sel option{background:var(--sur1)}
+      /* layout */
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      .topbar {
+        height: 50px;
+        flex-shrink: 0;
+        background: var(--sur1);
+        border-bottom: 1px solid var(--bdr);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .brand-pulse {
+        width: 7px;
+        height: 7px;
+        background: var(--amber);
+        border-radius: 50%;
+        animation: pulse 2.4s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          box-shadow: 0 0 0 0 rgba(240, 165, 0, 0.5);
+        }
+        60% {
+          opacity: 0.5;
+          box-shadow: 0 0 0 4px rgba(240, 165, 0, 0);
+        }
+      }
+      .brand-name {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--amber);
+      }
+      .brand-sep {
+        width: 1px;
+        height: 18px;
+        background: var(--bdr2);
+        margin: 0 4px;
+      }
+      .proj-input {
+        font-family: inherit;
+        font-size: 12px;
+        color: var(--txt);
+        background: var(--sur2);
+        border: 1px solid var(--bdr2);
+        border-radius: 4px;
+        padding: 5px 10px;
+        outline: none;
+        width: 200px;
+        transition: border-color 0.15s;
+      }
+      .proj-input:focus {
+        border-color: var(--amber);
+      }
+      .proj-input::placeholder {
+        color: var(--txt3);
+      }
+      .topbar-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .model-sel {
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--sur2);
+        border: 1px solid var(--bdr2);
+        border-radius: 4px;
+        color: var(--txt2);
+        padding: 5px 8px;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .model-sel:focus {
+        border-color: var(--amber);
+      }
+      .model-sel option {
+        background: var(--sur1);
+      }
 
-/* buttons */
-.btn{
-  font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.07em;
-  text-transform:uppercase;padding:6px 14px;border-radius:4px;cursor:pointer;
-  border:1px solid;transition:all .15s;display:inline-flex;align-items:center;gap:6px;
-  white-space:nowrap;flex-shrink:0;
-}
-.btn-amber{background:var(--amber);color:#0c0e14;border-color:var(--amber)}
-.btn-amber:hover{background:#fbbf24;border-color:#fbbf24}
-.btn-amber:disabled{opacity:.35;cursor:not-allowed}
-.btn-ghost{background:transparent;color:var(--txt2);border-color:var(--bdr2)}
-.btn-ghost:hover{border-color:var(--amber);color:var(--amber)}
-.btn-ghost:disabled{opacity:.3;cursor:not-allowed}
-.btn-danger{background:transparent;color:var(--notcomply);border-color:rgba(239,68,68,.3)}
-.btn-danger:hover{background:var(--notcomply-bg)}
-.btn-sm{padding:4px 10px;font-size:10px}
-.btn-xs{padding:2px 7px;font-size:10px}
+      /* buttons */
+      .btn {
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        padding: 6px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 1px solid;
+        transition: all 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .btn-amber {
+        background: var(--amber);
+        color: #0c0e14;
+        border-color: var(--amber);
+      }
+      .btn-amber:hover {
+        background: #fbbf24;
+        border-color: #fbbf24;
+      }
+      .btn-amber:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--txt2);
+        border-color: var(--bdr2);
+      }
+      .btn-ghost:hover {
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+      .btn-ghost:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .btn-danger {
+        background: transparent;
+        color: var(--notcomply);
+        border-color: rgba(239, 68, 68, 0.3);
+      }
+      .btn-danger:hover {
+        background: var(--notcomply-bg);
+      }
+      .btn-sm {
+        padding: 4px 10px;
+        font-size: 10px;
+      }
+      .btn-xs {
+        padding: 2px 7px;
+        font-size: 10px;
+      }
 
-/* body */
-.body{display:flex;flex:1;overflow:hidden}
+      /* body */
+      .body {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
 
-/* sidebar */
-.sidebar{
-  width:var(--sb);flex-shrink:0;
-  background:var(--sur1);border-right:1px solid var(--bdr2);
-  display:flex;flex-direction:column;overflow:hidden;
-}
-.sb-sec{padding:12px 14px;border-bottom:1px solid var(--bdr2);flex-shrink:0}
-.sb-label{
-  font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--amber);margin-bottom:8px;
-}
-.sb-hint{font-size:10px;color:var(--txt3);line-height:1.55;margin-bottom:8px}
+      /* sidebar */
+      .sidebar {
+        width: var(--sb);
+        flex-shrink: 0;
+        background: var(--sur1);
+        border-right: 1px solid var(--bdr2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .sb-sec {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--bdr2);
+        flex-shrink: 0;
+      }
+      .sb-label {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 8px;
+      }
+      .sb-hint {
+        font-size: 10px;
+        color: var(--txt3);
+        line-height: 1.55;
+        margin-bottom: 8px;
+      }
 
-/* upload zone */
-.upload-zone{
-  border:1px dashed var(--bdr);border-radius:5px;
-  padding:18px 12px;text-align:center;cursor:pointer;
-  background:var(--amber-bg);transition:all .2s;
-}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--amber);background:var(--amber-bg2)}
-.upload-ico{font-size:22px;margin-bottom:5px}
-.upload-txt{font-size:10px;color:var(--txt2);line-height:1.6}
-.upload-txt strong{color:var(--amber)}
-.file-input{display:none}
+      /* upload zone */
+      .upload-zone {
+        border: 1px dashed var(--bdr);
+        border-radius: 5px;
+        padding: 18px 12px;
+        text-align: center;
+        cursor: pointer;
+        background: var(--amber-bg);
+        transition: all 0.2s;
+      }
+      .upload-zone:hover,
+      .upload-zone.drag {
+        border-color: var(--amber);
+        background: var(--amber-bg2);
+      }
+      .upload-ico {
+        font-size: 22px;
+        margin-bottom: 5px;
+      }
+      .upload-txt {
+        font-size: 10px;
+        color: var(--txt2);
+        line-height: 1.6;
+      }
+      .upload-txt strong {
+        color: var(--amber);
+      }
+      .file-input {
+        display: none;
+      }
 
-/* file badge */
-.file-badge{
-  background:var(--sur2);border:1px solid var(--bdr);border-radius:4px;
-  padding:7px 10px;display:flex;align-items:center;gap:8px;
-}
-.file-ico{font-size:14px;flex-shrink:0}
-.file-name{font-size:10px;color:var(--txt);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.file-clear{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:16px;flex-shrink:0;line-height:1}
-.file-clear:hover{color:var(--notcomply)}
-.extract-btn{width:100%;justify-content:center;margin-top:8px}
+      /* file badge */
+      .file-badge {
+        background: var(--sur2);
+        border: 1px solid var(--bdr);
+        border-radius: 4px;
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .file-ico {
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .file-name {
+        font-size: 10px;
+        color: var(--txt);
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-clear {
+        background: none;
+        border: none;
+        color: var(--txt3);
+        cursor: pointer;
+        font-size: 16px;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+      .file-clear:hover {
+        color: var(--notcomply);
+      }
+      .extract-btn {
+        width: 100%;
+        justify-content: center;
+        margin-top: 8px;
+      }
 
-/* scanned key panel */
-.key-panel{
-  background:var(--info-bg);border:1px solid var(--info-bdr);border-radius:5px;
-  padding:10px 12px;
-}
-.key-panel-title{font-size:10px;font-weight:600;color:var(--info);margin-bottom:6px;display:flex;align-items:center;gap:5px}
-.key-input{
-  font-family:inherit;font-size:10px;background:var(--sur2);
-  border:1px solid var(--bdr2);border-radius:3px;
-  padding:5px 8px;color:var(--txt);outline:none;width:100%;margin-bottom:5px;
-  transition:border-color .15s;
-}
-.key-input:focus{border-color:var(--info)}
-.key-input::placeholder{color:var(--txt3)}
-.key-row{display:flex;gap:5px}
+      /* scanned key panel */
+      .key-panel {
+        background: var(--info-bg);
+        border: 1px solid var(--info-bdr);
+        border-radius: 5px;
+        padding: 10px 12px;
+      }
+      .key-panel-title {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--info);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .key-input {
+        font-family: inherit;
+        font-size: 10px;
+        background: var(--sur2);
+        border: 1px solid var(--bdr2);
+        border-radius: 3px;
+        padding: 5px 8px;
+        color: var(--txt);
+        outline: none;
+        width: 100%;
+        margin-bottom: 5px;
+        transition: border-color 0.15s;
+      }
+      .key-input:focus {
+        border-color: var(--info);
+      }
+      .key-input::placeholder {
+        color: var(--txt3);
+      }
+      .key-row {
+        display: flex;
+        gap: 5px;
+      }
 
-/* library */
-.lib-scroll{flex:1;overflow-y:auto;padding:10px 14px}
-.lib-item{
-  background:var(--sur2);border:1px solid var(--bdr2);border-radius:4px;
-  padding:7px 9px;margin-bottom:5px;cursor:pointer;
-  transition:all .15s;position:relative;
-}
-.lib-item:hover{border-color:var(--amber);background:var(--amber-bg)}
-.lib-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:4px}
-.lib-item-label{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--amber);margin-bottom:3px;flex:1}
-.lib-item-text{font-size:10px;color:var(--txt2);line-height:1.5;font-family:'Sarabun',sans-serif}
-.lib-remove{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:13px;padding:0;flex-shrink:0}
-.lib-remove:hover{color:var(--notcomply)}
-.lib-status-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:3px}
-.lib-add-btn{
-  width:100%;font-family:inherit;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
-  background:transparent;border:1px dashed var(--bdr2);border-radius:3px;
-  color:var(--txt3);padding:6px;cursor:pointer;margin-top:4px;
-  display:flex;align-items:center;justify-content:center;gap:5px;
-  transition:all .15s;
-}
-.lib-add-btn:hover{border-color:var(--amber);color:var(--amber)}
-.lib-add-form{background:var(--sur2);border:1px solid var(--bdr);border-radius:4px;padding:9px;margin-top:4px}
-.lib-add-label{font-size:9px;color:var(--txt3);margin-bottom:3px;display:block}
-.lib-add-input{
-  font-family:inherit;font-size:11px;background:var(--sur3);border:1px solid var(--bdr2);
-  border-radius:3px;padding:4px 7px;color:var(--txt);outline:none;width:100%;margin-bottom:5px;
-}
-.lib-add-input:focus{border-color:var(--amber)}
-.lib-add-input::placeholder{color:var(--txt3)}
-.lib-add-sel{
-  font-family:inherit;font-size:11px;background:var(--sur3);border:1px solid var(--bdr2);
-  border-radius:3px;padding:4px 7px;color:var(--txt2);outline:none;width:100%;margin-bottom:5px;
-}
-.lib-add-sel option{background:var(--sur1)}
-.lib-add-btns{display:flex;gap:5px}
+      /* library */
+      .lib-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 14px;
+      }
+      .lib-item {
+        background: var(--sur2);
+        border: 1px solid var(--bdr2);
+        border-radius: 4px;
+        padding: 7px 9px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        transition: all 0.15s;
+        position: relative;
+      }
+      .lib-item:hover {
+        border-color: var(--amber);
+        background: var(--amber-bg);
+      }
+      .lib-item-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 4px;
+      }
+      .lib-item-label {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 3px;
+        flex: 1;
+      }
+      .lib-item-text {
+        font-size: 10px;
+        color: var(--txt2);
+        line-height: 1.5;
+        font-family: "Sarabun", sans-serif;
+      }
+      .lib-remove {
+        background: none;
+        border: none;
+        color: var(--txt3);
+        cursor: pointer;
+        font-size: 13px;
+        padding: 0;
+        flex-shrink: 0;
+      }
+      .lib-remove:hover {
+        color: var(--notcomply);
+      }
+      .lib-status-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 3px;
+      }
+      .lib-add-btn {
+        width: 100%;
+        font-family: inherit;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: transparent;
+        border: 1px dashed var(--bdr2);
+        border-radius: 3px;
+        color: var(--txt3);
+        padding: 6px;
+        cursor: pointer;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        transition: all 0.15s;
+      }
+      .lib-add-btn:hover {
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+      .lib-add-form {
+        background: var(--sur2);
+        border: 1px solid var(--bdr);
+        border-radius: 4px;
+        padding: 9px;
+        margin-top: 4px;
+      }
+      .lib-add-label {
+        font-size: 9px;
+        color: var(--txt3);
+        margin-bottom: 3px;
+        display: block;
+      }
+      .lib-add-input {
+        font-family: inherit;
+        font-size: 11px;
+        background: var(--sur3);
+        border: 1px solid var(--bdr2);
+        border-radius: 3px;
+        padding: 4px 7px;
+        color: var(--txt);
+        outline: none;
+        width: 100%;
+        margin-bottom: 5px;
+      }
+      .lib-add-input:focus {
+        border-color: var(--amber);
+      }
+      .lib-add-input::placeholder {
+        color: var(--txt3);
+      }
+      .lib-add-sel {
+        font-family: inherit;
+        font-size: 11px;
+        background: var(--sur3);
+        border: 1px solid var(--bdr2);
+        border-radius: 3px;
+        padding: 4px 7px;
+        color: var(--txt2);
+        outline: none;
+        width: 100%;
+        margin-bottom: 5px;
+      }
+      .lib-add-sel option {
+        background: var(--sur1);
+      }
+      .lib-add-btns {
+        display: flex;
+        gap: 5px;
+      }
 
-/* content */
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+      /* content */
+      .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      }
 
-/* toolbar */
-.toolbar{
-  padding:8px 14px;background:var(--sur1);border-bottom:1px solid var(--bdr2);
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;min-height:44px;
-}
-.stats{display:flex;gap:10px;align-items:center}
-.stat{font-size:10px;display:flex;align-items:center;gap:4px}
-.stat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.stat-val{color:var(--txt);font-weight:600}
-.stat-lbl{color:var(--txt3)}
-.toolbar-sep{width:1px;height:16px;background:var(--bdr2)}
-.filters{display:flex;gap:3px}
-.f-btn{
-  font-family:inherit;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  padding:3px 9px;border-radius:3px;cursor:pointer;border:1px solid var(--bdr2);
-  background:transparent;color:var(--txt3);transition:all .15s;
-}
-.f-all.on{border-color:var(--amber);color:var(--amber);background:var(--amber-bg)}
-.f-comply.on{border-color:var(--comply-bdr);color:var(--comply);background:var(--comply-bg)}
-.f-partial.on{border-color:var(--partial-bdr);color:var(--partial);background:var(--partial-bg)}
-.f-notcomply.on{border-color:var(--notcomply-bdr);color:var(--notcomply);background:var(--notcomply-bg)}
-.f-na.on{border-color:var(--na-bdr);color:var(--na);background:var(--na-bg)}
-.toggles{display:flex;gap:10px;margin-left:auto}
-.toggle-label{font-size:10px;color:var(--txt2);display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
-.toggle-label input{accent-color:var(--amber);cursor:pointer}
+      /* toolbar */
+      .toolbar {
+        padding: 8px 14px;
+        background: var(--sur1);
+        border-bottom: 1px solid var(--bdr2);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+        min-height: 44px;
+      }
+      .stats {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .stat {
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .stat-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .stat-val {
+        color: var(--txt);
+        font-weight: 600;
+      }
+      .stat-lbl {
+        color: var(--txt3);
+      }
+      .toolbar-sep {
+        width: 1px;
+        height: 16px;
+        background: var(--bdr2);
+      }
+      .filters {
+        display: flex;
+        gap: 3px;
+      }
+      .f-btn {
+        font-family: inherit;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 3px 9px;
+        border-radius: 3px;
+        cursor: pointer;
+        border: 1px solid var(--bdr2);
+        background: transparent;
+        color: var(--txt3);
+        transition: all 0.15s;
+      }
+      .f-all.on {
+        border-color: var(--amber);
+        color: var(--amber);
+        background: var(--amber-bg);
+      }
+      .f-comply.on {
+        border-color: var(--comply-bdr);
+        color: var(--comply);
+        background: var(--comply-bg);
+      }
+      .f-partial.on {
+        border-color: var(--partial-bdr);
+        color: var(--partial);
+        background: var(--partial-bg);
+      }
+      .f-notcomply.on {
+        border-color: var(--notcomply-bdr);
+        color: var(--notcomply);
+        background: var(--notcomply-bg);
+      }
+      .f-na.on {
+        border-color: var(--na-bdr);
+        color: var(--na);
+        background: var(--na-bg);
+      }
+      .toggles {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
+      }
+      .toggle-label {
+        font-size: 10px;
+        color: var(--txt2);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .toggle-label input {
+        accent-color: var(--amber);
+        cursor: pointer;
+      }
 
-/* progress bar */
-.progress{height:2px;background:var(--sur2);flex-shrink:0}
-.progress-fill{height:100%;background:var(--amber);animation:prog 1.8s ease-in-out infinite;width:35%}
-@keyframes prog{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}};
+      /* progress bar */
+      .progress {
+        height: 2px;
+        background: var(--sur2);
+        flex-shrink: 0;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--amber);
+        animation: prog 1.8s ease-in-out infinite;
+        width: 35%;
+      }
+      @keyframes prog {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(320%);
+        }
+      }
 
-/* table area */
-.table-area{flex:1;overflow:auto;position:relative}
-table{width:100%;border-collapse:collapse;font-size:12px}
-thead{position:sticky;top:0;z-index:10}
-thead tr{background:var(--sur2)}
-th{
-  padding:8px 10px;text-align:left;font-size:9px;font-weight:600;
-  letter-spacing:.12em;text-transform:uppercase;color:var(--amber);
-  border-bottom:1px solid var(--bdr);white-space:nowrap;
-}
-td{padding:0;border-bottom:1px solid var(--bdr2);vertical-align:top}
-tr:hover td{background:rgba(240,165,0,.025)}
-tr.sel-row td{background:rgba(240,165,0,.06)}
-.td-p{padding:7px 10px}
+      /* table area */
+      .table-area {
+        flex: 1;
+        overflow: auto;
+        position: relative;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      thead tr {
+        background: var(--sur2);
+      }
+      th {
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--amber);
+        border-bottom: 1px solid var(--bdr);
+        white-space: nowrap;
+      }
+      td {
+        padding: 0;
+        border-bottom: 1px solid var(--bdr2);
+        vertical-align: top;
+      }
+      tr:hover td {
+        background: rgba(240, 165, 0, 0.025);
+      }
+      tr.sel-row td {
+        background: rgba(240, 165, 0, 0.06);
+      }
+      .td-p {
+        padding: 7px 10px;
+      }
 
-/* column widths */
-.c-no{width:42px}
-.c-ref{width:80px}
-.c-req{min-width:220px}
-.c-tr{min-width:180px}
-.c-cat{width:110px}
-.c-sts{width:120px}
-.c-rem{min-width:180px}
-.c-del{width:38px}
+      /* column widths */
+      .c-no {
+        width: 42px;
+      }
+      .c-ref {
+        width: 80px;
+      }
+      .c-req {
+        min-width: 220px;
+      }
+      .c-tr {
+        min-width: 180px;
+      }
+      .c-cat {
+        width: 110px;
+      }
+      .c-sts {
+        width: 120px;
+      }
+      .c-rem {
+        min-width: 180px;
+      }
+      .c-del {
+        width: 38px;
+      }
 
-/* cell inputs */
-.cell-in{
-  font-family:'Sarabun',sans-serif;font-size:13px;color:var(--txt);
-  background:transparent;border:none;outline:none;width:100%;
-  resize:none;line-height:1.75;min-height:38px;
-}
-.cell-in:focus{background:rgba(255,255,255,.025);border-radius:3px}
-.cell-in::placeholder{color:var(--txt3);font-size:11px}
-.ref-in{
-  font-family:inherit;font-size:11px;color:var(--txt2);
-  background:transparent;border:none;outline:none;width:100%;
-}
-.ref-in:focus{color:var(--txt)}
-.ref-in::placeholder{color:var(--txt3)}
-.cat-sel{
-  font-family:inherit;font-size:10px;background:var(--sur2);
-  border:1px solid var(--bdr2);border-radius:3px;
-  color:var(--txt2);padding:3px 5px;outline:none;cursor:pointer;width:100%;
-}
-.cat-sel option{background:var(--sur1)}
-.sts-sel{
-  font-family:inherit;font-size:11px;font-weight:600;
-  border-radius:4px;padding:4px 6px;outline:none;cursor:pointer;width:100%;border:1px solid;
-}
-.sts-comply{color:var(--comply);background:var(--comply-bg);border-color:var(--comply-bdr)}
-.sts-partial{color:var(--partial);background:var(--partial-bg);border-color:var(--partial-bdr)}
-.sts-notcomply{color:var(--notcomply);background:var(--notcomply-bg);border-color:var(--notcomply-bdr)}
-.sts-na{color:var(--na);background:var(--na-bg);border-color:var(--na-bdr)}
-.sts-sel option{background:var(--sur1);color:var(--txt)}
-.warn-flag{font-size:9px;color:var(--warn);display:flex;align-items:center;gap:3px;margin-top:2px}
-.row-del{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:3px}
-.row-del:hover{color:var(--notcomply);background:var(--notcomply-bg)}
-.no-txt{font-size:11px;color:var(--txt3);text-align:center;padding:4px 0;user-select:none}
+      /* cell inputs */
+      .cell-in {
+        font-family: "Sarabun", sans-serif;
+        font-size: 13px;
+        color: var(--txt);
+        background: transparent;
+        border: none;
+        outline: none;
+        width: 100%;
+        resize: none;
+        line-height: 1.75;
+        min-height: 38px;
+      }
+      .cell-in:focus {
+        background: rgba(255, 255, 255, 0.025);
+        border-radius: 3px;
+      }
+      .cell-in::placeholder {
+        color: var(--txt3);
+        font-size: 11px;
+      }
+      .ref-in {
+        font-family: inherit;
+        font-size: 11px;
+        color: var(--txt2);
+        background: transparent;
+        border: none;
+        outline: none;
+        width: 100%;
+      }
+      .ref-in:focus {
+        color: var(--txt);
+      }
+      .ref-in::placeholder {
+        color: var(--txt3);
+      }
+      .cat-sel {
+        font-family: inherit;
+        font-size: 10px;
+        background: var(--sur2);
+        border: 1px solid var(--bdr2);
+        border-radius: 3px;
+        color: var(--txt2);
+        padding: 3px 5px;
+        outline: none;
+        cursor: pointer;
+        width: 100%;
+      }
+      .cat-sel option {
+        background: var(--sur1);
+      }
+      .sts-sel {
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 4px;
+        padding: 4px 6px;
+        outline: none;
+        cursor: pointer;
+        width: 100%;
+        border: 1px solid;
+      }
+      .sts-comply {
+        color: var(--comply);
+        background: var(--comply-bg);
+        border-color: var(--comply-bdr);
+      }
+      .sts-partial {
+        color: var(--partial);
+        background: var(--partial-bg);
+        border-color: var(--partial-bdr);
+      }
+      .sts-notcomply {
+        color: var(--notcomply);
+        background: var(--notcomply-bg);
+        border-color: var(--notcomply-bdr);
+      }
+      .sts-na {
+        color: var(--na);
+        background: var(--na-bg);
+        border-color: var(--na-bdr);
+      }
+      .sts-sel option {
+        background: var(--sur1);
+        color: var(--txt);
+      }
+      .warn-flag {
+        font-size: 9px;
+        color: var(--warn);
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        margin-top: 2px;
+      }
+      .row-del {
+        background: none;
+        border: none;
+        color: var(--txt3);
+        cursor: pointer;
+        font-size: 15px;
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+      .row-del:hover {
+        color: var(--notcomply);
+        background: var(--notcomply-bg);
+      }
+      .no-txt {
+        font-size: 11px;
+        color: var(--txt3);
+        text-align: center;
+        padding: 4px 0;
+        user-select: none;
+      }
 
-/* empty state */
-.empty{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  flex:1;padding:60px 24px;text-align:center;
-}
-.empty-ico{font-size:40px;opacity:.2;margin-bottom:14px}
-.empty-title{font-size:13px;color:var(--txt2);margin-bottom:6px}
-.empty-sub{font-size:11px;color:var(--txt3);line-height:1.7}
+      /* empty state */
+      .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        padding: 60px 24px;
+        text-align: center;
+      }
+      .empty-ico {
+        font-size: 40px;
+        opacity: 0.2;
+        margin-bottom: 14px;
+      }
+      .empty-title {
+        font-size: 13px;
+        color: var(--txt2);
+        margin-bottom: 6px;
+      }
+      .empty-sub {
+        font-size: 11px;
+        color: var(--txt3);
+        line-height: 1.7;
+      }
 
-/* loading overlay */
-.overlay{
-  position:absolute;inset:0;background:rgba(12,14,20,.88);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;
-}
-.spinner{width:32px;height:32px;border:2px solid var(--bdr2);border-top-color:var(--amber);border-radius:50%;animation:spin .75s linear infinite;margin-bottom:12px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ov-msg{font-size:11px;color:var(--txt2);letter-spacing:.04em}
-.ov-sub{font-size:10px;color:var(--txt3);margin-top:3px}
-.ov-prog-wrap{width:160px;height:2px;background:var(--sur3);border-radius:1px;margin-top:10px;overflow:hidden}
-.ov-prog-fill{height:100%;background:var(--amber);border-radius:1px;transition:width .4s}
+      /* loading overlay */
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(12, 14, 20, 0.88);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 2px solid var(--bdr2);
+        border-top-color: var(--amber);
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+        margin-bottom: 12px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .ov-msg {
+        font-size: 11px;
+        color: var(--txt2);
+        letter-spacing: 0.04em;
+      }
+      .ov-sub {
+        font-size: 10px;
+        color: var(--txt3);
+        margin-top: 3px;
+      }
+      .ov-prog-wrap {
+        width: 160px;
+        height: 2px;
+        background: var(--sur3);
+        border-radius: 1px;
+        margin-top: 10px;
+        overflow: hidden;
+      }
+      .ov-prog-fill {
+        height: 100%;
+        background: var(--amber);
+        border-radius: 1px;
+        transition: width 0.4s;
+      }
 
-/* bottom bar */
-.bottom-bar{
-  padding:7px 14px;border-top:1px solid var(--bdr2);background:var(--sur1);
-  display:flex;align-items:center;gap:8px;flex-shrink:0;
-}
-.bottom-hint{font-size:10px;color:var(--txt3)}
+      /* bottom bar */
+      .bottom-bar {
+        padding: 7px 14px;
+        border-top: 1px solid var(--bdr2);
+        background: var(--sur1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .bottom-hint {
+        font-size: 10px;
+        color: var(--txt3);
+      }
 
-/* alerts */
-.alert{
-  margin:8px 14px;border-radius:4px;padding:8px 12px;
-  font-size:11px;display:flex;gap:8px;align-items:flex-start;flex-shrink:0;
-}
-.alert-err{background:var(--danger-bg);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
-.alert-warn{background:var(--warn-bg);border:1px solid rgba(245,158,11,.3);color:#fcd34d}
-.alert-info{background:var(--info-bg);border:1px solid var(--info-bdr);color:var(--info)}
-.alert-icon{flex-shrink:0;font-size:13px}
-.alert-body{flex:1}
-.alert-dismiss{background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:15px;flex-shrink:0;padding:0}
-.alert-dismiss:hover{opacity:1}
-</style>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel">
-const {useState,useRef,useCallback,useMemo,useEffect}=React;
+      /* alerts */
+      .alert {
+        margin: 8px 14px;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 11px;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        flex-shrink: 0;
+      }
+      .alert-err {
+        background: var(--danger-bg);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+      }
+      .alert-warn {
+        background: var(--warn-bg);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        color: #fcd34d;
+      }
+      .alert-info {
+        background: var(--info-bg);
+        border: 1px solid var(--info-bdr);
+        color: var(--info);
+      }
+      .alert-icon {
+        flex-shrink: 0;
+        font-size: 13px;
+      }
+      .alert-body {
+        flex: 1;
+      }
+      .alert-dismiss {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.6;
+        font-size: 15px;
+        flex-shrink: 0;
+        padding: 0;
+      }
+      .alert-dismiss:hover {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useRef, useCallback, useMemo, useEffect } = React;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-const VALID_CATS=['General','Mechanical','Electrical','Control/PLC','IIoT/SCADA','BMS','Network','Safety','Documentation','Testing','Other'];
-const STATUS_OPTS=[
-  {v:'comply',l:'✓ Comply'},
-  {v:'partial',l:'~ Partial'},
-  {v:'notcomply',l:'✗ Not Comply'},
-  {v:'na',l:'— N/A'},
-];
-const STATUS_LABELS={comply:'Comply',partial:'Partially Comply',notcomply:'Not Comply',na:'N/A'};
-const STATUS_CLASS={comply:'sts-comply',partial:'sts-partial',notcomply:'sts-notcomply',na:'sts-na'};
-const STAT_COLORS={comply:'#22c55e',partial:'#f0a500',notcomply:'#ef4444',na:'#5c6480'};
+      const VALID_CATS = [
+        "General",
+        "Mechanical",
+        "Electrical",
+        "Control/PLC",
+        "IIoT/SCADA",
+        "BMS",
+        "Network",
+        "Safety",
+        "Documentation",
+        "Testing",
+        "Other",
+      ];
+      const STATUS_OPTS = [
+        { v: "comply", l: "✓ Comply" },
+        { v: "partial", l: "~ Partial" },
+        { v: "notcomply", l: "✗ Not Comply" },
+        { v: "na", l: "— N/A" },
+      ];
+      const STATUS_LABELS = {
+        comply: "Comply",
+        partial: "Partially Comply",
+        notcomply: "Not Comply",
+        na: "N/A",
+      };
+      const STATUS_CLASS = {
+        comply: "sts-comply",
+        partial: "sts-partial",
+        notcomply: "sts-notcomply",
+        na: "sts-na",
+      };
+      const STAT_COLORS = {
+        comply: "#22c55e",
+        partial: "#f0a500",
+        notcomply: "#ef4444",
+        na: "#5c6480",
+      };
 
-const DEFAULT_LIB=[
-  {id:'l01',label:'Comply — Standard',status:'comply',text:'Comply. Refer to system design documentation and technical proposal.'},
-  {id:'l02',label:'Comply — PLC/TIA Portal',status:'comply',text:'Comply. Implemented via Siemens TIA Portal programming. Refer to PLC logic documentation.'},
-  {id:'l03',label:'Comply — GX Works2',status:'comply',text:'Comply. Implemented via Mitsubishi GX Works2. Refer to ladder diagram documentation.'},
-  {id:'l04',label:'Comply — MQTT',status:'comply',text:'Comply. Real-time data pipeline configured via MQTT protocol to central SCADA/cloud server.'},
-  {id:'l05',label:'Comply — Modbus',status:'comply',text:'Comply. Hardware communication implemented via Modbus RTU/TCP protocol.'},
-  {id:'l06',label:'Comply — BMS',status:'comply',text:'Comply. Integrated into Building Management System architecture per client specification.'},
-  {id:'l07',label:'Comply — SCADA',status:'comply',text:'Comply. Data acquisition and monitoring interface configured in SCADA system.'},
-  {id:'l08',label:'Comply — Thai (มาตรฐาน)',status:'comply',text:'ปฏิบัติตามข้อกำหนด ดูรายละเอียดในเอกสารการออกแบบระบบและข้อเสนอทางเทคนิค'},
-  {id:'l09',label:'Partial — Pending Detail',status:'partial',text:'Partially comply. Final implementation subject to detailed engineering review and client confirmation.'},
-  {id:'l10',label:'Partial — Alternative',status:'partial',text:'Partially comply. Alternative solution proposed — equivalent performance, different make/model. Pending client approval.'},
-  {id:'l11',label:'Not Comply — Out of Scope',status:'notcomply',text:'Not in scope of this contract. To be confirmed with client during detailed design phase.'},
-  {id:'l12',label:'N/A — Not Applicable',status:'na',text:'Not applicable to this project scope.'},
-];
+      const DEFAULT_LIB = [
+        {
+          id: "l01",
+          label: "Comply — Standard",
+          status: "comply",
+          text: "Comply. Refer to system design documentation and technical proposal.",
+        },
+        {
+          id: "l02",
+          label: "Comply — PLC/TIA Portal",
+          status: "comply",
+          text: "Comply. Implemented via Siemens TIA Portal programming. Refer to PLC logic documentation.",
+        },
+        {
+          id: "l03",
+          label: "Comply — GX Works2",
+          status: "comply",
+          text: "Comply. Implemented via Mitsubishi GX Works2. Refer to ladder diagram documentation.",
+        },
+        {
+          id: "l04",
+          label: "Comply — MQTT",
+          status: "comply",
+          text: "Comply. Real-time data pipeline configured via MQTT protocol to central SCADA/cloud server.",
+        },
+        {
+          id: "l05",
+          label: "Comply — Modbus",
+          status: "comply",
+          text: "Comply. Hardware communication implemented via Modbus RTU/TCP protocol.",
+        },
+        {
+          id: "l06",
+          label: "Comply — BMS",
+          status: "comply",
+          text: "Comply. Integrated into Building Management System architecture per client specification.",
+        },
+        {
+          id: "l07",
+          label: "Comply — SCADA",
+          status: "comply",
+          text: "Comply. Data acquisition and monitoring interface configured in SCADA system.",
+        },
+        {
+          id: "l08",
+          label: "Comply — Thai (มาตรฐาน)",
+          status: "comply",
+          text: "ปฏิบัติตามข้อกำหนด ดูรายละเอียดในเอกสารการออกแบบระบบและข้อเสนอทางเทคนิค",
+        },
+        {
+          id: "l09",
+          label: "Partial — Pending Detail",
+          status: "partial",
+          text: "Partially comply. Final implementation subject to detailed engineering review and client confirmation.",
+        },
+        {
+          id: "l10",
+          label: "Partial — Alternative",
+          status: "partial",
+          text: "Partially comply. Alternative solution proposed — equivalent performance, different make/model. Pending client approval.",
+        },
+        {
+          id: "l11",
+          label: "Not Comply — Out of Scope",
+          status: "notcomply",
+          text: "Not in scope of this contract. To be confirmed with client during detailed design phase.",
+        },
+        {
+          id: "l12",
+          label: "N/A — Not Applicable",
+          status: "na",
+          text: "Not applicable to this project scope.",
+        },
+      ];
 
-let _rc=1;
-const mkRow=(o={})=>({id:_rc++,ref:'',requirement:'',translation:'',category:'General',status:'comply',remarks:'',_warn:false,...o});
+      let _rc = 1;
+      const mkRow = (o = {}) => ({
+        id: _rc++,
+        ref: "",
+        requirement: "",
+        translation: "",
+        category: "General",
+        status: "comply",
+        remarks: "",
+        _warn: false,
+        ...o,
+      });
 
-function isLikelyTranslated(txt){return !/[\u0E00-\u0E7F]/.test(txt)&&txt.trim().length>0}
+      function isLikelyTranslated(txt) {
+        return !/[\u0E00-\u0E7F]/.test(txt) && txt.trim().length > 0;
+      }
 
-async function detectPDFType(file){
-  const ab=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  const page=await pdf.getPage(1);
-  const tc=await page.getTextContent();
-  const text=tc.items.map(i=>i.str).join('');
-  return text.trim().length>50?'digital':'scanned';
-}
+      async function detectPDFType(file) {
+        const ab = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        const page = await pdf.getPage(1);
+        const tc = await page.getTextContent();
+        const text = tc.items.map((i) => i.str).join("");
+        return text.trim().length > 50 ? "digital" : "scanned";
+      }
 
-async function rasterizePage(pdf,pageNum,scale=2){
-  const page=await pdf.getPage(pageNum);
-  const vp=page.getViewport({scale});
-  const canvas=document.createElement('canvas');
-  canvas.width=vp.width;canvas.height=vp.height;
-  const ctx=canvas.getContext('2d');
-  await page.render({canvasContext:ctx,viewport:vp}).promise;
-  return canvas.toDataURL('image/png').split(',')[1];
-}
+      async function rasterizePage(pdf, pageNum, scale = 2) {
+        const page = await pdf.getPage(pageNum);
+        const vp = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        const ctx = canvas.getContext("2d");
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        return canvas.toDataURL("image/png").split(",")[1];
+      }
 
-async function callDocumentAI(pageB64,apiKey,projectId,location,processorId){
-  const url=`https://documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
-  const res=await fetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
-    body:JSON.stringify({rawDocument:{content:pageB64,mimeType:'image/png'}})
-  });
-  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`Google API ${res.status}`)}
-  const data=await res.json();
-  return data?.document?.text||'';
-}
+      async function callDocumentAI(
+        pageB64,
+        apiKey,
+        projectId,
+        location,
+        processorId,
+      ) {
+        const url = `https://documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            rawDocument: { content: pageB64, mimeType: "image/png" },
+          }),
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e?.error?.message || `Google API ${res.status}`);
+        }
+        const data = await res.json();
+        return data?.document?.text || "";
+      }
 
-async function ocrPDFGoogle(file,apiKey,projectId,location,processorId,onProgress){
-  const ab=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  const numPages=pdf.numPages;
-  const texts=[];
-  for(let p=1;p<=numPages;p++){
-    onProgress&&onProgress(p,numPages);
-    const b64=await rasterizePage(pdf,p);
-    const txt=await callDocumentAI(b64,apiKey,projectId,location,processorId);
-    texts.push(txt);
-  }
-  return texts.join('\n\n--- PAGE BREAK ---\n\n');
-}
+      async function ocrPDFGoogle(
+        file,
+        apiKey,
+        projectId,
+        location,
+        processorId,
+        onProgress,
+      ) {
+        const ab = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        const numPages = pdf.numPages;
+        const texts = [];
+        for (let p = 1; p <= numPages; p++) {
+          onProgress && onProgress(p, numPages);
+          const b64 = await rasterizePage(pdf, p);
+          const txt = await callDocumentAI(
+            b64,
+            apiKey,
+            projectId,
+            location,
+            processorId,
+          );
+          texts.push(txt);
+        }
+        return texts.join("\n\n--- PAGE BREAK ---\n\n");
+      }
 
-async function ocrPDFClaude(file,model,onProgress){
-  const ab=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  const numPages=pdf.numPages;
-  const texts=[];
-  for(let p=1;p<=numPages;p++){
-    onProgress&&onProgress(p,numPages);
-    const b64=await rasterizePage(pdf,p);
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model,
-        max_tokens:2000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/png',data:b64}},
-          {type:'text',text:'This is page '+p+' of a scanned Thai TOR (Terms of Reference) document. Extract ALL text from this page exactly as written — verbatim, including Thai text. Preserve paragraph structure and numbering. Return only the extracted text, no commentary.'}
-        ]}]
-      })
-    });
-    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`Claude Vision API ${res.status}`)}
-    const data=await res.json();
-    const txt=data.content?.find(b=>b.type==='text')?.text||'';
-    texts.push(txt);
-  }
-  return texts.join('\n\n--- PAGE BREAK ---\n\n');
-}
+      async function ocrPDFClaude(file, model, onProgress) {
+        const ab = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        const numPages = pdf.numPages;
+        const texts = [];
+        for (let p = 1; p <= numPages; p++) {
+          onProgress && onProgress(p, numPages);
+          const b64 = await rasterizePage(pdf, p);
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model,
+              max_tokens: 2000,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "image",
+                      source: {
+                        type: "base64",
+                        media_type: "image/png",
+                        data: b64,
+                      },
+                    },
+                    {
+                      type: "text",
+                      text:
+                        "This is page " +
+                        p +
+                        " of a scanned Thai TOR (Terms of Reference) document. Extract ALL text from this page exactly as written — verbatim, including Thai text. Preserve paragraph structure and numbering. Return only the extracted text, no commentary.",
+                    },
+                  ],
+                },
+              ],
+            }),
+          });
+          if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(
+              e?.error?.message || `Claude Vision API ${res.status}`,
+            );
+          }
+          const data = await res.json();
+          const txt = data.content?.find((b) => b.type === "text")?.text || "";
+          texts.push(txt);
+        }
+        return texts.join("\n\n--- PAGE BREAK ---\n\n");
+      }
 
-function buildSystemPrompt(withTranslation,isOCR){
-  let sp=`You are an expert automation and IIoT engineer reading a Terms of Reference (TOR) document, which may be in Thai, English, or mixed Thai/English.
+      function buildSystemPrompt(withTranslation, isOCR) {
+        let sp = `You are an expert automation and IIoT engineer reading a Terms of Reference (TOR) document, which may be in Thai, English, or mixed Thai/English.
 
 CRITICAL RULE — VERBATIM COPY:
 The "requirement" field must be copied CHARACTER FOR CHARACTER exactly as it appears in the source document.
@@ -448,51 +1270,94 @@ WRONG:   {"ref":"3.2","requirement":"The control system must use Siemens S7-1500
 
 Extract ALL of: technical specs, performance requirements, brand/model requirements, material/standard requirements, testing/commissioning requirements, documentation requirements, warranty/maintenance requirements, safety requirements.`;
 
-  if(withTranslation){
-    sp+=`\n\nADDITIONAL: Also add a "translation" field with an English translation of each requirement.
+        if (withTranslation) {
+          sp += `\n\nADDITIONAL: Also add a "translation" field with an English translation of each requirement.
 The "requirement" field stays VERBATIM original language. The "translation" field is your English translation.
 Extended format: {"ref":"...","requirement":"VERBATIM Thai","translation":"English translation","category":"..."}`;
-  }
+        }
 
-  if(isOCR){
-    sp+=`\n\nNOTE: The input text was extracted by OCR from a scanned document. There may be minor OCR errors (broken words, wrong characters). Identify the intended meaning from context, but still copy the text verbatim including OCR artifacts — do not silently fix them. The engineer will review and correct.`;
-  }
+        if (isOCR) {
+          sp += `\n\nNOTE: The input text was extracted by OCR from a scanned document. There may be minor OCR errors (broken words, wrong characters). Identify the intended meaning from context, but still copy the text verbatim including OCR artifacts — do not silently fix them. The engineer will review and correct.`;
+        }
 
-  return sp;
-}
+        return sp;
+      }
 
-async function extractRequirements(file,model,withTranslation,pdfType,ocrText){
-  const sp=buildSystemPrompt(withTranslation,pdfType==='scanned');
+      async function extractRequirements(
+        file,
+        model,
+        withTranslation,
+        pdfType,
+        ocrText,
+      ) {
+        const sp = buildSystemPrompt(withTranslation, pdfType === "scanned");
 
-  let messages;
-  if(pdfType==='digital'){
-    const ab=await file.arrayBuffer();
-    const b64=btoa(String.fromCharCode(...new Uint8Array(ab)));
-    messages=[{role:'user',content:[
-      {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
-      {type:'text',text:'Extract all requirements from this TOR document as a JSON array. Return only the JSON array, nothing else.'}
-    ]}];
-  } else {
-    messages=[{role:'user',content:`The following text was extracted via OCR from a scanned TOR document.\n\n${ocrText}\n\nExtract all requirements as a JSON array. Return only the JSON array, nothing else.`}];
-  }
+        let messages;
+        if (pdfType === "digital") {
+          const ab = await file.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+          messages = [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "document",
+                  source: {
+                    type: "base64",
+                    media_type: "application/pdf",
+                    data: b64,
+                  },
+                },
+                {
+                  type: "text",
+                  text: "Extract all requirements from this TOR document as a JSON array. Return only the JSON array, nothing else.",
+                },
+              ],
+            },
+          ];
+        } else {
+          messages = [
+            {
+              role: "user",
+              content: `The following text was extracted via OCR from a scanned TOR document.\n\n${ocrText}\n\nExtract all requirements as a JSON array. Return only the JSON array, nothing else.`,
+            },
+          ];
+        }
 
-  const res=await fetch('/api/claude',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model,max_tokens:4000,system:sp,messages})
-  });
-  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`Claude API ${res.status}`)}
-  const data=await res.json();
-  const raw=data.content?.find(b=>b.type==='text')?.text||'[]';
-  const clean=raw.replace(/```json|```/g,'').trim();
-  let parsed;
-  try{parsed=JSON.parse(clean)}catch{throw new Error('Could not parse extraction result. Try the Opus model or check if the PDF has readable content.')}
-  if(!Array.isArray(parsed)||parsed.length===0)throw new Error('No requirements found. PDF may have no structured text layer.');
-  return parsed;
-}
+        const res = await fetch("/api/claude", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            max_tokens: 4000,
+            system: sp,
+            messages,
+          }),
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e?.error?.message || `Claude API ${res.status}`);
+        }
+        const data = await res.json();
+        const raw = data.content?.find((b) => b.type === "text")?.text || "[]";
+        const clean = raw.replace(/```json|```/g, "").trim();
+        let parsed;
+        try {
+          parsed = JSON.parse(clean);
+        } catch {
+          throw new Error(
+            "Could not parse extraction result. Try the Opus model or check if the PDF has readable content.",
+          );
+        }
+        if (!Array.isArray(parsed) || parsed.length === 0)
+          throw new Error(
+            "No requirements found. PDF may have no structured text layer.",
+          );
+        return parsed;
+      }
 
-function buildGeminiPrompt(withTranslation,isOCR){
-  let p=`You are an expert automation and IIoT engineer reading a Terms of Reference (TOR) document in Thai, English, or mixed.
+      function buildGeminiPrompt(withTranslation, isOCR) {
+        let p = `You are an expert automation and IIoT engineer reading a Terms of Reference (TOR) document in Thai, English, or mixed.
 
 CRITICAL RULE — VERBATIM COPY:
 The "requirement" field must be copied CHARACTER FOR CHARACTER exactly as it appears.
@@ -512,671 +1377,1520 @@ WRONG:   {"ref":"3.2","requirement":"The control system must use Siemens S7-1500
 
 Extract ALL: technical specs, performance, brand/model, material/standard, testing, documentation, warranty, safety requirements.`;
 
-  if(withTranslation){
-    p+=`\n\nAlso add "translation" field with English translation. "requirement" stays VERBATIM original. Format: {"ref":"...","requirement":"VERBATIM Thai","translation":"English translation","category":"..."}`;
-  }
-  if(isOCR){
-    p+=`\n\nInput is OCR text — may have minor errors. Copy verbatim including artifacts. Do not silently fix OCR errors.`;
-  }
-  return p;
-}
-
-async function extractWithGemini(file,geminiKey,geminiModel,withTranslation,pdfType,ocrText){
-  const prompt=buildGeminiPrompt(withTranslation,pdfType==='scanned');
-  const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-
-  let parts;
-  if(pdfType==='digital'){
-    const ab=await file.arrayBuffer();
-    const b64=btoa(String.fromCharCode(...new Uint8Array(ab)));
-    parts=[
-      {inline_data:{mime_type:'application/pdf',data:b64}},
-      {text:prompt+'\n\nExtract all requirements from this TOR document. Return only the JSON array.'}
-    ];
-  } else {
-    parts=[{text:prompt+`\n\nThe following is OCR text from a scanned TOR document:\n\n${ocrText}\n\nExtract all requirements. Return only the JSON array.`}];
-  }
-
-  const res=await fetch(endpoint,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts}],generationConfig:{temperature:0.1,maxOutputTokens:8192}})
-  });
-  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`Gemini API ${res.status}`)}
-  const data=await res.json();
-  const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'[]';
-  const clean=raw.replace(/```json|```/g,'').trim();
-  let parsed;
-  try{parsed=JSON.parse(clean)}catch{throw new Error('Could not parse Gemini response. Try again or check your API key.')}
-  if(!Array.isArray(parsed)||parsed.length===0)throw new Error('No requirements found in Gemini response.');
-  return parsed;
-}
-
-async function ocrPageWithGemini(pageB64,pageNum,geminiKey,geminiModel){
-  const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-  const res=await fetch(endpoint,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      contents:[{parts:[
-        {inline_data:{mime_type:'image/png',data:pageB64}},
-        {text:`This is page ${pageNum} of a scanned Thai TOR document. Extract ALL text exactly as written — verbatim Thai and English. Preserve numbering and paragraph structure. Return only the extracted text.`}
-      ]}],
-      generationConfig:{temperature:0,maxOutputTokens:4096}
-    })
-  });
-  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`Gemini Vision API ${res.status}`)}
-  const data=await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-}
-
-function validateAndMap(parsed,withTranslation){
-  return parsed.map((item,i)=>{
-    const ref=String(item.ref||`CL-${String(i+1).padStart(3,'0')}`);
-    const req=String(item.requirement||'').trim();
-    const tr=withTranslation?String(item.translation||'').trim():'';
-    let cat=String(item.category||'Other');
-    if(!VALID_CATS.includes(cat))cat='Other';
-    const warn=req.length>0&&isLikelyTranslated(req);
-    return mkRow({ref,requirement:req,translation:tr,category:cat,status:'comply',remarks:'',_warn:warn});
-  });
-}
-
-function App(){
-  const [rows,setRows]=useState([]);
-  const [lib,setLib]=useState(DEFAULT_LIB);
-  const [loading,setLoading]=useState(false);
-  const [loadMsg,setLoadMsg]=useState('');
-  const [loadSub,setLoadSub]=useState('');
-  const [loadPct,setLoadPct]=useState(null);
-  const [error,setError]=useState(null);
-  const [warning,setWarning]=useState(null);
-  const [info,setInfo]=useState(null);
-  const [pdfFile,setPdfFile]=useState(null);
-  const [pdfType,setPdfType]=useState(null);
-  const [model,setModel]=useState('claude-sonnet-4-20250514');
-  const [project,setProject]=useState('');
-  const [filter,setFilter]=useState('all');
-  const [showTr,setShowTr]=useState(false);
-  const [showCat,setShowCat]=useState(true);
-  const [selectedRow,setSelectedRow]=useState(null);
-  const [dragging,setDragging]=useState(false);
-  const [showLibAdd,setShowLibAdd]=useState(false);
-  const [newLib,setNewLib]=useState({label:'',text:'',status:'comply'});
-  const [ocrEngine,setOcrEngine]=useState('claude');
-  const [aiEngine,setAiEngine]=useState('claude');
-  const [geminiKey,setGeminiKey]=useState('');
-  const [geminiModel,setGeminiModel]=useState('gemini-2.0-flash');
-  const [googleKey,setGoogleKey]=useState('');
-  const [googleProject,setGoogleProject]=useState('');
-  const [googleLocation,setGoogleLocation]=useState('us');
-  const [googleProcessor,setGoogleProcessor]=useState('');
-  const fileRef=useRef();
-  const tableRef=useRef();
-
-  const upd=(id,f,v)=>setRows(r=>r.map(row=>row.id===id?{...row,[f]:v}:row));
-  const del=(id)=>setRows(r=>r.filter(row=>row.id!==id));
-  const addRow=()=>{
-    const r=mkRow({ref:`CL-${String(rows.length+1).padStart(3,'0')}`});
-    setRows(p=>[...p,r]);
-    setTimeout(()=>{
-      const ta=tableRef.current?.querySelectorAll('textarea');
-      if(ta&&ta.length)ta[ta.length-2]?.focus();
-    },60);
-  };
-
-  const handleFile=useCallback(async(file)=>{
-    if(!file||file.type!=='application/pdf'){setError('Please select a PDF file.');return;}
-    setPdfFile(file);setRows([]);setError(null);setWarning(null);setInfo(null);setPdfType(null);
-    setLoading(true);setLoadMsg('Detecting PDF type...');setLoadSub('');setLoadPct(null);
-    try{
-      const type=await detectPDFType(file);
-      setPdfType(type);
-      if(type==='scanned'){
-        setInfo('Scanned PDF detected. Choose an OCR engine below, fill in credentials if needed, then click Extract.');
-      } else {
-        setInfo('Digital PDF detected — ready for extraction.');
-      }
-    }catch(e){setError('Could not read PDF. Try re-saving as PDF/A or printing to PDF.')}
-    finally{setLoading(false)}
-  },[]);
-
-  const onDrop=useCallback(e=>{
-    e.preventDefault();setDragging(false);
-    handleFile(e.dataTransfer.files[0]);
-  },[handleFile]);
-
-  const doExtract=async()=>{
-    if(!pdfFile)return;
-    setLoading(true);setError(null);setWarning(null);setInfo(null);
-
-    try{
-      let ocrText=null;
-
-      if(pdfType==='scanned'){
-        if(ocrEngine==='gemini'){
-          if(!geminiKey){setError('Gemini API key is required for Gemini OCR.');setLoading(false);return;}
-          setLoadMsg('OCR via Gemini Vision...');
-          const ab=await pdfFile.arrayBuffer();
-          const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-          const total=pdf.numPages;
-          const texts=[];
-          for(let p=1;p<=total;p++){
-            setLoadPct(Math.round((p/total)*60));
-            setLoadSub(`Gemini Vision — page ${p} of ${total}`);
-            const b64=await rasterizePage(pdf,p);
-            const txt=await ocrPageWithGemini(b64,p,geminiKey,geminiModel);
-            texts.push(txt);
-          }
-          ocrText=texts.join('\n\n--- PAGE BREAK ---\n\n');
-        } else if(ocrEngine==='claude'){
-          setLoadMsg('OCR via Claude Vision...');
-          setLoadSub('Reading pages with Claude — routed via proxy');
-          const ab=await pdfFile.arrayBuffer();
-          const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-          const total=pdf.numPages;
-          const texts=[];
-          for(let p=1;p<=total;p++){
-            setLoadPct(Math.round((p/total)*60));
-            setLoadSub(`Claude Vision — page ${p} of ${total}`);
-            const b64=await rasterizePage(pdf,p);
-            const res=await fetch('/api/claude',{
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({
-                model,max_tokens:2000,
-                messages:[{role:'user',content:[
-                  {type:'image',source:{type:'base64',media_type:'image/png',data:b64}},
-                  {type:'text',text:'This is page '+p+' of a scanned Thai TOR document. Extract ALL text verbatim including Thai. Preserve numbering and structure. Return only extracted text.'}
-                ]}]
-              })
-            });
-            if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`Claude Vision ${res.status}`)}
-            const data=await res.json();
-            texts.push(data.content?.find(b=>b.type==='text')?.text||'');
-          }
-          ocrText=texts.join('\n\n--- PAGE BREAK ---\n\n');
-        } else {
-          if(!googleKey||!googleProject||!googleProcessor){
-            setError('Google Document AI requires: Bearer Token, Project ID, and Processor ID.');
-            setLoading(false);return;
-          }
-          setLoadMsg('OCR via Google Document AI...');
-          const ab=await pdfFile.arrayBuffer();
-          const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-          const total=pdf.numPages;
-          const texts=[];
-          for(let p=1;p<=total;p++){
-            setLoadPct(Math.round((p/total)*60));
-            setLoadSub(`Google OCR — page ${p} of ${total}`);
-            const b64=await rasterizePage(pdf,p);
-            const txt=await callDocumentAI(b64,googleKey,googleProject,googleLocation,googleProcessor);
-            texts.push(txt);
-          }
-          ocrText=texts.join('\n\n--- PAGE BREAK ---\n\n');
+        if (withTranslation) {
+          p += `\n\nAlso add "translation" field with English translation. "requirement" stays VERBATIM original. Format: {"ref":"...","requirement":"VERBATIM Thai","translation":"English translation","category":"..."}`;
         }
-        setLoadPct(65);
+        if (isOCR) {
+          p += `\n\nInput is OCR text — may have minor errors. Copy verbatim including artifacts. Do not silently fix OCR errors.`;
+        }
+        return p;
       }
 
-      setLoadMsg('Extracting requirements...');
-      setLoadPct(pdfType==='digital'?20:75);
+      async function extractWithGemini(
+        file,
+        geminiKey,
+        geminiModel,
+        withTranslation,
+        pdfType,
+        ocrText,
+      ) {
+        const prompt = buildGeminiPrompt(
+          withTranslation,
+          pdfType === "scanned",
+        );
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
 
-      let parsed;
-      if(aiEngine==='gemini'){
-        if(!geminiKey){setError('Gemini API key is required.');setLoading(false);return;}
-        setLoadSub(`Using ${geminiModel}`);
-        parsed=await extractWithGemini(pdfFile,geminiKey,geminiModel,showTr,pdfType,ocrText);
-      } else {
-        setLoadSub(`Using ${model==='claude-sonnet-4-20250514'?'Sonnet':'Opus'} via proxy`);
-        parsed=await extractRequirements(pdfFile,model,showTr,pdfType,ocrText);
+        let parts;
+        if (pdfType === "digital") {
+          const ab = await file.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+          parts = [
+            { inline_data: { mime_type: "application/pdf", data: b64 } },
+            {
+              text:
+                prompt +
+                "\n\nExtract all requirements from this TOR document. Return only the JSON array.",
+            },
+          ];
+        } else {
+          parts = [
+            {
+              text:
+                prompt +
+                `\n\nThe following is OCR text from a scanned TOR document:\n\n${ocrText}\n\nExtract all requirements. Return only the JSON array.`,
+            },
+          ];
+        }
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+          }),
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e?.error?.message || `Gemini API ${res.status}`);
+        }
+        const data = await res.json();
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+        const clean = raw.replace(/```json|```/g, "").trim();
+        let parsed;
+        try {
+          parsed = JSON.parse(clean);
+        } catch {
+          throw new Error(
+            "Could not parse Gemini response. Try again or check your API key.",
+          );
+        }
+        if (!Array.isArray(parsed) || parsed.length === 0)
+          throw new Error("No requirements found in Gemini response.");
+        return parsed;
       }
 
-      setLoadPct(95);
-      setLoadMsg('Validating...');setLoadSub('');
-      const mapped=validateAndMap(parsed,showTr);
-      setRows(mapped);
-      setLoadPct(100);
-      const warned=mapped.filter(r=>r._warn).length;
-      if(warned>0){
-        setWarning(`${warned} requirement${warned>1?'s':''} appear to be translated rather than verbatim Thai — highlighted rows need review.`);
+      async function ocrPageWithGemini(
+        pageB64,
+        pageNum,
+        geminiKey,
+        geminiModel,
+      ) {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { inline_data: { mime_type: "image/png", data: pageB64 } },
+                  {
+                    text: `This is page ${pageNum} of a scanned Thai TOR document. Extract ALL text exactly as written — verbatim Thai and English. Preserve numbering and paragraph structure. Return only the extracted text.`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+          }),
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(
+            e?.error?.message || `Gemini Vision API ${res.status}`,
+          );
+        }
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       }
-      setTimeout(()=>{setLoading(false);setLoadPct(null)},400);
-    }catch(e){
-      setError(e.message||'Extraction failed.');
-      setLoading(false);setLoadPct(null);
-    }
-  };
 
-  const applyLib=(item)=>{
-    if(selectedRow!==null){
-      upd(selectedRow,'remarks',item.text);
-      setSelectedRow(null);
-    } else {
-      setRows(r=>r.map(row=>row.status===item.status?{...row,remarks:item.text}:row));
-    }
-  };
+      function validateAndMap(parsed, withTranslation) {
+        return parsed.map((item, i) => {
+          const ref = String(
+            item.ref || `CL-${String(i + 1).padStart(3, "0")}`,
+          );
+          const req = String(item.requirement || "").trim();
+          const tr = withTranslation
+            ? String(item.translation || "").trim()
+            : "";
+          let cat = String(item.category || "Other");
+          if (!VALID_CATS.includes(cat)) cat = "Other";
+          const warn = req.length > 0 && isLikelyTranslated(req);
+          return mkRow({
+            ref,
+            requirement: req,
+            translation: tr,
+            category: cat,
+            status: "comply",
+            remarks: "",
+            _warn: warn,
+          });
+        });
+      }
 
-  const addLibItem=()=>{
-    if(!newLib.label.trim()||!newLib.text.trim())return;
-    setLib(l=>[...l,{id:'u'+Date.now(),label:newLib.label.trim(),text:newLib.text.trim(),status:newLib.status}]);
-    setNewLib({label:'',text:'',status:'comply'});setShowLibAdd(false);
-  };
+      function App() {
+        const [rows, setRows] = useState([]);
+        const [lib, setLib] = useState(DEFAULT_LIB);
+        const [loading, setLoading] = useState(false);
+        const [loadMsg, setLoadMsg] = useState("");
+        const [loadSub, setLoadSub] = useState("");
+        const [loadPct, setLoadPct] = useState(null);
+        const [error, setError] = useState(null);
+        const [warning, setWarning] = useState(null);
+        const [info, setInfo] = useState(null);
+        const [pdfFile, setPdfFile] = useState(null);
+        const [pdfType, setPdfType] = useState(null);
+        const [model, setModel] = useState("claude-sonnet-4-20250514");
+        const [project, setProject] = useState("");
+        const [filter, setFilter] = useState("all");
+        const [showTr, setShowTr] = useState(false);
+        const [showCat, setShowCat] = useState(true);
+        const [selectedRow, setSelectedRow] = useState(null);
+        const [dragging, setDragging] = useState(false);
+        const [showLibAdd, setShowLibAdd] = useState(false);
+        const [newLib, setNewLib] = useState({
+          label: "",
+          text: "",
+          status: "comply",
+        });
+        const [ocrEngine, setOcrEngine] = useState("claude");
+        const [aiEngine, setAiEngine] = useState("claude");
+        const [geminiKey, setGeminiKey] = useState("");
+        const [geminiModel, setGeminiModel] = useState("gemini-2.0-flash");
+        const [googleKey, setGoogleKey] = useState("");
+        const [googleProject, setGoogleProject] = useState("");
+        const [googleLocation, setGoogleLocation] = useState("us");
+        const [googleProcessor, setGoogleProcessor] = useState("");
+        const fileRef = useRef();
+        const tableRef = useRef();
 
-  const exportXLSX=()=>{
-    if(!rows.length)return;
-    const hasTranslation=showTr&&rows.some(r=>r.translation);
-    const headers=['Item No.','Reference','Requirement / Specification'];
-    if(hasTranslation)headers.push('English Translation');
-    if(showCat)headers.push('Category');
-    headers.push('Compliance Status','Remarks','Verified By','Date');
-    const wsd=[headers,...rows.map((row,i)=>{
-      const base=[i+1,row.ref,row.requirement];
-      if(hasTranslation)base.push(row.translation);
-      if(showCat)base.push(row.category);
-      base.push(STATUS_LABELS[row.status]||row.status,row.remarks,'','');
-      return base;
-    })];
-    const ws=XLSX.utils.aoa_to_sheet(wsd);
-    const colWidths=[{wch:8},{wch:10},{wch:65}];
-    if(hasTranslation)colWidths.push({wch:55});
-    if(showCat)colWidths.push({wch:14});
-    colWidths.push({wch:16},{wch:55},{wch:14},{wch:12});
-    ws['!cols']=colWidths;
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,(project||'TOR').slice(0,30));
-    XLSX.writeFile(wb,`${project||'TOR'}_Compliance_Matrix_${new Date().toISOString().slice(0,10)}.xlsx`);
-    setInfo('Exported. Open in Excel and set column C font to "TH Sarabun New" or "Cordia New" for correct Thai rendering.');
-  };
+        const upd = (id, f, v) =>
+          setRows((r) =>
+            r.map((row) => (row.id === id ? { ...row, [f]: v } : row)),
+          );
+        const del = (id) => setRows((r) => r.filter((row) => row.id !== id));
+        const addRow = () => {
+          const r = mkRow({
+            ref: `CL-${String(rows.length + 1).padStart(3, "0")}`,
+          });
+          setRows((p) => [...p, r]);
+          setTimeout(() => {
+            const ta = tableRef.current?.querySelectorAll("textarea");
+            if (ta && ta.length) ta[ta.length - 2]?.focus();
+          }, 60);
+        };
 
-  const stats=useMemo(()=>({
-    total:rows.length,
-    comply:rows.filter(r=>r.status==='comply').length,
-    partial:rows.filter(r=>r.status==='partial').length,
-    notcomply:rows.filter(r=>r.status==='notcomply').length,
-    na:rows.filter(r=>r.status==='na').length,
-  }),[rows]);
+        const handleFile = useCallback(async (file) => {
+          if (!file || file.type !== "application/pdf") {
+            setError("Please select a PDF file.");
+            return;
+          }
+          setPdfFile(file);
+          setRows([]);
+          setError(null);
+          setWarning(null);
+          setInfo(null);
+          setPdfType(null);
+          setLoading(true);
+          setLoadMsg("Detecting PDF type...");
+          setLoadSub("");
+          setLoadPct(null);
+          try {
+            const type = await detectPDFType(file);
+            setPdfType(type);
+            if (type === "scanned") {
+              setInfo(
+                "Scanned PDF detected. Choose an OCR engine below, fill in credentials if needed, then click Extract.",
+              );
+            } else {
+              setInfo("Digital PDF detected — ready for extraction.");
+            }
+          } catch (e) {
+            setError(
+              "Could not read PDF. Try re-saving as PDF/A or printing to PDF.",
+            );
+          } finally {
+            setLoading(false);
+          }
+        }, []);
 
-  const filtered=useMemo(()=>filter==='all'?rows:rows.filter(r=>r.status===filter),[rows,filter]);
+        const onDrop = useCallback(
+          (e) => {
+            e.preventDefault();
+            setDragging(false);
+            handleFile(e.dataTransfer.files[0]);
+          },
+          [handleFile],
+        );
 
-  return(
-    <div className="app">
-      {/* TOPBAR */}
-      <div className="topbar">
-        <div className="brand">
-          <div className="brand-pulse"/>
-          <span className="brand-name">TOR Compliance Matrix</span>
-        </div>
-        <div className="brand-sep"/>
-        <input className="proj-input" placeholder="Project name…" value={project} onChange={e=>setProject(e.target.value)}/>
-        <div className="topbar-right">
-          <select className="model-sel" value={aiEngine} onChange={e=>setAiEngine(e.target.value)}>
-            <option value="claude">⚡ Claude</option>
-            <option value="gemini">✦ Gemini</option>
-          </select>
-          {aiEngine==='claude'?(
-            <select className="model-sel" value={model} onChange={e=>setModel(e.target.value)}>
-              <option value="claude-sonnet-4-20250514">Sonnet — Fast</option>
-              <option value="claude-opus-4-5">Opus — Max Accuracy</option>
-            </select>
-          ):(
-            <select className="model-sel" value={geminiModel} onChange={e=>setGeminiModel(e.target.value)}>
-              <option value="gemini-2.0-flash">Flash — Fast</option>
-              <option value="gemini-1.5-pro">Pro — Max Accuracy</option>
-            </select>
-          )}
-          <button className="btn btn-ghost btn-sm" onClick={addRow} disabled={loading}>+ Row</button>
-          <button className="btn btn-amber btn-sm" onClick={exportXLSX} disabled={!rows.length}>↓ Export .xlsx</button>
-        </div>
-      </div>
+        const doExtract = async () => {
+          if (!pdfFile) return;
+          setLoading(true);
+          setError(null);
+          setWarning(null);
+          setInfo(null);
 
-      <div className="body">
-        {/* SIDEBAR */}
-        <div className="sidebar">
-          {/* PDF section */}
-          <div className="sb-sec">
-            <div className="sb-label">TOR Document</div>
-            {!pdfFile?(
-              <div
-                className={`upload-zone${dragging?' drag':''}`}
-                onClick={()=>fileRef.current.click()}
-                onDragOver={e=>{e.preventDefault();setDragging(true)}}
-                onDragLeave={()=>setDragging(false)}
-                onDrop={onDrop}
-              >
-                <div className="upload-ico">📄</div>
-                <div className="upload-txt"><strong>Click or drag PDF</strong><br/>Thai / English TOR document</div>
-                <input ref={fileRef} type="file" accept="application/pdf" className="file-input" onChange={e=>handleFile(e.target.files[0])}/>
+          try {
+            let ocrText = null;
+
+            if (pdfType === "scanned") {
+              if (ocrEngine === "gemini") {
+                if (!geminiKey) {
+                  setError("Gemini API key is required for Gemini OCR.");
+                  setLoading(false);
+                  return;
+                }
+                setLoadMsg("OCR via Gemini Vision...");
+                const ab = await pdfFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+                const total = pdf.numPages;
+                const texts = [];
+                for (let p = 1; p <= total; p++) {
+                  setLoadPct(Math.round((p / total) * 60));
+                  setLoadSub(`Gemini Vision — page ${p} of ${total}`);
+                  const b64 = await rasterizePage(pdf, p);
+                  const txt = await ocrPageWithGemini(
+                    b64,
+                    p,
+                    geminiKey,
+                    geminiModel,
+                  );
+                  texts.push(txt);
+                }
+                ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
+              } else if (ocrEngine === "claude") {
+                setLoadMsg("OCR via Claude Vision...");
+                setLoadSub("Reading pages with Claude — routed via proxy");
+                const ab = await pdfFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+                const total = pdf.numPages;
+                const texts = [];
+                for (let p = 1; p <= total; p++) {
+                  setLoadPct(Math.round((p / total) * 60));
+                  setLoadSub(`Claude Vision — page ${p} of ${total}`);
+                  const b64 = await rasterizePage(pdf, p);
+                  const res = await fetch("/api/claude", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      model,
+                      max_tokens: 2000,
+                      messages: [
+                        {
+                          role: "user",
+                          content: [
+                            {
+                              type: "image",
+                              source: {
+                                type: "base64",
+                                media_type: "image/png",
+                                data: b64,
+                              },
+                            },
+                            {
+                              type: "text",
+                              text:
+                                "This is page " +
+                                p +
+                                " of a scanned Thai TOR document. Extract ALL text verbatim including Thai. Preserve numbering and structure. Return only extracted text.",
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  });
+                  if (!res.ok) {
+                    const e = await res.json().catch(() => ({}));
+                    throw new Error(
+                      e?.error?.message || `Claude Vision ${res.status}`,
+                    );
+                  }
+                  const data = await res.json();
+                  texts.push(
+                    data.content?.find((b) => b.type === "text")?.text || "",
+                  );
+                }
+                ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
+              } else {
+                if (!googleKey || !googleProject || !googleProcessor) {
+                  setError(
+                    "Google Document AI requires: Bearer Token, Project ID, and Processor ID.",
+                  );
+                  setLoading(false);
+                  return;
+                }
+                setLoadMsg("OCR via Google Document AI...");
+                const ab = await pdfFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+                const total = pdf.numPages;
+                const texts = [];
+                for (let p = 1; p <= total; p++) {
+                  setLoadPct(Math.round((p / total) * 60));
+                  setLoadSub(`Google OCR — page ${p} of ${total}`);
+                  const b64 = await rasterizePage(pdf, p);
+                  const txt = await callDocumentAI(
+                    b64,
+                    googleKey,
+                    googleProject,
+                    googleLocation,
+                    googleProcessor,
+                  );
+                  texts.push(txt);
+                }
+                ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
+              }
+              setLoadPct(65);
+            }
+
+            setLoadMsg("Extracting requirements...");
+            setLoadPct(pdfType === "digital" ? 20 : 75);
+
+            let parsed;
+            if (aiEngine === "gemini") {
+              if (!geminiKey) {
+                setError("Gemini API key is required.");
+                setLoading(false);
+                return;
+              }
+              setLoadSub(`Using ${geminiModel}`);
+              parsed = await extractWithGemini(
+                pdfFile,
+                geminiKey,
+                geminiModel,
+                showTr,
+                pdfType,
+                ocrText,
+              );
+            } else {
+              setLoadSub(
+                `Using ${model === "claude-sonnet-4-20250514" ? "Sonnet" : "Opus"} via proxy`,
+              );
+              parsed = await extractRequirements(
+                pdfFile,
+                model,
+                showTr,
+                pdfType,
+                ocrText,
+              );
+            }
+
+            setLoadPct(95);
+            setLoadMsg("Validating...");
+            setLoadSub("");
+            const mapped = validateAndMap(parsed, showTr);
+            setRows(mapped);
+            setLoadPct(100);
+            const warned = mapped.filter((r) => r._warn).length;
+            if (warned > 0) {
+              setWarning(
+                `${warned} requirement${warned > 1 ? "s" : ""} appear to be translated rather than verbatim Thai — highlighted rows need review.`,
+              );
+            }
+            setTimeout(() => {
+              setLoading(false);
+              setLoadPct(null);
+            }, 400);
+          } catch (e) {
+            setError(e.message || "Extraction failed.");
+            setLoading(false);
+            setLoadPct(null);
+          }
+        };
+
+        const applyLib = (item) => {
+          if (selectedRow !== null) {
+            upd(selectedRow, "remarks", item.text);
+            setSelectedRow(null);
+          } else {
+            setRows((r) =>
+              r.map((row) =>
+                row.status === item.status
+                  ? { ...row, remarks: item.text }
+                  : row,
+              ),
+            );
+          }
+        };
+
+        const addLibItem = () => {
+          if (!newLib.label.trim() || !newLib.text.trim()) return;
+          setLib((l) => [
+            ...l,
+            {
+              id: "u" + Date.now(),
+              label: newLib.label.trim(),
+              text: newLib.text.trim(),
+              status: newLib.status,
+            },
+          ]);
+          setNewLib({ label: "", text: "", status: "comply" });
+          setShowLibAdd(false);
+        };
+
+        const [testStatus, setTestStatus] = useState(null); // null | 'testing' | 'ok' | 'fail'
+        const [testMsg, setTestMsg] = useState("");
+
+        const testConnection = async () => {
+          setTestStatus("testing");
+          setTestMsg("");
+          try {
+            if (aiEngine === "gemini") {
+              if (!geminiKey) {
+                setTestStatus("fail");
+                setTestMsg("No API key entered.");
+                return;
+              }
+              const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [
+                    { parts: [{ text: "Reply with the single word: OK" }] },
+                  ],
+                  generationConfig: { maxOutputTokens: 5 },
+                }),
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                // Parse common errors into plain language
+                if (msg.includes("quota") || msg.includes("limit: 0")) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Quota exceeded. Your free tier is used up — enable billing at aistudio.google.com or try a different Google account.",
+                  );
+                } else if (
+                  msg.includes("API_KEY_INVALID") ||
+                  msg.includes("invalid")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Invalid API key. Re-copy it from aistudio.google.com → API Keys.",
+                  );
+                } else if (
+                  msg.includes("not found") ||
+                  msg.includes("not supported")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    `Model "${geminiModel}" not available on your account. Try switching to Flash.`,
+                  );
+                } else {
+                  setTestStatus("fail");
+                  setTestMsg(msg);
+                }
+              } else {
+                const reply =
+                  data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                setTestStatus("ok");
+                setTestMsg(
+                  `Connected ✓ — ${geminiModel} responded: "${reply.trim()}"`,
+                );
+              }
+            } else {
+              // Claude — test via proxy
+              const res = await fetch("/api/claude", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model,
+                  max_tokens: 5,
+                  messages: [
+                    { role: "user", content: "Reply with the single word: OK" },
+                  ],
+                }),
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                if (msg.includes("credit") || msg.includes("balance")) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "No API credits. Top up at console.anthropic.com → Billing. (Your claude.ai subscription is separate from API billing.)",
+                  );
+                } else if (
+                  msg.includes("401") ||
+                  msg.includes("invalid x-api-key")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Invalid API key in your Vercel environment variable. Check ANTHROPIC_API_KEY in Vercel dashboard → Settings → Environment Variables.",
+                  );
+                } else if (res.status === 404) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Proxy /api/claude not found. Make sure api/claude.js is deployed and vercel.json is correct.",
+                  );
+                } else {
+                  setTestStatus("fail");
+                  setTestMsg(msg);
+                }
+              } else {
+                const reply = data?.content?.[0]?.text || "";
+                setTestStatus("ok");
+                setTestMsg(`Connected ✓ — Claude responded: "${reply.trim()}"`);
+              }
+            }
+          } catch (e) {
+            if (e.message === "Failed to fetch") {
+              if (aiEngine === "claude") {
+                setTestStatus("fail");
+                setTestMsg(
+                  "CORS error — /api/claude proxy not reachable. Are you running this on Vercel? The proxy only works when deployed.",
+                );
+              } else {
+                setTestStatus("fail");
+                setTestMsg(
+                  "Network error reaching Gemini. Check your internet connection or API key.",
+                );
+              }
+            } else {
+              setTestStatus("fail");
+              setTestMsg(e.message || "Unknown error.");
+            }
+          }
+        };
+
+        const exportXLSX = () => {
+          if (!rows.length) return;
+          const hasTranslation = showTr && rows.some((r) => r.translation);
+          const headers = [
+            "Item No.",
+            "Reference",
+            "Requirement / Specification",
+          ];
+          if (hasTranslation) headers.push("English Translation");
+          if (showCat) headers.push("Category");
+          headers.push("Compliance Status", "Remarks", "Verified By", "Date");
+          const wsd = [
+            headers,
+            ...rows.map((row, i) => {
+              const base = [i + 1, row.ref, row.requirement];
+              if (hasTranslation) base.push(row.translation);
+              if (showCat) base.push(row.category);
+              base.push(
+                STATUS_LABELS[row.status] || row.status,
+                row.remarks,
+                "",
+                "",
+              );
+              return base;
+            }),
+          ];
+          const ws = XLSX.utils.aoa_to_sheet(wsd);
+          const colWidths = [{ wch: 8 }, { wch: 10 }, { wch: 65 }];
+          if (hasTranslation) colWidths.push({ wch: 55 });
+          if (showCat) colWidths.push({ wch: 14 });
+          colWidths.push({ wch: 16 }, { wch: 55 }, { wch: 14 }, { wch: 12 });
+          ws["!cols"] = colWidths;
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, (project || "TOR").slice(0, 30));
+          XLSX.writeFile(
+            wb,
+            `${project || "TOR"}_Compliance_Matrix_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+          setInfo(
+            'Exported. Open in Excel and set column C font to "TH Sarabun New" or "Cordia New" for correct Thai rendering.',
+          );
+        };
+
+        const stats = useMemo(
+          () => ({
+            total: rows.length,
+            comply: rows.filter((r) => r.status === "comply").length,
+            partial: rows.filter((r) => r.status === "partial").length,
+            notcomply: rows.filter((r) => r.status === "notcomply").length,
+            na: rows.filter((r) => r.status === "na").length,
+          }),
+          [rows],
+        );
+
+        const filtered = useMemo(
+          () =>
+            filter === "all" ? rows : rows.filter((r) => r.status === filter),
+          [rows, filter],
+        );
+
+        return (
+          <div className="app">
+            {/* TOPBAR */}
+            <div className="topbar">
+              <div className="brand">
+                <div className="brand-pulse" />
+                <span className="brand-name">TOR Compliance Matrix</span>
               </div>
-            ):(
-              <>
-                <div className="file-badge">
-                  <span className="file-ico">📄</span>
-                  <span className="file-name">{pdfFile.name}</span>
-                  <button className="file-clear" onClick={()=>{setPdfFile(null);setPdfType(null);setRows([]);setError(null);setWarning(null);setInfo(null);}}>×</button>
-                </div>
-                {pdfType&&(
-                  <div style={{fontSize:10,marginTop:5,color:pdfType==='digital'?'var(--comply)':'var(--warn)',display:'flex',alignItems:'center',gap:4}}>
-                    {pdfType==='digital'?'✓ Digital PDF':'⚠ Scanned PDF'}
-                  </div>
-                )}
-                <button className="btn btn-amber extract-btn" onClick={doExtract} disabled={loading||!pdfType}>
-                  {loading?'Processing…':'⚡ Extract Requirements'}
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Gemini API key — always visible when Gemini is selected as AI engine */}
-          {aiEngine==='gemini'&&(
-            <div className="sb-sec">
-              <div className="sb-label">Gemini API Key</div>
-              <div className="key-panel" style={{background:'rgba(56,189,248,0.06)',borderColor:'rgba(56,189,248,0.25)'}}>
-                <div className="key-panel-title" style={{color:'var(--info)'}}>✦ Google AI Studio Key</div>
-                <input
-                  className="key-input"
-                  type="password"
-                  placeholder="AIza... (from aistudio.google.com)"
-                  value={geminiKey}
-                  onChange={e=>setGeminiKey(e.target.value)}
-                />
-                <div style={{fontSize:9,color:'var(--txt3)',lineHeight:1.6}}>
-                  Get free key at <strong style={{color:'var(--info)'}}>aistudio.google.com</strong> → API Keys. Free tier: 1,500 req/day on Flash. No billing required. Cleared on reload.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* OCR Engine selector — only when scanned */}
-          {pdfType==='scanned'&&(
-            <div className="sb-sec">
-              <div className="sb-label">OCR Engine (Scanned PDF)</div>
-              <div style={{display:'flex',gap:4,marginBottom:10}}>
-                {[['claude','Claude Vision'],['gemini','Gemini Vision'],['google','Google Doc AI']].map(([v,l])=>(
-                  <button
-                    key={v}
-                    onClick={()=>setOcrEngine(v)}
-                    style={{
-                      flex:1,fontFamily:'inherit',fontSize:9,fontWeight:600,letterSpacing:'.04em',
-                      padding:'5px 4px',borderRadius:4,cursor:'pointer',border:'1px solid',
-                      textTransform:'uppercase',transition:'all .15s',
-                      background:ocrEngine===v?'var(--amber)':'transparent',
-                      color:ocrEngine===v?'#0c0e14':'var(--txt3)',
-                      borderColor:ocrEngine===v?'var(--amber)':'var(--bdr2)',
-                    }}
-                  >{l}</button>
-                ))}
-              </div>
-
-              {ocrEngine==='claude'&&(
-                <div className="key-panel" style={{background:'rgba(34,197,94,0.06)',borderColor:'rgba(34,197,94,0.25)'}}>
-                  <div className="key-panel-title" style={{color:'var(--comply)'}}>✓ Uses Claude proxy — no extra key</div>
-                  <div style={{fontSize:10,color:'var(--txt3)',lineHeight:1.6}}>
-                    Reads each page image via Claude Vision through your /api/claude proxy. Billed to your Anthropic API.
-                  </div>
-                </div>
-              )}
-              {ocrEngine==='gemini'&&(
-                <div className="key-panel" style={{background:'rgba(56,189,248,0.06)',borderColor:'rgba(56,189,248,0.25)'}}>
-                  <div className="key-panel-title" style={{color:'var(--info)'}}>✦ Uses Gemini Vision — needs key above</div>
-                  <div style={{fontSize:10,color:'var(--txt3)',lineHeight:1.6}}>
-                    Calls Gemini directly from browser (no proxy needed). Free tier covers most TOR workloads. Add your Gemini key in the section above.
-                  </div>
-                </div>
-              )}
-              {ocrEngine==='google'&&(
-                <div className="key-panel">
-                  <div className="key-panel-title">🔑 Google Document AI Credentials</div>
-                  <input className="key-input" type="password" placeholder="Bearer Token (gcloud auth print-access-token)" value={googleKey} onChange={e=>setGoogleKey(e.target.value)}/>
-                  <input className="key-input" placeholder="Project ID (e.g. my-project-123456)" value={googleProject} onChange={e=>setGoogleProject(e.target.value)}/>
-                  <div className="key-row">
-                    <input className="key-input" placeholder="Location (us/eu)" value={googleLocation} onChange={e=>setGoogleLocation(e.target.value)} style={{flex:1}}/>
-                    <input className="key-input" placeholder="Processor ID" value={googleProcessor} onChange={e=>setGoogleProcessor(e.target.value)} style={{flex:2}}/>
-                  </div>
-                  <div style={{fontSize:9,color:'var(--txt3)',lineHeight:1.55}}>
-                    Best for heavily degraded scans. Requires Google Cloud billing. Token expires ~1hr: <code style={{color:'var(--amber)'}}>gcloud auth print-access-token</code>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Library */}
-          <div className="sb-sec" style={{paddingBottom:6,flexShrink:0}}>
-            <div className="sb-label">Comply Library</div>
-            <div className="sb-hint">
-              {selectedRow!==null
-                ?'Row selected — click item to apply to that row only.'
-                :'Click item to fill all matching-status rows. Or select a row first.'}
-            </div>
-          </div>
-          <div className="lib-scroll">
-            {lib.map(item=>(
-              <div key={item.id} className="lib-item" onClick={()=>applyLib(item)}>
-                <div className="lib-item-top">
-                  <div>
-                    <div className="lib-item-label" style={{color:STAT_COLORS[item.status]}}>{item.label}</div>
-                    <div className="lib-item-text">{item.text}</div>
-                  </div>
-                  <button className="lib-remove" onClick={e=>{e.stopPropagation();setLib(l=>l.filter(x=>x.id!==item.id))}} title="Remove">×</button>
-                </div>
-              </div>
-            ))}
-            {!showLibAdd?(
-              <button className="lib-add-btn" onClick={()=>setShowLibAdd(true)}>＋ Add custom response</button>
-            ):(
-              <div className="lib-add-form">
-                <label className="lib-add-label">Label</label>
-                <input className="lib-add-input" placeholder="e.g. Comply — IIoT Gateway" value={newLib.label} onChange={e=>setNewLib(p=>({...p,label:e.target.value}))}/>
-                <label className="lib-add-label">Response text</label>
-                <textarea className="lib-add-input" placeholder="Standard compliance response…" value={newLib.text} onChange={e=>setNewLib(p=>({...p,text:e.target.value}))} rows={3} style={{resize:'none',display:'block',fontFamily:"'Sarabun',sans-serif"}}/>
-                <label className="lib-add-label">Applies to status</label>
-                <select className="lib-add-sel" value={newLib.status} onChange={e=>setNewLib(p=>({...p,status:e.target.value}))}>
-                  <option value="comply">Comply</option>
-                  <option value="partial">Partial</option>
-                  <option value="notcomply">Not Comply</option>
-                  <option value="na">N/A</option>
+              <div className="brand-sep" />
+              <input
+                className="proj-input"
+                placeholder="Project name…"
+                value={project}
+                onChange={(e) => setProject(e.target.value)}
+              />
+              <div className="topbar-right">
+                <select
+                  className="model-sel"
+                  value={aiEngine}
+                  onChange={(e) => {
+                    setAiEngine(e.target.value);
+                    setTestStatus(null);
+                    setTestMsg("");
+                  }}
+                >
+                  <option value="claude">⚡ Claude</option>
+                  <option value="gemini">✦ Gemini</option>
                 </select>
-                <div className="lib-add-btns">
-                  <button className="btn btn-amber btn-xs" style={{flex:1,justifyContent:'center'}} onClick={addLibItem}>Save</button>
-                  <button className="btn btn-ghost btn-xs" style={{flex:1,justifyContent:'center'}} onClick={()=>setShowLibAdd(false)}>Cancel</button>
+                {aiEngine === "claude" ? (
+                  <select
+                    className="model-sel"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                  >
+                    <option value="claude-sonnet-4-20250514">
+                      Sonnet — Fast
+                    </option>
+                    <option value="claude-opus-4-5">Opus — Max Accuracy</option>
+                  </select>
+                ) : (
+                  <select
+                    className="model-sel"
+                    value={geminiModel}
+                    onChange={(e) => setGeminiModel(e.target.value)}
+                  >
+                    <option value="gemini-2.0-flash">Flash — Fast</option>
+                    <option value="gemini-2.5-pro-preview-06-05">
+                      2.5 Pro — Max Accuracy
+                    </option>
+                  </select>
+                )}
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={addRow}
+                  disabled={loading}
+                >
+                  + Row
+                </button>
+                <button
+                  className="btn btn-amber btn-sm"
+                  onClick={exportXLSX}
+                  disabled={!rows.length}
+                >
+                  ↓ Export .xlsx
+                </button>
+              </div>
+            </div>
+
+            <div className="body">
+              {/* SIDEBAR */}
+              <div className="sidebar">
+                {/* PDF section */}
+                <div className="sb-sec">
+                  <div className="sb-label">TOR Document</div>
+                  {!pdfFile ? (
+                    <div
+                      className={`upload-zone${dragging ? " drag" : ""}`}
+                      onClick={() => fileRef.current.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={onDrop}
+                    >
+                      <div className="upload-ico">📄</div>
+                      <div className="upload-txt">
+                        <strong>Click or drag PDF</strong>
+                        <br />
+                        Thai / English TOR document
+                      </div>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="file-input"
+                        onChange={(e) => handleFile(e.target.files[0])}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="file-badge">
+                        <span className="file-ico">📄</span>
+                        <span className="file-name">{pdfFile.name}</span>
+                        <button
+                          className="file-clear"
+                          onClick={() => {
+                            setPdfFile(null);
+                            setPdfType(null);
+                            setRows([]);
+                            setError(null);
+                            setWarning(null);
+                            setInfo(null);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {pdfType && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            marginTop: 5,
+                            color:
+                              pdfType === "digital"
+                                ? "var(--comply)"
+                                : "var(--warn)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          {pdfType === "digital"
+                            ? "✓ Digital PDF"
+                            : "⚠ Scanned PDF"}
+                        </div>
+                      )}
+                      <button
+                        className="btn btn-amber extract-btn"
+                        onClick={doExtract}
+                        disabled={loading || !pdfType}
+                      >
+                        {loading ? "Processing…" : "⚡ Extract Requirements"}
+                      </button>
+                    </>
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* CONTENT */}
-        <div className="content">
-          {loading&&<div className="progress"><div className="progress-fill"/></div>}
-
-          {/* alerts */}
-          {error&&(
-            <div className="alert alert-err">
-              <span className="alert-icon">⚠</span>
-              <div className="alert-body">{error}</div>
-              <button className="alert-dismiss" onClick={()=>setError(null)}>×</button>
-            </div>
-          )}
-          {warning&&(
-            <div className="alert alert-warn">
-              <span className="alert-icon">⚠</span>
-              <div className="alert-body">{warning}</div>
-              <button className="alert-dismiss" onClick={()=>setWarning(null)}>×</button>
-            </div>
-          )}
-          {info&&(
-            <div className="alert alert-info">
-              <span className="alert-icon">ℹ</span>
-              <div className="alert-body">{info}</div>
-              <button className="alert-dismiss" onClick={()=>setInfo(null)}>×</button>
-            </div>
-          )}
-
-          {/* toolbar */}
-          {rows.length>0&&(
-            <div className="toolbar">
-              <div className="stats">
-                <div className="stat"><div className="stat-dot" style={{background:'var(--txt3)'}}/><span className="stat-lbl">Total</span>&nbsp;<span className="stat-val">{stats.total}</span></div>
-                {[['comply','Comply'],['partial','Partial'],['notcomply','Not Comply'],['na','N/A']].map(([s,l])=>(
-                  <div key={s} className="stat"><div className="stat-dot" style={{background:STAT_COLORS[s]}}/><span className="stat-lbl">{l}</span>&nbsp;<span className="stat-val">{stats[s]}</span></div>
-                ))}
-              </div>
-              <div className="toolbar-sep"/>
-              <div className="filters">
-                {[['all','All','f-all'],['comply','Comply','f-comply'],['partial','Partial','f-partial'],['notcomply','Not Comply','f-notcomply'],['na','N/A','f-na']].map(([v,l,cls])=>(
-                  <button key={v} className={`f-btn ${cls}${filter===v?' on':''}`} onClick={()=>setFilter(v)}>{l}</button>
-                ))}
-              </div>
-              <div className="toggles">
-                <label className="toggle-label">
-                  <input type="checkbox" checked={showTr} onChange={e=>setShowTr(e.target.checked)}/>
-                  Translation col
-                </label>
-                <label className="toggle-label">
-                  <input type="checkbox" checked={showCat} onChange={e=>setShowCat(e.target.checked)}/>
-                  Category col
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* table */}
-          <div className="table-area" ref={tableRef}>
-            {loading&&(
-              <div className="overlay">
-                <div className="spinner"/>
-                <div className="ov-msg">{loadMsg}</div>
-                {loadSub&&<div className="ov-sub">{loadSub}</div>}
-                {loadPct!==null&&(
-                  <div className="ov-prog-wrap">
-                    <div className="ov-prog-fill" style={{width:`${loadPct}%`}}/>
+                {/* Gemini API key — always visible when Gemini is selected as AI engine */}
+                {aiEngine === "gemini" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Gemini API Key</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(56,189,248,0.06)",
+                        borderColor: "rgba(56,189,248,0.25)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--info)" }}
+                      >
+                        ✦ Google AI Studio Key
+                      </div>
+                      <input
+                        className="key-input"
+                        type="password"
+                        placeholder="AIza... (from aistudio.google.com)"
+                        value={geminiKey}
+                        onChange={(e) => {
+                          setGeminiKey(e.target.value);
+                          setTestStatus(null);
+                          setTestMsg("");
+                        }}
+                      />
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                        }}
+                        onClick={testConnection}
+                        disabled={testStatus === "testing" || !geminiKey}
+                      >
+                        {testStatus === "testing"
+                          ? "Testing…"
+                          : "⚡ Test Connection"}
+                      </button>
+                      {testStatus && testStatus !== "testing" && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: "6px 8px",
+                            borderRadius: 3,
+                            lineHeight: 1.55,
+                            marginBottom: 5,
+                            background:
+                              testStatus === "ok"
+                                ? "rgba(34,197,94,0.1)"
+                                : "rgba(239,68,68,0.1)",
+                            border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                            color:
+                              testStatus === "ok" ? "var(--comply)" : "#fca5a5",
+                          }}
+                        >
+                          {testMsg}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--txt3)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Get free key at{" "}
+                        <strong style={{ color: "var(--info)" }}>
+                          aistudio.google.com
+                        </strong>{" "}
+                        → API Keys. Free tier: 1,500 req/day on Flash. No
+                        billing required. Cleared on reload.
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {rows.length===0&&!loading?(
-              <div className="empty">
-                <div className="empty-ico">⬡</div>
-                <div className="empty-title">No requirements loaded</div>
-                <div className="empty-sub">Upload a TOR PDF and click <strong>Extract Requirements</strong><br/>or click <strong>+ Row</strong> to enter manually.</div>
-              </div>
-            ):(
-              <table>
-                <thead>
-                  <tr>
-                    <th className="c-no">#</th>
-                    <th className="c-ref">Ref.</th>
-                    <th className="c-req">Requirement / Specification<span style={{color:'var(--txt3)',fontWeight:400,marginLeft:4}}>(verbatim)</span></th>
-                    {showTr&&<th className="c-tr">English Translation</th>}
-                    {showCat&&<th className="c-cat">Category</th>}
-                    <th className="c-sts">Status</th>
-                    <th className="c-rem">Remarks</th>
-                    <th className="c-del"/>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((row,i)=>(
-                    <tr
-                      key={row.id}
-                      className={selectedRow===row.id?'sel-row':''}
-                      onClick={()=>setSelectedRow(selectedRow===row.id?null:row.id)}
+                {/* Claude connection test — visible when Claude engine selected */}
+                {aiEngine === "claude" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Claude Connection</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(240,165,0,0.06)",
+                        borderColor: "rgba(240,165,0,0.25)",
+                      }}
                     >
-                      <td className="c-no">
-                        <div className="td-p no-txt">{i+1}</div>
-                      </td>
-                      <td className="c-ref" onClick={e=>e.stopPropagation()}>
-                        <div className="td-p">
-                          <input className="ref-in" value={row.ref} onChange={e=>upd(row.id,'ref',e.target.value)} placeholder="CL-001"/>
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--amber)" }}
+                      >
+                        ⚡ Via /api/claude proxy
+                      </div>
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                        }}
+                        onClick={testConnection}
+                        disabled={testStatus === "testing"}
+                      >
+                        {testStatus === "testing"
+                          ? "Testing…"
+                          : "⚡ Test Connection"}
+                      </button>
+                      {testStatus && testStatus !== "testing" && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: "6px 8px",
+                            borderRadius: 3,
+                            lineHeight: 1.55,
+                            background:
+                              testStatus === "ok"
+                                ? "rgba(34,197,94,0.1)"
+                                : "rgba(239,68,68,0.1)",
+                            border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                            color:
+                              testStatus === "ok" ? "var(--comply)" : "#fca5a5",
+                          }}
+                        >
+                          {testMsg}
                         </div>
-                      </td>
-                      <td className="c-req" onClick={e=>e.stopPropagation()}>
-                        <div className="td-p">
-                          <textarea
-                            className="cell-in"
-                            value={row.requirement}
-                            onChange={e=>upd(row.id,'requirement',e.target.value)}
-                            placeholder="Verbatim requirement text (Thai/English)…"
-                            rows={2}
+                      )}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--txt3)",
+                          lineHeight: 1.6,
+                          marginTop: 6,
+                        }}
+                      >
+                        Requires{" "}
+                        <strong style={{ color: "var(--amber)" }}>
+                          ANTHROPIC_API_KEY
+                        </strong>{" "}
+                        in Vercel env vars and API credits at{" "}
+                        <strong style={{ color: "var(--amber)" }}>
+                          console.anthropic.com
+                        </strong>
+                        . Claude.ai subscription ≠ API credits.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* OCR Engine selector — only when scanned */}
+                {pdfType === "scanned" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">OCR Engine (Scanned PDF)</div>
+                    <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+                      {[
+                        ["claude", "Claude Vision"],
+                        ["gemini", "Gemini Vision"],
+                        ["google", "Google Doc AI"],
+                      ].map(([v, l]) => (
+                        <button
+                          key={v}
+                          onClick={() => setOcrEngine(v)}
+                          style={{
+                            flex: 1,
+                            fontFamily: "inherit",
+                            fontSize: 9,
+                            fontWeight: 600,
+                            letterSpacing: ".04em",
+                            padding: "5px 4px",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            border: "1px solid",
+                            textTransform: "uppercase",
+                            transition: "all .15s",
+                            background:
+                              ocrEngine === v ? "var(--amber)" : "transparent",
+                            color: ocrEngine === v ? "#0c0e14" : "var(--txt3)",
+                            borderColor:
+                              ocrEngine === v ? "var(--amber)" : "var(--bdr2)",
+                          }}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+
+                    {ocrEngine === "claude" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          ✓ Uses Claude proxy — no extra key
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Reads each page image via Claude Vision through your
+                          /api/claude proxy. Billed to your Anthropic API.
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "gemini" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(56,189,248,0.06)",
+                          borderColor: "rgba(56,189,248,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--info)" }}
+                        >
+                          ✦ Uses Gemini Vision — needs key above
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Calls Gemini directly from browser (no proxy needed).
+                          Free tier covers most TOR workloads. Add your Gemini
+                          key in the section above.
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "google" && (
+                      <div className="key-panel">
+                        <div className="key-panel-title">
+                          🔑 Google Document AI Credentials
+                        </div>
+                        <input
+                          className="key-input"
+                          type="password"
+                          placeholder="Bearer Token (gcloud auth print-access-token)"
+                          value={googleKey}
+                          onChange={(e) => setGoogleKey(e.target.value)}
+                        />
+                        <input
+                          className="key-input"
+                          placeholder="Project ID (e.g. my-project-123456)"
+                          value={googleProject}
+                          onChange={(e) => setGoogleProject(e.target.value)}
+                        />
+                        <div className="key-row">
+                          <input
+                            className="key-input"
+                            placeholder="Location (us/eu)"
+                            value={googleLocation}
+                            onChange={(e) => setGoogleLocation(e.target.value)}
+                            style={{ flex: 1 }}
                           />
-                          {row._warn&&(
-                            <div className="warn-flag">⚠ May be translated — verify verbatim</div>
-                          )}
+                          <input
+                            className="key-input"
+                            placeholder="Processor ID"
+                            value={googleProcessor}
+                            onChange={(e) => setGoogleProcessor(e.target.value)}
+                            style={{ flex: 2 }}
+                          />
                         </div>
-                      </td>
-                      {showTr&&(
-                        <td className="c-tr" onClick={e=>e.stopPropagation()}>
-                          <div className="td-p">
-                            <textarea
-                              className="cell-in"
-                              value={row.translation}
-                              onChange={e=>upd(row.id,'translation',e.target.value)}
-                              placeholder="English translation…"
-                              rows={2}
-                            />
-                          </div>
-                        </td>
-                      )}
-                      {showCat&&(
-                        <td className="c-cat" onClick={e=>e.stopPropagation()}>
-                          <div className="td-p">
-                            <select className="cat-sel" value={row.category} onChange={e=>upd(row.id,'category',e.target.value)}>
-                              {VALID_CATS.map(c=><option key={c} value={c}>{c}</option>)}
-                            </select>
-                          </div>
-                        </td>
-                      )}
-                      <td className="c-sts" onClick={e=>e.stopPropagation()}>
-                        <div className="td-p">
-                          <select
-                            className={`sts-sel sts-${row.status}`}
-                            value={row.status}
-                            onChange={e=>upd(row.id,'status',e.target.value)}
+                        <div
+                          style={{
+                            fontSize: 9,
+                            color: "var(--txt3)",
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          Best for heavily degraded scans. Requires Google Cloud
+                          billing. Token expires ~1hr:{" "}
+                          <code style={{ color: "var(--amber)" }}>
+                            gcloud auth print-access-token
+                          </code>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Library */}
+                <div
+                  className="sb-sec"
+                  style={{ paddingBottom: 6, flexShrink: 0 }}
+                >
+                  <div className="sb-label">Comply Library</div>
+                  <div className="sb-hint">
+                    {selectedRow !== null
+                      ? "Row selected — click item to apply to that row only."
+                      : "Click item to fill all matching-status rows. Or select a row first."}
+                  </div>
+                </div>
+                <div className="lib-scroll">
+                  {lib.map((item) => (
+                    <div
+                      key={item.id}
+                      className="lib-item"
+                      onClick={() => applyLib(item)}
+                    >
+                      <div className="lib-item-top">
+                        <div>
+                          <div
+                            className="lib-item-label"
+                            style={{ color: STAT_COLORS[item.status] }}
                           >
-                            {STATUS_OPTS.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
-                          </select>
+                            {item.label}
+                          </div>
+                          <div className="lib-item-text">{item.text}</div>
                         </div>
-                      </td>
-                      <td className="c-rem" onClick={e=>e.stopPropagation()}>
-                        <div className="td-p">
-                          <textarea
-                            className="cell-in"
-                            style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11}}
-                            value={row.remarks}
-                            onChange={e=>upd(row.id,'remarks',e.target.value)}
-                            placeholder="Standard response or notes…"
-                            rows={2}
+                        <button
+                          className="lib-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLib((l) => l.filter((x) => x.id !== item.id));
+                          }}
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!showLibAdd ? (
+                    <button
+                      className="lib-add-btn"
+                      onClick={() => setShowLibAdd(true)}
+                    >
+                      ＋ Add custom response
+                    </button>
+                  ) : (
+                    <div className="lib-add-form">
+                      <label className="lib-add-label">Label</label>
+                      <input
+                        className="lib-add-input"
+                        placeholder="e.g. Comply — IIoT Gateway"
+                        value={newLib.label}
+                        onChange={(e) =>
+                          setNewLib((p) => ({ ...p, label: e.target.value }))
+                        }
+                      />
+                      <label className="lib-add-label">Response text</label>
+                      <textarea
+                        className="lib-add-input"
+                        placeholder="Standard compliance response…"
+                        value={newLib.text}
+                        onChange={(e) =>
+                          setNewLib((p) => ({ ...p, text: e.target.value }))
+                        }
+                        rows={3}
+                        style={{
+                          resize: "none",
+                          display: "block",
+                          fontFamily: "'Sarabun',sans-serif",
+                        }}
+                      />
+                      <label className="lib-add-label">Applies to status</label>
+                      <select
+                        className="lib-add-sel"
+                        value={newLib.status}
+                        onChange={(e) =>
+                          setNewLib((p) => ({ ...p, status: e.target.value }))
+                        }
+                      >
+                        <option value="comply">Comply</option>
+                        <option value="partial">Partial</option>
+                        <option value="notcomply">Not Comply</option>
+                        <option value="na">N/A</option>
+                      </select>
+                      <div className="lib-add-btns">
+                        <button
+                          className="btn btn-amber btn-xs"
+                          style={{ flex: 1, justifyContent: "center" }}
+                          onClick={addLibItem}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-xs"
+                          style={{ flex: 1, justifyContent: "center" }}
+                          onClick={() => setShowLibAdd(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CONTENT */}
+              <div className="content">
+                {loading && (
+                  <div className="progress">
+                    <div className="progress-fill" />
+                  </div>
+                )}
+
+                {/* alerts */}
+                {error && (
+                  <div className="alert alert-err">
+                    <span className="alert-icon">⚠</span>
+                    <div className="alert-body">{error}</div>
+                    <button
+                      className="alert-dismiss"
+                      onClick={() => setError(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {warning && (
+                  <div className="alert alert-warn">
+                    <span className="alert-icon">⚠</span>
+                    <div className="alert-body">{warning}</div>
+                    <button
+                      className="alert-dismiss"
+                      onClick={() => setWarning(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {info && (
+                  <div className="alert alert-info">
+                    <span className="alert-icon">ℹ</span>
+                    <div className="alert-body">{info}</div>
+                    <button
+                      className="alert-dismiss"
+                      onClick={() => setInfo(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {/* toolbar */}
+                {rows.length > 0 && (
+                  <div className="toolbar">
+                    <div className="stats">
+                      <div className="stat">
+                        <div
+                          className="stat-dot"
+                          style={{ background: "var(--txt3)" }}
+                        />
+                        <span className="stat-lbl">Total</span>&nbsp;
+                        <span className="stat-val">{stats.total}</span>
+                      </div>
+                      {[
+                        ["comply", "Comply"],
+                        ["partial", "Partial"],
+                        ["notcomply", "Not Comply"],
+                        ["na", "N/A"],
+                      ].map(([s, l]) => (
+                        <div key={s} className="stat">
+                          <div
+                            className="stat-dot"
+                            style={{ background: STAT_COLORS[s] }}
+                          />
+                          <span className="stat-lbl">{l}</span>&nbsp;
+                          <span className="stat-val">{stats[s]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="toolbar-sep" />
+                    <div className="filters">
+                      {[
+                        ["all", "All", "f-all"],
+                        ["comply", "Comply", "f-comply"],
+                        ["partial", "Partial", "f-partial"],
+                        ["notcomply", "Not Comply", "f-notcomply"],
+                        ["na", "N/A", "f-na"],
+                      ].map(([v, l, cls]) => (
+                        <button
+                          key={v}
+                          className={`f-btn ${cls}${filter === v ? " on" : ""}`}
+                          onClick={() => setFilter(v)}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="toggles">
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={showTr}
+                          onChange={(e) => setShowTr(e.target.checked)}
+                        />
+                        Translation col
+                      </label>
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={showCat}
+                          onChange={(e) => setShowCat(e.target.checked)}
+                        />
+                        Category col
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* table */}
+                <div className="table-area" ref={tableRef}>
+                  {loading && (
+                    <div className="overlay">
+                      <div className="spinner" />
+                      <div className="ov-msg">{loadMsg}</div>
+                      {loadSub && <div className="ov-sub">{loadSub}</div>}
+                      {loadPct !== null && (
+                        <div className="ov-prog-wrap">
+                          <div
+                            className="ov-prog-fill"
+                            style={{ width: `${loadPct}%` }}
                           />
                         </div>
-                      </td>
-                      <td className="c-del" onClick={e=>e.stopPropagation()}>
-                        <div className="td-p">
-                          <button className="row-del" onClick={()=>del(row.id)} title="Delete row">×</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                      )}
+                    </div>
+                  )}
 
-          <div className="bottom-bar">
-            <button className="btn btn-ghost btn-sm" onClick={addRow} disabled={loading}>+ Add Row</button>
-            {selectedRow!==null&&(
-              <span className="bottom-hint">Row selected — click a library item to apply its text to Remarks, or click row again to deselect.</span>
-            )}
-            {selectedRow===null&&rows.length>0&&(
-              <span className="bottom-hint">Click any row to select it for targeted library application.</span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+                  {rows.length === 0 && !loading ? (
+                    <div className="empty">
+                      <div className="empty-ico">⬡</div>
+                      <div className="empty-title">No requirements loaded</div>
+                      <div className="empty-sub">
+                        Upload a TOR PDF and click{" "}
+                        <strong>Extract Requirements</strong>
+                        <br />
+                        or click <strong>+ Row</strong> to enter manually.
+                      </div>
+                    </div>
+                  ) : (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th className="c-no">#</th>
+                          <th className="c-ref">Ref.</th>
+                          <th className="c-req">
+                            Requirement / Specification
+                            <span
+                              style={{
+                                color: "var(--txt3)",
+                                fontWeight: 400,
+                                marginLeft: 4,
+                              }}
+                            >
+                              (verbatim)
+                            </span>
+                          </th>
+                          {showTr && (
+                            <th className="c-tr">English Translation</th>
+                          )}
+                          {showCat && <th className="c-cat">Category</th>}
+                          <th className="c-sts">Status</th>
+                          <th className="c-rem">Remarks</th>
+                          <th className="c-del" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((row, i) => (
+                          <tr
+                            key={row.id}
+                            className={selectedRow === row.id ? "sel-row" : ""}
+                            onClick={() =>
+                              setSelectedRow(
+                                selectedRow === row.id ? null : row.id,
+                              )
+                            }
+                          >
+                            <td className="c-no">
+                              <div className="td-p no-txt">{i + 1}</div>
+                            </td>
+                            <td
+                              className="c-ref"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <input
+                                  className="ref-in"
+                                  value={row.ref}
+                                  onChange={(e) =>
+                                    upd(row.id, "ref", e.target.value)
+                                  }
+                                  placeholder="CL-001"
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className="c-req"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <textarea
+                                  className="cell-in"
+                                  value={row.requirement}
+                                  onChange={(e) =>
+                                    upd(row.id, "requirement", e.target.value)
+                                  }
+                                  placeholder="Verbatim requirement text (Thai/English)…"
+                                  rows={2}
+                                />
+                                {row._warn && (
+                                  <div className="warn-flag">
+                                    ⚠ May be translated — verify verbatim
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            {showTr && (
+                              <td
+                                className="c-tr"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="td-p">
+                                  <textarea
+                                    className="cell-in"
+                                    value={row.translation}
+                                    onChange={(e) =>
+                                      upd(row.id, "translation", e.target.value)
+                                    }
+                                    placeholder="English translation…"
+                                    rows={2}
+                                  />
+                                </div>
+                              </td>
+                            )}
+                            {showCat && (
+                              <td
+                                className="c-cat"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="td-p">
+                                  <select
+                                    className="cat-sel"
+                                    value={row.category}
+                                    onChange={(e) =>
+                                      upd(row.id, "category", e.target.value)
+                                    }
+                                  >
+                                    {VALID_CATS.map((c) => (
+                                      <option key={c} value={c}>
+                                        {c}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </td>
+                            )}
+                            <td
+                              className="c-sts"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <select
+                                  className={`sts-sel sts-${row.status}`}
+                                  value={row.status}
+                                  onChange={(e) =>
+                                    upd(row.id, "status", e.target.value)
+                                  }
+                                >
+                                  {STATUS_OPTS.map((o) => (
+                                    <option key={o.v} value={o.v}>
+                                      {o.l}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            <td
+                              className="c-rem"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <textarea
+                                  className="cell-in"
+                                  style={{
+                                    fontFamily: "'JetBrains Mono',monospace",
+                                    fontSize: 11,
+                                  }}
+                                  value={row.remarks}
+                                  onChange={(e) =>
+                                    upd(row.id, "remarks", e.target.value)
+                                  }
+                                  placeholder="Standard response or notes…"
+                                  rows={2}
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className="c-del"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <button
+                                  className="row-del"
+                                  onClick={() => del(row.id)}
+                                  title="Delete row"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
-</script>
-</body>
+                <div className="bottom-bar">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={addRow}
+                    disabled={loading}
+                  >
+                    + Add Row
+                  </button>
+                  {selectedRow !== null && (
+                    <span className="bottom-hint">
+                      Row selected — click a library item to apply its text to
+                      Remarks, or click row again to deselect.
+                    </span>
+                  )}
+                  {selectedRow === null && rows.length > 0 && (
+                    <span className="bottom-hint">
+                      Click any row to select it for targeted library
+                      application.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
 </html>
