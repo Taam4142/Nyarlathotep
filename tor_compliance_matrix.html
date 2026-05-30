@@ -10,6 +10,7 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1142,6 +1143,87 @@
         return canvas.toDataURL("image/png").split(",")[1];
       }
 
+      // Tesseract.js — fully client-side OCR, no API key, Thai+English
+      let _tessWorker = null;
+      async function getTessWorker(onLog) {
+        if (_tessWorker) return _tessWorker;
+        _tessWorker = await Tesseract.createWorker(["tha", "eng"], 1, {
+          logger: (m) => {
+            onLog && onLog(m);
+          },
+        });
+        return _tessWorker;
+      }
+
+      async function ocrPDFTesseract(file, onProgress) {
+        const ab = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        const total = pdf.numPages;
+        const worker = await getTessWorker((m) => {
+          if (m.status === "recognizing text" && onProgress)
+            onProgress(null, null, Math.round(m.progress * 100));
+        });
+        const texts = [];
+        for (let p = 1; p <= total; p++) {
+          onProgress && onProgress(p, total, 0);
+          const b64 = await rasterizePage(pdf, p, 3); // higher scale = better Thai accuracy
+          const {
+            data: { text },
+          } = await worker.recognize("data:image/png;base64," + b64);
+          texts.push(text);
+        }
+        return texts.join("\n\n--- PAGE BREAK ---\n\n");
+      }
+
+      // No-AI fallback: split raw OCR text into requirement rows heuristically
+      function structureWithoutAI(rawText) {
+        const lines = rawText
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0 && l !== "--- PAGE BREAK ---");
+        const rows = [];
+        let counter = 1;
+        // Thai/Arabic numbered clause patterns: "1.", "1.1", "ข้อ 1", "(1)", "- "
+        const clauseStart = /^(\d+[\.\)]|\d+\.\d+|ข้อ\s*\d+|\(\d+\)|[-•·●])/;
+        let buffer = "";
+        let bufferRef = "";
+        const flush = () => {
+          if (buffer.trim().length > 0) {
+            rows.push({
+              ref: bufferRef || `CL-${String(counter).padStart(3, "0")}`,
+              requirement: buffer.trim(),
+              category: "General",
+            });
+            counter++;
+          }
+          buffer = "";
+          bufferRef = "";
+        };
+        for (const line of lines) {
+          if (clauseStart.test(line)) {
+            flush();
+            const m = line.match(clauseStart);
+            bufferRef = m ? m[0].replace(/[\.\)]$/, "") : "";
+            buffer = line;
+          } else {
+            buffer += (buffer ? " " : "") + line;
+          }
+        }
+        flush();
+        // If nothing matched clause patterns, fall back to one row per non-trivial line
+        if (rows.length === 0) {
+          lines.forEach((l, i) => {
+            if (l.length > 10)
+              rows.push({
+                ref: `CL-${String(i + 1).padStart(3, "0")}`,
+                requirement: l,
+                category: "General",
+              });
+          });
+        }
+        return rows;
+      }
+
       async function callDocumentAI(
         pageB64,
         apiKey,
@@ -1611,10 +1693,69 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
           setInfo(null);
 
           try {
+            // ===== BROWSER-ONLY MODE: Tesseract.js OCR + heuristic structuring, ZERO API =====
+            if (aiEngine === "browser") {
+              setLoadMsg("Browser OCR (Tesseract.js)...");
+              setLoadSub(
+                "First run downloads the Thai language pack (~15MB, cached after)",
+              );
+              setLoadPct(2);
+              const ocrText = await ocrPDFTesseract(
+                pdfFile,
+                (page, total, pct) => {
+                  if (page && total) {
+                    setLoadSub(`OCR page ${page} of ${total}`);
+                    setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
+                  } else if (pct != null) {
+                    setLoadSub(`Recognizing text — ${pct}%`);
+                  }
+                },
+              );
+              setLoadMsg("Structuring text...");
+              setLoadSub("Splitting into requirement rows");
+              setLoadPct(92);
+              const parsedRows = structureWithoutAI(ocrText);
+              if (parsedRows.length === 0)
+                throw new Error(
+                  "No text could be extracted. The scan may be too low quality — try Google Doc AI or an AI engine.",
+                );
+              const mapped = parsedRows.map((it) =>
+                mkRow({
+                  ref: it.ref,
+                  requirement: it.requirement,
+                  category: it.category || "General",
+                  status: "comply",
+                }),
+              );
+              setRows(mapped);
+              setLoadPct(100);
+              setWarning(
+                "Browser OCR done with no AI. Rows were split heuristically — review the clause boundaries and Thai accuracy, then adjust. For cleaner structuring, switch to an AI engine.",
+              );
+              setTimeout(() => {
+                setLoading(false);
+                setLoadPct(null);
+              }, 400);
+              return;
+            }
+
             let ocrText = null;
 
             if (pdfType === "scanned") {
-              if (ocrEngine === "gemini") {
+              if (ocrEngine === "tesseract") {
+                setLoadMsg("Browser OCR (Tesseract.js)...");
+                setLoadSub(
+                  "First run downloads Thai language pack (~15MB, cached)",
+                );
+                ocrText = await ocrPDFTesseract(pdfFile, (page, total, pct) => {
+                  if (page && total) {
+                    setLoadSub(`OCR page ${page} of ${total}`);
+                    setLoadPct(Math.round(((page - 1) / total) * 55) + 5);
+                  } else if (pct != null) {
+                    setLoadSub(`Recognizing — ${pct}%`);
+                  }
+                });
+              } else if (ocrEngine === "gemini") {
                 if (!geminiKey) {
                   setError("Gemini API key is required for Gemini OCR.");
                   setLoading(false);
@@ -2017,10 +2158,11 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                     setTestMsg("");
                   }}
                 >
+                  <option value="browser">🆓 Browser OCR — No Key</option>
                   <option value="claude">⚡ Claude</option>
                   <option value="gemini">✦ Gemini</option>
                 </select>
-                {aiEngine === "claude" ? (
+                {aiEngine === "claude" && (
                   <select
                     className="model-sel"
                     value={model}
@@ -2031,7 +2173,8 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                     </option>
                     <option value="claude-opus-4-5">Opus — Max Accuracy</option>
                   </select>
-                ) : (
+                )}
+                {aiEngine === "gemini" && (
                   <select
                     className="model-sel"
                     value={geminiModel}
@@ -2139,6 +2282,50 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                     </>
                   )}
                 </div>
+
+                {/* Browser OCR mode — no key needed */}
+                {aiEngine === "browser" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Browser OCR — 100% Free</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(34,197,94,0.06)",
+                        borderColor: "rgba(34,197,94,0.25)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--comply)" }}
+                      >
+                        🆓 No API key · No billing · No login
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "var(--txt3)",
+                          lineHeight: 1.65,
+                        }}
+                      >
+                        Runs{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          Tesseract.js
+                        </strong>{" "}
+                        entirely in your browser — Thai + English. Works for
+                        both digital and scanned PDFs. Just press Extract.
+                        <br />
+                        <br />
+                        <strong style={{ color: "var(--warn)" }}>
+                          Trade-off:
+                        </strong>{" "}
+                        OCR accuracy is lower than AI engines, and rows are
+                        split by a simple rule (clause numbers / bullets), so
+                        you'll review boundaries. First run downloads a ~15MB
+                        Thai pack, then it's cached offline.
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Gemini API key — always visible when Gemini is selected as AI engine */}
                 {aiEngine === "gemini" && (
@@ -2292,12 +2479,20 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                   </div>
                 )}
 
-                {/* OCR Engine selector — only when scanned */}
-                {pdfType === "scanned" && (
+                {/* OCR Engine selector — only when scanned AND using an AI engine */}
+                {pdfType === "scanned" && aiEngine !== "browser" && (
                   <div className="sb-sec">
                     <div className="sb-label">OCR Engine (Scanned PDF)</div>
-                    <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 4,
+                        marginBottom: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
                       {[
+                        ["tesseract", "Browser Free"],
                         ["claude", "Claude Vision"],
                         ["gemini", "Gemini Vision"],
                         ["google", "Google Doc AI"],
@@ -2306,11 +2501,11 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                           key={v}
                           onClick={() => setOcrEngine(v)}
                           style={{
-                            flex: 1,
+                            flex: "1 1 45%",
                             fontFamily: "inherit",
                             fontSize: 9,
                             fontWeight: 600,
-                            letterSpacing: ".04em",
+                            letterSpacing: ".03em",
                             padding: "5px 4px",
                             borderRadius: 4,
                             cursor: "pointer",
@@ -2329,6 +2524,33 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                       ))}
                     </div>
 
+                    {ocrEngine === "tesseract" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          🆓 Free browser OCR + AI structuring
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Tesseract.js reads the pages free in-browser, then
+                          your selected AI engine structures the text into clean
+                          requirements. Best of both — no OCR cost.
+                        </div>
+                      </div>
+                    )}
                     {ocrEngine === "claude" && (
                       <div
                         className="key-panel"

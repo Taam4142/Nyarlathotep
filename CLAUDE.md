@@ -91,6 +91,32 @@ Extended object format:
 
 ---
 
+## Engine Options Overview
+
+The tool now has FOUR ways to turn a PDF into structured requirements:
+
+| AI Engine   | Needs key?      | How it works                                                 | Best for                        |
+| ----------- | --------------- | ------------------------------------------------------------ | ------------------------------- |
+| Browser OCR | No              | Tesseract.js OCR + heuristic row-splitting, 100% client-side | Zero-setup, offline, no billing |
+| Claude      | Yes (via proxy) | Claude reads PDF/images, structures to JSON                  | Highest verbatim fidelity       |
+| Gemini      | Yes (direct)    | Gemini reads PDF/images, structures to JSON                  | Free-ish, no proxy needed       |
+
+For scanned PDFs under an AI engine, the OCR step itself has four choices: Browser Free (Tesseract), Claude Vision, Gemini Vision, Google Doc AI.
+
+### Browser OCR mode (aiEngine='browser') — no API at all
+
+- `ocrPDFTesseract()` rasterizes every page (scale 3 for Thai accuracy) and runs `Tesseract.createWorker(['tha','eng'])`
+- Worker is cached in module scope (`_tessWorker`) so the language pack downloads once
+- `structureWithoutAI()` splits the raw text into rows using clause-number / bullet regex: `/^(\d+[\.\)]|\d+\.\d+|ข้อ\s*\d+|\(\d+\)|[-•·●])/`
+- No verbatim-vs-translated warning (text is raw OCR, always "verbatim" by nature)
+- Always emits a review warning because row boundaries are heuristic
+- First load pulls ~15MB Thai traineddata from jsDelivr, cached in IndexedDB thereafter
+
+### Tesseract as OCR-only feeder (ocrEngine='tesseract')
+
+- When an AI engine is selected but the PDF is scanned, user can pick Tesseract for the OCR step
+- Tesseract produces the text → AI engine structures it → clean rows without OCR cost
+
 ## Scanned PDF — Two OCR Engine Options
 
 ### Engine A: Claude Vision (default, recommended)
