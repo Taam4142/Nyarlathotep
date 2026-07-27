@@ -1,7 +1,7 @@
 # SKILL.md — TOR Compliance Matrix Tool
 
 > Reference document for building, extending, and debugging the TOR Compliance Matrix web app.
-> Last updated: 2026-05-29
+> Last updated: 2026-07-27 (reconciled to the four-engine app; see CHANGELOG.md)
 
 ---
 
@@ -129,14 +129,23 @@ async function ocrAllPages(pdfFile, googleKey, projectId, processorId) {
 
 ## Claude API — Requirement Extraction
 
-### Model selector
+> **Engine selection (current app):** the top-bar dropdown chooses one of **three** engines — 🆓 Browser
+> OCR (Tesseract, no key), ⚡ Claude (via the `/api/claude` proxy), or ✦ Gemini (direct from browser).
+> For a scanned PDF a second selector picks the OCR feeder (Browser / Claude Vision / Gemini Vision /
+> Google Doc AI). This section covers the Claude engine's models; see `CLAUDE.md` for the full engine
+> matrix and `README.md` for the user-facing overview.
 
-Expose two options in UI:
+### Model selector (Claude engine)
+
+Two Claude model options in the UI:
 
 | Option              | Model string               | Use when                                       |
 | ------------------- | -------------------------- | ---------------------------------------------- |
 | Sonnet (Fast)       | `claude-sonnet-4-20250514` | Most TORs, daily use                           |
 | Opus (Max accuracy) | `claude-opus-4-5`          | Complex TOR, ambiguous structure, critical bid |
+
+> ⚠️ **Model IDs are stale** — these predate the current model lineup and may be rejected. Refreshing and
+> centralizing them is tracked as **A1** in `ROADMAP.md`; verify exact current IDs before changing code.
 
 ### Digital PDF input
 
@@ -358,12 +367,18 @@ Add a note in the export or in onboarding: "After opening, select column C and s
 
 ## CDN Dependencies (all from allowed origins)
 
+> Gemini and Google Document AI are called directly with `fetch` (no SDK). Claude goes through the
+> `/api/claude` proxy. The scripts below are what the HTML `<head>` actually loads.
+
 ```html
 <!-- PDF.js — PDF reading and rasterization -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <!-- SheetJS — Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- Tesseract.js — client-side OCR (Browser OCR engine, Thai+English) -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js"></script>
 
 <!-- React -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>

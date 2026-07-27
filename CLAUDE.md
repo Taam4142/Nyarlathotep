@@ -1,7 +1,7 @@
 # CLAUDE.md — Prompt Engineering Reference
 
 > Prompt designs, system prompts, and AI behavior rules for the TOR Compliance Matrix tool.
-> Last updated: 2026-05-29
+> Last updated: 2026-07-27
 
 ---
 
@@ -178,6 +178,10 @@ If a word looks like an OCR error, copy it as-is and the engineer will review it
 ---
 
 ## Model Selection Guide
+
+> ⚠️ The Claude model IDs below (and the Gemini IDs used in code) predate the current model lineup and may
+> be rejected by the APIs. Refreshing and centralizing them is tracked as **A1** in `ROADMAP.md` — verify
+> exact current IDs before changing code.
 
 ### claude-sonnet-4-20250514 (default)
 
