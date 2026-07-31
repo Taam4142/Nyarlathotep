@@ -51,8 +51,12 @@ Vision**.
 ## Setup & deploy (Cloudflare Pages)
 
 1. Create a free **Cloudflare** account.
-2. Dashboard → **Workers & Pages → Create → Pages → Connect to Git** → select `Taam4142/Yog-Sothoth`.
-3. Build settings: **Framework preset = None**, **Build command = empty**, **Build output directory = `/`**.
+2. Dashboard → **Workers & Pages → Create**. Choose the **Pages** tab (⚠️ **not** Workers) →
+   **Connect to Git** → select `Taam4142/Yog-Sothoth`. This must be a **Pages** project — a Workers
+   project runs `wrangler deploy` and cannot serve the `functions/` dir or the static file (see
+   Troubleshooting).
+3. Build settings: **Framework preset = None**, **Build command = `exit 0`** (Cloudflare recommends this
+   over blank so Pages Functions stay enabled), **Build output directory = `/`**.
 4. **Settings → Environment variables** (add to Production *and* Preview):
    - `ANTHROPIC_API_KEY` — from `console.anthropic.com` (a claude.ai subscription is **not** API credits).
    - `TYPHOON_API_KEY` — a free key from `opentyphoon.ai` (verify current free-tier limits there).
@@ -60,6 +64,14 @@ Vision**.
      (Google Cloud account + card; free tier 1,000 pages/month).
 5. **Deploy.** Note the `*.pages.dev` URL. Functions under `functions/` are picked up automatically.
 6. Optional local dev of the Functions: `npx wrangler pages dev .`.
+
+### Troubleshooting
+
+**Build log shows `npx wrangler deploy` and `Could not detect a directory containing static files`.**
+The project was created as a **Workers** project, not **Pages**. `wrangler deploy` is the Workers command;
+it ignores the `functions/` file-based routing and the static file. Fix: delete that project and create a
+**Pages** project (step 2). Do not set a custom "deploy command" — a Pages project just uploads the output
+directory and runs `functions/` automatically; there is no `wrangler deploy` step.
 
 The Gemini key is entered in the UI at runtime (held in React state only, cleared on reload). Typhoon and
 Google Vision keys stay server-side in the Cloudflare env vars above.
