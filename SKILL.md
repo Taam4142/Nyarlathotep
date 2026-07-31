@@ -1,6 +1,6 @@
-# SKILL.md — TOR Compliance Matrix Tool
+# SKILL.md — Yog-Sothoth (TOR Compliance Matrix)
 
-> Reference document for building, extending, and debugging the TOR Compliance Matrix web app.
+> Reference document for building, extending, and debugging the Yog-Sothoth (TOR Compliance Matrix) web app.
 > Last updated: 2026-07-27 (reconciled to the four-engine app; see CHANGELOG.md)
 
 ---
@@ -62,6 +62,9 @@ async function detectPDFType(file) {
 ---
 
 ## Google Document AI — Scanned PDF OCR
+
+> ⚠️ **Removed in v0.2.0** — the Google Document AI path was dropped (paid + heavy setup). This section is
+> kept for historical reference and no longer reflects the app. See `OCR_RESEARCH.md` and `README.md`.
 
 ### Why Google Document AI
 
@@ -129,11 +132,12 @@ async function ocrAllPages(pdfFile, googleKey, projectId, processorId) {
 
 ## Claude API — Requirement Extraction
 
-> **Engine selection (current app):** the top-bar dropdown chooses one of **three** engines — 🆓 Browser
-> OCR (Tesseract, no key), ⚡ Claude (via the `/api/claude` proxy), or ✦ Gemini (direct from browser).
-> For a scanned PDF a second selector picks the OCR feeder (Browser / Claude Vision / Gemini Vision /
-> Google Doc AI). This section covers the Claude engine's models; see `CLAUDE.md` for the full engine
-> matrix and `README.md` for the user-facing overview.
+> **Engine selection (current app, v0.2.0):** the top-bar dropdown chooses one of **four** engines —
+> ✦ **Typhoon** (default; Thai, free tier, via the `/api/typhoon` proxy), 🆓 Browser OCR (Tesseract, no
+> key), ⚡ Claude (via the `/api/claude` proxy), or ✦ Gemini (direct from browser). For a scanned PDF under
+> Claude/Gemini a second selector picks the OCR feeder (Typhoon / Google Vision / Tesseract / Claude Vision /
+> Gemini Vision). **Google Document AI was removed in v0.2.0.** Proxies run as Cloudflare Pages Functions.
+> This section covers the Claude engine's models; see `README.md` for the user-facing overview.
 
 ### Model selector (Claude engine)
 

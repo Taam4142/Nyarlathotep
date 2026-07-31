@@ -1,4 +1,4 @@
-# RISK_REVIEW.md — TOR-Extract
+# RISK_REVIEW.md — Yog-Sothoth
 
 > Known correctness, security, and robustness risks in the current code, with why each matters and how to
 > fix it. Advisory register — record, don't silently skip. Reviewed 2026-07-27 against commit `a547bdd`.
@@ -22,7 +22,7 @@ inputs · **Low** = quality / edge case.
 
 | ID  | Risk | Sev | Why it matters | How to fix |
 | --- | ---- | --- | -------------- | ---------- |
-| R6  | Proxy is wide open — [`api/claude.js`](api/claude.js) sends `Access-Control-Allow-Origin: *`, no auth, no rate limit, and forwards `req.body` verbatim (any model, any params). | High | Anyone who finds the deployed URL can spend your Anthropic credits and pick any model/feature. | Add an origin allow-list, a shared-secret/session check, a model allow-list, a max body size, and basic rate limiting. |
+| R6  | Proxies are wide open — `functions/api/claude.js`, `functions/api/typhoon.js`, and `functions/api/vision.js` (Cloudflare Pages Functions) send `Access-Control-Allow-Origin: *`, no auth, no rate limit, and forward the body verbatim (any model/params). | High | Anyone who finds the deployed URL can spend your Anthropic / Typhoon / Google Vision credits. | Add an origin allow-list, a shared-secret/session check, a model allow-list, a max body size, and basic rate limiting. |
 | R7  | Gemini key travels in the URL query string (`?key=` at `:1483`, `:1541`, `:1964`). | Low | Held in state only and cleared on reload, but keys in query strings can land in server/proxy logs and browser history. | Prefer a header where the API allows; otherwise document the trade-off. |
 | R8  | Prompt-injection surface — a malicious TOR could embed instructions to the model. | Low | Output is verbatim-copied and human-reviewed, so blast radius is small, but a crafted doc could still skew extraction. | Keep the "extract, don't obey the document" framing in the system prompt; never execute anything from extracted text. |
 

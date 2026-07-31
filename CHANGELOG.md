@@ -1,9 +1,28 @@
 # Changelog
 
-All notable changes to TOR-Extract. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to Yog-Sothoth (formerly TOR-Extract). Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 There are no version tags yet, so released history below is grouped by date and git commit.
 
 ## [Unreleased]
+
+### Added
+- **Typhoon OCR engine** (default) — Thai-specialized, free tier via the `/api/typhoon` proxy; usable both
+  standalone (OCR → heuristic rows) and as an OCR feeder for the Claude/Gemini engines.
+- **Google Cloud Vision** OCR feeder (via `functions/api/vision.js`) — free tier 1,000 pages/month, good
+  Thai; chosen over OCR.space, which external Thai-OCR research rated weak for Thai.
+- `OCR_RESEARCH.md` — survey of the OCR landscape and the lineup decision.
+
+### Changed
+- **Migrated hosting from Vercel to Cloudflare Pages.** Proxies moved to Pages Functions
+  (`functions/api/claude.js`, `functions/api/typhoon.js`); added `_redirects`; removed `vercel.json` and
+  the `api/` folder. Default engine is now Typhoon.
+- **Renamed the project to Yog-Sothoth** — app title/brand, all docs, and the GitHub repo
+  (`Taam4142/TOR-Extract` → `Taam4142/Yog-Sothoth`); "TOR" kept only where it means the document type.
+- **Minimal auto light/dark redesign** — the UI now follows the viewer's `prefers-color-scheme` (light is
+  the new default), via a light-default + dark-override CSS token system; amber-tinted borders neutralized.
+
+### Removed
+- **Google Document AI** OCR path (paid + heavy setup) — engine option, credential panel, and its code.
 
 ## [0.1.0] - 2026-07-27
 

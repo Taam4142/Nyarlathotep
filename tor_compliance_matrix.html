@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TOR Compliance Matrix</title>
+    <title>Yog-Sothoth — TOR Compliance Matrix</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
@@ -28,46 +28,77 @@
       }
       body {
         font-family: "JetBrains Mono", monospace;
-        background: #0c0e14;
-        color: #dde1ec;
+        background: var(--sur0);
+        color: var(--txt);
         font-size: 13px;
       }
+      /* Light is the default; dark follows the viewer's prefers-color-scheme. */
       :root {
-        --amber: #f0a500;
-        --amber-d: #c47f00;
-        --amber-bg: rgba(240, 165, 0, 0.08);
-        --amber-bg2: rgba(240, 165, 0, 0.14);
-        --sur0: #0c0e14;
-        --sur1: #13161f;
-        --sur2: #1a1e2b;
-        --sur3: #222636;
-        --sur4: #2b3045;
-        --bdr: rgba(240, 165, 0, 0.18);
-        --bdr2: rgba(255, 255, 255, 0.07);
-        --bdr3: rgba(255, 255, 255, 0.12);
-        --txt: #dde1ec;
-        --txt2: #9aa3be;
-        --txt3: #5c6480;
-        --comply: #22c55e;
-        --comply-bg: rgba(34, 197, 94, 0.1);
-        --comply-bdr: rgba(34, 197, 94, 0.35);
-        --partial: #f0a500;
-        --partial-bg: rgba(240, 165, 0, 0.1);
+        color-scheme: light dark;
+        --amber: #d98c00;
+        --amber-d: #b57400;
+        --amber-bg: rgba(217, 140, 0, 0.08);
+        --amber-bg2: rgba(217, 140, 0, 0.15);
+        --sur0: #f5f6f8;
+        --sur1: #ffffff;
+        --sur2: #eef0f4;
+        --sur3: #e4e7ee;
+        --sur4: #d3d8e1;
+        --bdr: rgba(20, 24, 35, 0.12);
+        --bdr2: rgba(20, 24, 35, 0.08);
+        --bdr3: rgba(20, 24, 35, 0.14);
+        --txt: #1b1f2a;
+        --txt2: #525c72;
+        --txt3: #8791a3;
+        --comply: #15a34a;
+        --comply-bg: rgba(34, 197, 94, 0.12);
+        --comply-bdr: rgba(34, 197, 94, 0.3);
+        --partial: #c07f00;
+        --partial-bg: rgba(240, 165, 0, 0.14);
         --partial-bdr: rgba(240, 165, 0, 0.35);
-        --notcomply: #ef4444;
+        --notcomply: #dc2626;
         --notcomply-bg: rgba(239, 68, 68, 0.1);
-        --notcomply-bdr: rgba(239, 68, 68, 0.35);
-        --na: #5c6480;
-        --na-bg: rgba(92, 100, 128, 0.1);
-        --na-bdr: rgba(92, 100, 128, 0.3);
-        --warn: #f59e0b;
-        --warn-bg: rgba(245, 158, 11, 0.1);
-        --info: #38bdf8;
-        --info-bg: rgba(56, 189, 248, 0.08);
-        --info-bdr: rgba(56, 189, 248, 0.25);
-        --danger: #ef4444;
+        --notcomply-bdr: rgba(239, 68, 68, 0.3);
+        --na: #6b7385;
+        --na-bg: rgba(107, 115, 133, 0.1);
+        --na-bdr: rgba(107, 115, 133, 0.25);
+        --warn: #b45309;
+        --warn-bg: rgba(245, 158, 11, 0.12);
+        --info: #0284c7;
+        --info-bg: rgba(56, 189, 248, 0.1);
+        --info-bdr: rgba(56, 189, 248, 0.3);
+        --danger: #dc2626;
         --danger-bg: rgba(239, 68, 68, 0.08);
+        --overlay: rgba(255, 255, 255, 0.82);
+        --on-amber: #1b1f2a;
         --sb: 260px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --amber: #f0a500;
+          --amber-d: #c47f00;
+          --amber-bg: rgba(240, 165, 0, 0.08);
+          --amber-bg2: rgba(240, 165, 0, 0.14);
+          --sur0: #0c0e14;
+          --sur1: #13161f;
+          --sur2: #1a1e2b;
+          --sur3: #222636;
+          --sur4: #2b3045;
+          --bdr: rgba(255, 255, 255, 0.1);
+          --bdr2: rgba(255, 255, 255, 0.07);
+          --bdr3: rgba(255, 255, 255, 0.12);
+          --txt: #dde1ec;
+          --txt2: #9aa3be;
+          --txt3: #5c6480;
+          --comply: #22c55e;
+          --partial: #f0a500;
+          --notcomply: #ef4444;
+          --na: #5c6480;
+          --warn: #f59e0b;
+          --info: #38bdf8;
+          --overlay: rgba(12, 14, 20, 0.88);
+          --on-amber: #0c0e14;
+        }
       }
       /* scrollbars */
       ::-webkit-scrollbar {
@@ -203,7 +234,7 @@
       }
       .btn-amber {
         background: var(--amber);
-        color: #0c0e14;
+        color: var(--on-amber);
         border-color: var(--amber);
       }
       .btn-amber:hover {
@@ -745,7 +776,7 @@
         min-height: 38px;
       }
       .cell-in:focus {
-        background: rgba(255, 255, 255, 0.025);
+        background: var(--sur2);
         border-radius: 3px;
       }
       .cell-in::placeholder {
@@ -876,7 +907,7 @@
       .overlay {
         position: absolute;
         inset: 0;
-        background: rgba(12, 14, 20, 0.88);
+        background: var(--overlay);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -950,13 +981,13 @@
       }
       .alert-err {
         background: var(--danger-bg);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #fca5a5;
+        border: 1px solid var(--notcomply-bdr);
+        color: var(--notcomply);
       }
       .alert-warn {
         background: var(--warn-bg);
         border: 1px solid rgba(245, 158, 11, 0.3);
-        color: #fcd34d;
+        color: var(--warn);
       }
       .alert-info {
         background: var(--info-bg);
@@ -1224,40 +1255,13 @@
         return rows;
       }
 
-      async function callDocumentAI(
-        pageB64,
-        apiKey,
-        projectId,
-        location,
-        processorId,
-      ) {
-        const url = `https://documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            rawDocument: { content: pageB64, mimeType: "image/png" },
-          }),
-        });
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          throw new Error(e?.error?.message || `Google API ${res.status}`);
-        }
-        const data = await res.json();
-        return data?.document?.text || "";
-      }
+      const TYPHOON_MODEL = "typhoon-ocr-preview";
+      // Verbatim OCR prompt. Can be swapped for the typhoon-ocr package's exact prompt.
+      const TYPHOON_OCR_PROMPT =
+        "Below is an image of one page from a Thai/English document (a Terms of Reference). Read it and return the text exactly as it appears — verbatim, preserving Thai text, numbers, units, and the clause numbering/structure. Return clean Markdown. Do NOT translate, summarize, or add commentary.";
 
-      async function ocrPDFGoogle(
-        file,
-        apiKey,
-        projectId,
-        location,
-        processorId,
-        onProgress,
-      ) {
+      // Typhoon OCR — Thai-specialized VLM via the /api/typhoon proxy (free tier).
+      async function ocrPDFTyphoon(file, onProgress) {
         const ab = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
         const numPages = pdf.numPages;
@@ -1265,13 +1269,68 @@
         for (let p = 1; p <= numPages; p++) {
           onProgress && onProgress(p, numPages);
           const b64 = await rasterizePage(pdf, p);
-          const txt = await callDocumentAI(
-            b64,
-            apiKey,
-            projectId,
-            location,
-            processorId,
-          );
+          const res = await fetch("/api/typhoon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: TYPHOON_MODEL,
+              max_tokens: 16000,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "image_url",
+                      image_url: { url: "data:image/png;base64," + b64 },
+                    },
+                    { type: "text", text: TYPHOON_OCR_PROMPT },
+                  ],
+                },
+              ],
+            }),
+          });
+          if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(e?.error?.message || `Typhoon OCR API ${res.status}`);
+          }
+          const data = await res.json();
+          const txt = data.choices?.[0]?.message?.content || "";
+          texts.push(txt);
+        }
+        return texts.join("\n\n--- PAGE BREAK ---\n\n");
+      }
+
+      // Google Cloud Vision — free-tier OCR (1,000 pages/mo) with good Thai, via the
+      // /api/vision proxy (GOOGLE_VISION_API_KEY stays server-side). DOCUMENT_TEXT_DETECTION.
+      async function ocrPDFVision(file, onProgress) {
+        const ab = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+        const numPages = pdf.numPages;
+        const texts = [];
+        for (let p = 1; p <= numPages; p++) {
+          onProgress && onProgress(p, numPages);
+          const b64 = await rasterizePage(pdf, p);
+          const res = await fetch("/api/vision", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              requests: [
+                {
+                  image: { content: b64 },
+                  features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+                  imageContext: { languageHints: ["th", "en"] },
+                },
+              ],
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          const perr = data.responses?.[0]?.error;
+          if (!res.ok || data.error || perr) {
+            const msg =
+              data.error?.message || perr?.message || `Vision API ${res.status}`;
+            throw new Error(msg);
+          }
+          const txt = data.responses?.[0]?.fullTextAnnotation?.text || "";
           texts.push(txt);
         }
         return texts.join("\n\n--- PAGE BREAK ---\n\n");
@@ -1615,14 +1674,10 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
           text: "",
           status: "comply",
         });
-        const [ocrEngine, setOcrEngine] = useState("claude");
-        const [aiEngine, setAiEngine] = useState("claude");
+        const [ocrEngine, setOcrEngine] = useState("typhoon");
+        const [aiEngine, setAiEngine] = useState("typhoon");
         const [geminiKey, setGeminiKey] = useState("");
         const [geminiModel, setGeminiModel] = useState("gemini-2.0-flash");
-        const [googleKey, setGoogleKey] = useState("");
-        const [googleProject, setGoogleProject] = useState("");
-        const [googleLocation, setGoogleLocation] = useState("us");
-        const [googleProcessor, setGoogleProcessor] = useState("");
         const fileRef = useRef();
         const tableRef = useRef();
 
@@ -1717,7 +1772,7 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
               const parsedRows = structureWithoutAI(ocrText);
               if (parsedRows.length === 0)
                 throw new Error(
-                  "No text could be extracted. The scan may be too low quality — try Google Doc AI or an AI engine.",
+                  "No text could be extracted. The scan may be too low quality — try Typhoon or another engine.",
                 );
               const mapped = parsedRows.map((it) =>
                 mkRow({
@@ -1731,6 +1786,43 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
               setLoadPct(100);
               setWarning(
                 "Browser OCR done with no AI. Rows were split heuristically — review the clause boundaries and Thai accuracy, then adjust. For cleaner structuring, switch to an AI engine.",
+              );
+              setTimeout(() => {
+                setLoading(false);
+                setLoadPct(null);
+              }, 400);
+              return;
+            }
+
+            // ===== TYPHOON MODE: Typhoon OCR (Thai) + heuristic structuring, free tier =====
+            if (aiEngine === "typhoon") {
+              setLoadMsg("Typhoon OCR (Thai)...");
+              setLoadSub("Reading pages with Typhoon — via proxy");
+              setLoadPct(2);
+              const tOcr = await ocrPDFTyphoon(pdfFile, (page, total) => {
+                setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
+              });
+              setLoadMsg("Structuring text...");
+              setLoadSub("Splitting into requirement rows");
+              setLoadPct(92);
+              const parsedRows = structureWithoutAI(tOcr);
+              if (parsedRows.length === 0)
+                throw new Error(
+                  "No text could be extracted. Try another engine or check the PDF quality.",
+                );
+              const mapped = parsedRows.map((it) =>
+                mkRow({
+                  ref: it.ref,
+                  requirement: it.requirement,
+                  category: it.category || "General",
+                  status: "comply",
+                }),
+              );
+              setRows(mapped);
+              setLoadPct(100);
+              setWarning(
+                "Typhoon OCR done. Rows were split heuristically — review the clause boundaries, then adjust. For AI-structured rows, use Typhoon as the OCR feeder with the Claude or Gemini engine.",
               );
               setTimeout(() => {
                 setLoading(false);
@@ -1832,33 +1924,20 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                   );
                 }
                 ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
-              } else {
-                if (!googleKey || !googleProject || !googleProcessor) {
-                  setError(
-                    "Google Document AI requires: Bearer Token, Project ID, and Processor ID.",
-                  );
-                  setLoading(false);
-                  return;
-                }
-                setLoadMsg("OCR via Google Document AI...");
-                const ab = await pdfFile.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-                const total = pdf.numPages;
-                const texts = [];
-                for (let p = 1; p <= total; p++) {
-                  setLoadPct(Math.round((p / total) * 60));
-                  setLoadSub(`Google OCR — page ${p} of ${total}`);
-                  const b64 = await rasterizePage(pdf, p);
-                  const txt = await callDocumentAI(
-                    b64,
-                    googleKey,
-                    googleProject,
-                    googleLocation,
-                    googleProcessor,
-                  );
-                  texts.push(txt);
-                }
-                ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
+              } else if (ocrEngine === "typhoon") {
+                setLoadMsg("OCR via Typhoon (Thai)...");
+                setLoadSub("Reading pages with Typhoon — via proxy");
+                ocrText = await ocrPDFTyphoon(pdfFile, (page, total) => {
+                  setLoadPct(Math.round((page / total) * 60));
+                  setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                });
+              } else if (ocrEngine === "vision") {
+                setLoadMsg("OCR via Google Vision...");
+                setLoadSub("Reading pages with Google Cloud Vision — via proxy");
+                ocrText = await ocrPDFVision(pdfFile, (page, total) => {
+                  setLoadPct(Math.round((page / total) * 60));
+                  setLoadSub(`Google Vision — page ${page} of ${total}`);
+                });
               }
               setLoadPct(65);
             }
@@ -2009,6 +2088,47 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                   `Connected ✓ — ${geminiModel} responded: "${reply.trim()}"`,
                 );
               }
+            } else if (aiEngine === "typhoon") {
+              const res = await fetch("/api/typhoon", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: TYPHOON_MODEL,
+                  max_tokens: 5,
+                  messages: [
+                    { role: "user", content: "Reply with the single word: OK" },
+                  ],
+                }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                if (res.status === 404) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Proxy /api/typhoon not found. Make sure functions/api/typhoon.js is deployed on Cloudflare Pages.",
+                  );
+                } else if (
+                  res.status === 401 ||
+                  res.status === 403 ||
+                  msg.toLowerCase().includes("api key") ||
+                  msg.toLowerCase().includes("unauthor")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Invalid or missing TYPHOON_API_KEY in Cloudflare Pages env vars. Get a free key at opentyphoon.ai.",
+                  );
+                } else {
+                  setTestStatus("fail");
+                  setTestMsg(msg);
+                }
+              } else {
+                const reply = data?.choices?.[0]?.message?.content || "";
+                setTestStatus("ok");
+                setTestMsg(
+                  `Connected ✓ — Typhoon reachable${reply ? ` — responded: "${reply.trim()}"` : ""}`,
+                );
+              }
             } else {
               // Claude — test via proxy
               const res = await fetch("/api/claude", {
@@ -2036,12 +2156,12 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                 ) {
                   setTestStatus("fail");
                   setTestMsg(
-                    "Invalid API key in your Vercel environment variable. Check ANTHROPIC_API_KEY in Vercel dashboard → Settings → Environment Variables.",
+                    "Invalid API key in your Cloudflare Pages env vars. Check ANTHROPIC_API_KEY in the Pages project → Settings → Environment variables.",
                   );
                 } else if (res.status === 404) {
                   setTestStatus("fail");
                   setTestMsg(
-                    "Proxy /api/claude not found. Make sure api/claude.js is deployed and vercel.json is correct.",
+                    "Proxy /api/claude not found. Make sure functions/api/claude.js is deployed on Cloudflare Pages.",
                   );
                 } else {
                   setTestStatus("fail");
@@ -2055,10 +2175,10 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
             }
           } catch (e) {
             if (e.message === "Failed to fetch") {
-              if (aiEngine === "claude") {
+              if (aiEngine === "claude" || aiEngine === "typhoon") {
                 setTestStatus("fail");
                 setTestMsg(
-                  "CORS error — /api/claude proxy not reachable. Are you running this on Vercel? The proxy only works when deployed.",
+                  `Proxy /api/${aiEngine} not reachable. It only works on the deployed Cloudflare Pages site, not when opening the file locally.`,
                 );
               } else {
                 setTestStatus("fail");
@@ -2139,7 +2259,7 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
             <div className="topbar">
               <div className="brand">
                 <div className="brand-pulse" />
-                <span className="brand-name">TOR Compliance Matrix</span>
+                <span className="brand-name">Yog-Sothoth</span>
               </div>
               <div className="brand-sep" />
               <input
@@ -2158,6 +2278,7 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                     setTestMsg("");
                   }}
                 >
+                  <option value="typhoon">✦ Typhoon — Thai · Free</option>
                   <option value="browser">🆓 Browser OCR — No Key</option>
                   <option value="claude">⚡ Claude</option>
                   <option value="gemini">✦ Gemini</option>
@@ -2283,6 +2404,80 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                   )}
                 </div>
 
+                {/* Typhoon — Thai, free tier via proxy */}
+                {aiEngine === "typhoon" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Typhoon OCR — Thai · Free</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(34,197,94,0.06)",
+                        borderColor: "rgba(34,197,94,0.25)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--comply)" }}
+                      >
+                        ✦ Thai-specialized · via /api/typhoon proxy
+                      </div>
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                        }}
+                        onClick={testConnection}
+                        disabled={testStatus === "testing"}
+                      >
+                        {testStatus === "testing"
+                          ? "Testing…"
+                          : "⚡ Test Connection"}
+                      </button>
+                      {testStatus && testStatus !== "testing" && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: "6px 8px",
+                            borderRadius: 3,
+                            lineHeight: 1.55,
+                            marginBottom: 5,
+                            background:
+                              testStatus === "ok"
+                                ? "rgba(34,197,94,0.1)"
+                                : "rgba(239,68,68,0.1)",
+                            border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                            color:
+                              testStatus === "ok" ? "var(--comply)" : "var(--notcomply)",
+                          }}
+                        >
+                          {testMsg}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--txt3)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Best free Thai OCR. Needs{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          TYPHOON_API_KEY
+                        </strong>{" "}
+                        in Cloudflare Pages env vars — free key at{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          opentyphoon.ai
+                        </strong>{" "}
+                        (free tier: 20 req/min). Rows are split heuristically —
+                        review boundaries, or use Typhoon as the OCR feeder under
+                        Claude/Gemini for AI-structured rows.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Browser OCR mode — no key needed */}
                 {aiEngine === "browser" && (
                   <div className="sb-sec">
@@ -2383,7 +2578,7 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                                 : "rgba(239,68,68,0.1)",
                             border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
                             color:
-                              testStatus === "ok" ? "var(--comply)" : "#fca5a5",
+                              testStatus === "ok" ? "var(--comply)" : "var(--notcomply)",
                           }}
                         >
                           {testMsg}
@@ -2451,7 +2646,7 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                                 : "rgba(239,68,68,0.1)",
                             border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
                             color:
-                              testStatus === "ok" ? "var(--comply)" : "#fca5a5",
+                              testStatus === "ok" ? "var(--comply)" : "var(--notcomply)",
                           }}
                         >
                           {testMsg}
@@ -2480,7 +2675,8 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                 )}
 
                 {/* OCR Engine selector — only when scanned AND using an AI engine */}
-                {pdfType === "scanned" && aiEngine !== "browser" && (
+                {pdfType === "scanned" &&
+                  (aiEngine === "claude" || aiEngine === "gemini") && (
                   <div className="sb-sec">
                     <div className="sb-label">OCR Engine (Scanned PDF)</div>
                     <div
@@ -2492,10 +2688,11 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                       }}
                     >
                       {[
+                        ["typhoon", "Typhoon (Thai)"],
+                        ["vision", "Google Vision"],
                         ["tesseract", "Browser Free"],
                         ["claude", "Claude Vision"],
                         ["gemini", "Gemini Vision"],
-                        ["google", "Google Doc AI"],
                       ].map(([v, l]) => (
                         <button
                           key={v}
@@ -2524,6 +2721,70 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                       ))}
                     </div>
 
+                    {ocrEngine === "typhoon" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          ✦ Typhoon Vision — Thai · free tier
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Reads each page with Typhoon (Thai-specialized) via the
+                          /api/typhoon proxy, then your AI engine structures the
+                          text. Needs TYPHOON_API_KEY in Cloudflare env (free key
+                          at opentyphoon.ai).
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "vision" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          🆓 Google Cloud Vision — free tier, good Thai
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 9,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Reads each page via the{" "}
+                          <code style={{ color: "var(--comply)" }}>
+                            /api/vision
+                          </code>{" "}
+                          proxy. Needs{" "}
+                          <strong style={{ color: "var(--comply)" }}>
+                            GOOGLE_VISION_API_KEY
+                          </strong>{" "}
+                          in Cloudflare env. Free tier:{" "}
+                          <strong>1,000 pages/month</strong> (Google Cloud
+                          account + card required). Good Thai; a solid backup to
+                          Typhoon.
+                        </div>
+                      </div>
+                    )}
                     {ocrEngine === "tesseract" && (
                       <div
                         className="key-panel"
@@ -2601,55 +2862,6 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                           Calls Gemini directly from browser (no proxy needed).
                           Free tier covers most TOR workloads. Add your Gemini
                           key in the section above.
-                        </div>
-                      </div>
-                    )}
-                    {ocrEngine === "google" && (
-                      <div className="key-panel">
-                        <div className="key-panel-title">
-                          🔑 Google Document AI Credentials
-                        </div>
-                        <input
-                          className="key-input"
-                          type="password"
-                          placeholder="Bearer Token (gcloud auth print-access-token)"
-                          value={googleKey}
-                          onChange={(e) => setGoogleKey(e.target.value)}
-                        />
-                        <input
-                          className="key-input"
-                          placeholder="Project ID (e.g. my-project-123456)"
-                          value={googleProject}
-                          onChange={(e) => setGoogleProject(e.target.value)}
-                        />
-                        <div className="key-row">
-                          <input
-                            className="key-input"
-                            placeholder="Location (us/eu)"
-                            value={googleLocation}
-                            onChange={(e) => setGoogleLocation(e.target.value)}
-                            style={{ flex: 1 }}
-                          />
-                          <input
-                            className="key-input"
-                            placeholder="Processor ID"
-                            value={googleProcessor}
-                            onChange={(e) => setGoogleProcessor(e.target.value)}
-                            style={{ flex: 2 }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "var(--txt3)",
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          Best for heavily degraded scans. Requires Google Cloud
-                          billing. Token expires ~1hr:{" "}
-                          <code style={{ color: "var(--amber)" }}>
-                            gcloud auth print-access-token
-                          </code>
                         </div>
                       </div>
                     )}

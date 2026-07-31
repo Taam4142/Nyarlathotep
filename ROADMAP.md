@@ -1,8 +1,16 @@
-# ROADMAP.md — TOR-Extract
+# ROADMAP.md — Yog-Sothoth
 
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
-> Last updated 2026-07-27.
+> Last updated 2026-07-28.
+
+## Shipped in v0.2.0
+
+- **Free Thai OCR** — added the Typhoon engine (default) + Google Cloud Vision feeder (free tier, good
+  Thai); removed Google Doc AI. (OCR.space was evaluated and dropped — weak Thai.)
+- **Cloudflare Pages** migration (retired Vercel); proxies are now Pages Functions.
+- **Minimal auto light/dark redesign** — UI follows `prefers-color-scheme` (light is the new default).
+- **Renamed** the project to **Yog-Sothoth** (app, docs, and GitHub repo).
 
 ## Phase 0 — safety & correctness quick wins (do first, low risk)
 
@@ -28,7 +36,7 @@ Small, self-contained, mostly bug/security hardening. None changes the UX shape.
 ## Phase 2 — architecture (unblocks everything cleanly)
 
 - **A2 — Migrate off in-browser Babel** to a Vite + React + TypeScript build; split the 3,118-line file
-  into modules; keep the same static Vercel deploy. Removes the ~3 MB Babel download and per-load compile.
+  into modules; keep the same static Cloudflare Pages deploy. Removes the ~3 MB Babel download and per-load compile.
 - **A3 — Unit tests** for the pure functions (`structureWithoutAI`, `validateAndMap`, `isLikelyTranslated`,
   the JSON-clean step) — matches the ancestor project's "pure core with tests" rule.
 - **A4 — DRY** the near-duplicate `buildSystemPrompt`/`buildGeminiPrompt` and the inline Claude-Vision

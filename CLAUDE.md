@@ -1,6 +1,6 @@
 # CLAUDE.md — Prompt Engineering Reference
 
-> Prompt designs, system prompts, and AI behavior rules for the TOR Compliance Matrix tool.
+> Prompt designs, system prompts, and AI behavior rules for Yog-Sothoth (the TOR Compliance Matrix tool).
 > Last updated: 2026-07-27
 
 ---
@@ -93,15 +93,19 @@ Extended object format:
 
 ## Engine Options Overview
 
-The tool now has FOUR ways to turn a PDF into structured requirements:
+Since v0.2.0 the tool has these ways to turn a PDF into structured requirements:
 
-| AI Engine   | Needs key?      | How it works                                                 | Best for                        |
-| ----------- | --------------- | ------------------------------------------------------------ | ------------------------------- |
-| Browser OCR | No              | Tesseract.js OCR + heuristic row-splitting, 100% client-side | Zero-setup, offline, no billing |
-| Claude      | Yes (via proxy) | Claude reads PDF/images, structures to JSON                  | Highest verbatim fidelity       |
-| Gemini      | Yes (direct)    | Gemini reads PDF/images, structures to JSON                  | Free-ish, no proxy needed       |
+| AI Engine   | Needs key?          | How it works                                                 | Best for                        |
+| ----------- | ------------------- | ------------------------------------------------------------ | ------------------------------- |
+| **Typhoon** *(default)* | Yes (free tier, via proxy) | Thai-specialized OCR via `/api/typhoon`; heuristic rows, or structured by Claude/Gemini as a feeder | **Best free Thai OCR** |
+| Browser OCR | No                  | Tesseract.js OCR + heuristic row-splitting, 100% client-side | Zero-setup, offline, no billing |
+| Claude      | Yes (via proxy)     | Claude reads PDF/images, structures to JSON                  | Highest verbatim fidelity       |
+| Gemini      | Yes (direct)        | Gemini reads PDF/images, structures to JSON                  | Free-ish, no proxy needed       |
 
-For scanned PDFs under an AI engine, the OCR step itself has four choices: Browser Free (Tesseract), Claude Vision, Gemini Vision, Google Doc AI.
+For scanned PDFs under Claude/Gemini, the OCR feeder has these choices: **Typhoon** (Thai), **Google Vision**
+(free tier 1,000 pg/mo, good Thai), Browser Free (Tesseract), Claude Vision, Gemini Vision. **Google Doc AI
+was removed in v0.2.0** (OCR.space was evaluated but dropped — weak Thai). Proxies run as Cloudflare Pages
+Functions (`functions/api/*`).
 
 ### Browser OCR mode (aiEngine='browser') — no API at all
 
@@ -136,7 +140,7 @@ Preserve paragraph structure, numbering, and formatting.
 Return only the extracted text, no commentary.`;
 ```
 
-### Engine B: Google Document AI
+### Engine B: Google Document AI  _(removed in v0.2.0 — historical reference only)_
 
 - Requires Google Cloud billing + DOCUMENT_OCR processor
 - User pastes Bearer Token (from `gcloud auth print-access-token`), Project ID, Location, Processor ID
