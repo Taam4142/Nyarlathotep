@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Yog-Sothoth — TOR Compliance Matrix</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -27,77 +29,126 @@
         overflow: hidden;
       }
       body {
-        font-family: "JetBrains Mono", monospace;
+        font-family: var(--font-ui);
         background: var(--sur0);
         color: var(--txt);
-        font-size: 13px;
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
       }
-      /* Light is the default; dark follows the viewer's prefers-color-scheme. */
+      /* ── Design tokens. Light is the default; dark follows prefers-color-scheme. ── */
       :root {
         color-scheme: light dark;
-        --amber: #d98c00;
-        --amber-d: #b57400;
-        --amber-bg: rgba(217, 140, 0, 0.08);
-        --amber-bg2: rgba(217, 140, 0, 0.15);
-        --sur0: #f5f6f8;
+
+        /* Type roles */
+        --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-thai: "Sarabun", "Inter", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+        /* Accent — indigo, used sparingly (primary actions, active, focus) */
+        --accent: #4f46e5;
+        --accent-strong: #4338ca;
+        --accent-text: #4338ca;
+        --accent-fg: #ffffff;
+        --accent-soft: rgba(79, 70, 229, 0.08);
+        --accent-soft2: rgba(79, 70, 229, 0.14);
+        --accent-bdr: rgba(79, 70, 229, 0.32);
+        --focus: rgba(79, 70, 229, 0.35);
+
+        /* Neutrals — slate-tinted, not pure grey */
+        --sur0: #f6f7f9;
         --sur1: #ffffff;
-        --sur2: #eef0f4;
-        --sur3: #e4e7ee;
-        --sur4: #d3d8e1;
-        --bdr: rgba(20, 24, 35, 0.12);
-        --bdr2: rgba(20, 24, 35, 0.08);
-        --bdr3: rgba(20, 24, 35, 0.14);
-        --txt: #1b1f2a;
-        --txt2: #525c72;
-        --txt3: #8791a3;
-        --comply: #15a34a;
-        --comply-bg: rgba(34, 197, 94, 0.12);
-        --comply-bdr: rgba(34, 197, 94, 0.3);
-        --partial: #c07f00;
-        --partial-bg: rgba(240, 165, 0, 0.14);
-        --partial-bdr: rgba(240, 165, 0, 0.35);
+        --sur2: #f0f2f6;
+        --sur3: #e6e9f0;
+        --sur4: #d6dbe4;
+        --bdr: #e4e7ee;
+        --bdr2: #edeff4;
+        --bdr3: #d7dbe4;
+        --txt: #1c2030;
+        --txt2: #5a6376;
+        --txt3: #98a1b3;
+
+        /* Legacy aliases so existing var(--amber*) refs resolve to the accent */
+        --amber: var(--accent);
+        --amber-d: var(--accent-strong);
+        --amber-bg: var(--accent-soft);
+        --amber-bg2: var(--accent-soft2);
+        --on-amber: var(--accent-fg);
+
+        /* Semantic status — kept distinct from the accent hue */
+        --comply: #15803d;
+        --comply-bg: rgba(22, 163, 74, 0.1);
+        --comply-bdr: rgba(22, 163, 74, 0.28);
+        --partial: #b45309;
+        --partial-bg: rgba(217, 119, 6, 0.12);
+        --partial-bdr: rgba(217, 119, 6, 0.3);
         --notcomply: #dc2626;
-        --notcomply-bg: rgba(239, 68, 68, 0.1);
-        --notcomply-bdr: rgba(239, 68, 68, 0.3);
-        --na: #6b7385;
-        --na-bg: rgba(107, 115, 133, 0.1);
-        --na-bdr: rgba(107, 115, 133, 0.25);
+        --notcomply-bg: rgba(220, 38, 38, 0.09);
+        --notcomply-bdr: rgba(220, 38, 38, 0.28);
+        --na: #64748b;
+        --na-bg: rgba(100, 116, 139, 0.1);
+        --na-bdr: rgba(100, 116, 139, 0.26);
         --warn: #b45309;
-        --warn-bg: rgba(245, 158, 11, 0.12);
-        --info: #0284c7;
-        --info-bg: rgba(56, 189, 248, 0.1);
-        --info-bdr: rgba(56, 189, 248, 0.3);
+        --warn-bg: rgba(217, 119, 6, 0.12);
+        --info: #4338ca;
+        --info-bg: rgba(79, 70, 229, 0.08);
+        --info-bdr: rgba(79, 70, 229, 0.3);
         --danger: #dc2626;
-        --danger-bg: rgba(239, 68, 68, 0.08);
-        --overlay: rgba(255, 255, 255, 0.82);
-        --on-amber: #1b1f2a;
-        --sb: 260px;
+        --danger-bg: rgba(220, 38, 38, 0.08);
+
+        --overlay: rgba(246, 247, 249, 0.82);
+
+        /* Radii + layout */
+        --r-sm: 6px;
+        --r-md: 8px;
+        --r-lg: 10px;
+        --sb: 288px;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --amber: #f0a500;
-          --amber-d: #c47f00;
-          --amber-bg: rgba(240, 165, 0, 0.08);
-          --amber-bg2: rgba(240, 165, 0, 0.14);
-          --sur0: #0c0e14;
-          --sur1: #13161f;
-          --sur2: #1a1e2b;
-          --sur3: #222636;
-          --sur4: #2b3045;
-          --bdr: rgba(255, 255, 255, 0.1);
-          --bdr2: rgba(255, 255, 255, 0.07);
-          --bdr3: rgba(255, 255, 255, 0.12);
-          --txt: #dde1ec;
-          --txt2: #9aa3be;
-          --txt3: #5c6480;
-          --comply: #22c55e;
-          --partial: #f0a500;
-          --notcomply: #ef4444;
-          --na: #5c6480;
-          --warn: #f59e0b;
-          --info: #38bdf8;
-          --overlay: rgba(12, 14, 20, 0.88);
-          --on-amber: #0c0e14;
+          --accent: #6366f1;
+          --accent-strong: #818cf8;
+          --accent-text: #a5b4fc;
+          --accent-fg: #ffffff;
+          --accent-soft: rgba(99, 102, 241, 0.14);
+          --accent-soft2: rgba(99, 102, 241, 0.22);
+          --accent-bdr: rgba(129, 140, 248, 0.36);
+          --focus: rgba(129, 140, 248, 0.45);
+
+          --sur0: #0f1117;
+          --sur1: #171a21;
+          --sur2: #1e222c;
+          --sur3: #262b36;
+          --sur4: #333a47;
+          --bdr: rgba(255, 255, 255, 0.09);
+          --bdr2: rgba(255, 255, 255, 0.06);
+          --bdr3: rgba(255, 255, 255, 0.14);
+          --txt: #e7e9f0;
+          --txt2: #a3adc0;
+          --txt3: #6b7484;
+
+          --comply: #4ade80;
+          --comply-bg: rgba(34, 197, 94, 0.14);
+          --comply-bdr: rgba(34, 197, 94, 0.32);
+          --partial: #fbbf24;
+          --partial-bg: rgba(245, 158, 11, 0.14);
+          --partial-bdr: rgba(245, 158, 11, 0.32);
+          --notcomply: #f87171;
+          --notcomply-bg: rgba(248, 113, 113, 0.14);
+          --notcomply-bdr: rgba(248, 113, 113, 0.32);
+          --na: #94a3b8;
+          --na-bg: rgba(148, 163, 184, 0.12);
+          --na-bdr: rgba(148, 163, 184, 0.28);
+          --warn: #fbbf24;
+          --warn-bg: rgba(245, 158, 11, 0.14);
+          --info: #a5b4fc;
+          --info-bg: rgba(99, 102, 241, 0.14);
+          --info-bdr: rgba(129, 140, 248, 0.34);
+          --danger: #f87171;
+          --danger-bg: rgba(248, 113, 113, 0.1);
+
+          --overlay: rgba(15, 17, 23, 0.86);
         }
       }
       /* scrollbars */
@@ -124,14 +175,14 @@
         overflow: hidden;
       }
       .topbar {
-        height: 50px;
+        height: 56px;
         flex-shrink: 0;
         background: var(--sur1);
         border-bottom: 1px solid var(--bdr);
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 0 16px;
+        gap: 14px;
+        padding: 0 20px;
       }
       .brand {
         display: flex;
@@ -150,19 +201,18 @@
         0%,
         100% {
           opacity: 1;
-          box-shadow: 0 0 0 0 rgba(240, 165, 0, 0.5);
+          box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45);
         }
         60% {
           opacity: 0.5;
-          box-shadow: 0 0 0 4px rgba(240, 165, 0, 0);
+          box-shadow: 0 0 0 4px rgba(99, 102, 241, 0);
         }
       }
       .brand-name {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--amber);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: var(--txt);
       }
       .brand-sep {
         width: 1px;
@@ -172,15 +222,20 @@
       }
       .proj-input {
         font-family: inherit;
-        font-size: 12px;
+        font-size: 13px;
         color: var(--txt);
         background: var(--sur2);
-        border: 1px solid var(--bdr2);
-        border-radius: 4px;
-        padding: 5px 10px;
+        border: 1px solid var(--bdr);
+        border-radius: var(--r-sm);
+        padding: 7px 12px;
         outline: none;
-        width: 200px;
-        transition: border-color 0.15s;
+        width: 220px;
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+      }
+      .proj-input:focus {
+        box-shadow: 0 0 0 3px var(--focus);
       }
       .proj-input:focus {
         border-color: var(--amber);
@@ -196,13 +251,13 @@
       }
       .model-sel {
         font-family: inherit;
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 500;
         background: var(--sur2);
-        border: 1px solid var(--bdr2);
-        border-radius: 4px;
-        color: var(--txt2);
-        padding: 5px 8px;
+        border: 1px solid var(--bdr);
+        border-radius: var(--r-sm);
+        color: var(--txt);
+        padding: 7px 10px;
         outline: none;
         cursor: pointer;
         transition: border-color 0.15s;
@@ -217,12 +272,11 @@
       /* buttons */
       .btn {
         font-family: inherit;
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 600;
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        padding: 6px 14px;
-        border-radius: 4px;
+        letter-spacing: 0;
+        padding: 8px 16px;
+        border-radius: var(--r-md);
         cursor: pointer;
         border: 1px solid;
         transition: all 0.15s;
@@ -238,8 +292,8 @@
         border-color: var(--amber);
       }
       .btn-amber:hover {
-        background: #fbbf24;
-        border-color: #fbbf24;
+        background: var(--accent-strong);
+        border-color: var(--accent-strong);
       }
       .btn-amber:disabled {
         opacity: 0.35;
@@ -267,12 +321,12 @@
         background: var(--notcomply-bg);
       }
       .btn-sm {
-        padding: 4px 10px;
-        font-size: 10px;
+        padding: 6px 12px;
+        font-size: 12px;
       }
       .btn-xs {
-        padding: 2px 7px;
-        font-size: 10px;
+        padding: 4px 10px;
+        font-size: 12px;
       }
 
       /* body */
@@ -293,33 +347,33 @@
         overflow: hidden;
       }
       .sb-sec {
-        padding: 12px 14px;
+        padding: 16px 18px;
         border-bottom: 1px solid var(--bdr2);
         flex-shrink: 0;
       }
       .sb-label {
-        font-size: 9px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.16em;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: var(--amber);
-        margin-bottom: 8px;
+        color: var(--txt3);
+        margin-bottom: 10px;
       }
       .sb-hint {
-        font-size: 10px;
-        color: var(--txt3);
-        line-height: 1.55;
-        margin-bottom: 8px;
+        font-size: 12px;
+        color: var(--txt2);
+        line-height: 1.6;
+        margin-bottom: 10px;
       }
 
       /* upload zone */
       .upload-zone {
-        border: 1px dashed var(--bdr);
-        border-radius: 5px;
-        padding: 18px 12px;
+        border: 1.5px dashed var(--bdr3);
+        border-radius: var(--r-lg);
+        padding: 24px 14px;
         text-align: center;
         cursor: pointer;
-        background: var(--amber-bg);
+        background: var(--accent-soft);
         transition: all 0.2s;
       }
       .upload-zone:hover,
@@ -332,7 +386,7 @@
         margin-bottom: 5px;
       }
       .upload-txt {
-        font-size: 10px;
+        font-size: 12px;
         color: var(--txt2);
         line-height: 1.6;
       }
@@ -347,8 +401,8 @@
       .file-badge {
         background: var(--sur2);
         border: 1px solid var(--bdr);
-        border-radius: 4px;
-        padding: 7px 10px;
+        border-radius: var(--r-md);
+        padding: 9px 12px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -358,7 +412,7 @@
         flex-shrink: 0;
       }
       .file-name {
-        font-size: 10px;
+        font-size: 12px;
         color: var(--txt);
         flex: 1;
         min-width: 0;
@@ -388,29 +442,29 @@
       .key-panel {
         background: var(--info-bg);
         border: 1px solid var(--info-bdr);
-        border-radius: 5px;
-        padding: 10px 12px;
+        border-radius: var(--r-md);
+        padding: 12px 14px;
       }
       .key-panel-title {
-        font-size: 10px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--info);
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
       }
       .key-input {
         font-family: inherit;
-        font-size: 10px;
+        font-size: 12px;
         background: var(--sur2);
-        border: 1px solid var(--bdr2);
-        border-radius: 3px;
-        padding: 5px 8px;
+        border: 1px solid var(--bdr);
+        border-radius: var(--r-sm);
+        padding: 7px 10px;
         color: var(--txt);
         outline: none;
         width: 100%;
-        margin-bottom: 5px;
+        margin-bottom: 6px;
         transition: border-color 0.15s;
       }
       .key-input:focus {
@@ -433,9 +487,9 @@
       .lib-item {
         background: var(--sur2);
         border: 1px solid var(--bdr2);
-        border-radius: 4px;
-        padding: 7px 9px;
-        margin-bottom: 5px;
+        border-radius: var(--r-md);
+        padding: 9px 11px;
+        margin-bottom: 6px;
         cursor: pointer;
         transition: all 0.15s;
         position: relative;
@@ -451,19 +505,19 @@
         gap: 4px;
       }
       .lib-item-label {
-        font-size: 9px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.07em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
-        color: var(--amber);
-        margin-bottom: 3px;
+        color: var(--txt2);
+        margin-bottom: 4px;
         flex: 1;
       }
       .lib-item-text {
-        font-size: 10px;
+        font-size: 13px;
         color: var(--txt2);
-        line-height: 1.5;
-        font-family: "Sarabun", sans-serif;
+        line-height: 1.6;
+        font-family: var(--font-thai);
       }
       .lib-remove {
         background: none;
@@ -569,15 +623,15 @@
 
       /* toolbar */
       .toolbar {
-        padding: 8px 14px;
+        padding: 10px 18px;
         background: var(--sur1);
         border-bottom: 1px solid var(--bdr2);
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         flex-wrap: wrap;
         flex-shrink: 0;
-        min-height: 44px;
+        min-height: 50px;
       }
       .stats {
         display: flex;
@@ -585,10 +639,11 @@
         align-items: center;
       }
       .stat {
-        font-size: 10px;
+        font-size: 12px;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 5px;
+        font-variant-numeric: tabular-nums;
       }
       .stat-dot {
         width: 6px;
@@ -614,16 +669,16 @@
       }
       .f-btn {
         font-family: inherit;
-        font-size: 9px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.02em;
         text-transform: uppercase;
-        padding: 3px 9px;
-        border-radius: 3px;
+        padding: 5px 11px;
+        border-radius: 999px;
         cursor: pointer;
-        border: 1px solid var(--bdr2);
+        border: 1px solid var(--bdr);
         background: transparent;
-        color: var(--txt3);
+        color: var(--txt2);
         transition: all 0.15s;
       }
       .f-all.on {
@@ -657,11 +712,11 @@
         margin-left: auto;
       }
       .toggle-label {
-        font-size: 10px;
+        font-size: 12px;
         color: var(--txt2);
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
         cursor: pointer;
         user-select: none;
       }
@@ -711,13 +766,13 @@
         background: var(--sur2);
       }
       th {
-        padding: 8px 10px;
+        padding: 11px 12px;
         text-align: left;
-        font-size: 9px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: var(--amber);
+        color: var(--txt3);
         border-bottom: 1px solid var(--bdr);
         white-space: nowrap;
       }
@@ -727,13 +782,13 @@
         vertical-align: top;
       }
       tr:hover td {
-        background: rgba(240, 165, 0, 0.025);
+        background: var(--accent-soft);
       }
       tr.sel-row td {
-        background: rgba(240, 165, 0, 0.06);
+        background: var(--accent-soft2);
       }
       .td-p {
-        padding: 7px 10px;
+        padding: 10px 12px;
       }
 
       /* column widths */
@@ -764,16 +819,16 @@
 
       /* cell inputs */
       .cell-in {
-        font-family: "Sarabun", sans-serif;
-        font-size: 13px;
+        font-family: var(--font-thai);
+        font-size: 15px;
         color: var(--txt);
         background: transparent;
         border: none;
         outline: none;
         width: 100%;
         resize: none;
-        line-height: 1.75;
-        min-height: 38px;
+        line-height: 1.7;
+        min-height: 40px;
       }
       .cell-in:focus {
         background: var(--sur2);
@@ -784,8 +839,8 @@
         font-size: 11px;
       }
       .ref-in {
-        font-family: inherit;
-        font-size: 11px;
+        font-family: var(--font-mono);
+        font-size: 13px;
         color: var(--txt2);
         background: transparent;
         border: none;
@@ -800,12 +855,12 @@
       }
       .cat-sel {
         font-family: inherit;
-        font-size: 10px;
+        font-size: 12px;
         background: var(--sur2);
-        border: 1px solid var(--bdr2);
-        border-radius: 3px;
+        border: 1px solid var(--bdr);
+        border-radius: var(--r-sm);
         color: var(--txt2);
-        padding: 3px 5px;
+        padding: 5px 7px;
         outline: none;
         cursor: pointer;
         width: 100%;
@@ -815,10 +870,10 @@
       }
       .sts-sel {
         font-family: inherit;
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 600;
-        border-radius: 4px;
-        padding: 4px 6px;
+        border-radius: var(--r-sm);
+        padding: 6px 8px;
         outline: none;
         cursor: pointer;
         width: 100%;
@@ -849,12 +904,12 @@
         color: var(--txt);
       }
       .warn-flag {
-        font-size: 9px;
+        font-size: 11px;
         color: var(--warn);
         display: flex;
         align-items: center;
-        gap: 3px;
-        margin-top: 2px;
+        gap: 4px;
+        margin-top: 4px;
       }
       .row-del {
         background: none;
@@ -870,7 +925,9 @@
         background: var(--notcomply-bg);
       }
       .no-txt {
-        font-size: 11px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
         color: var(--txt3);
         text-align: center;
         padding: 4px 0;
@@ -893,13 +950,14 @@
         margin-bottom: 14px;
       }
       .empty-title {
-        font-size: 13px;
-        color: var(--txt2);
-        margin-bottom: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--txt);
+        margin-bottom: 7px;
       }
       .empty-sub {
-        font-size: 11px;
-        color: var(--txt3);
+        font-size: 13px;
+        color: var(--txt2);
         line-height: 1.7;
       }
 
@@ -929,14 +987,15 @@
         }
       }
       .ov-msg {
-        font-size: 11px;
-        color: var(--txt2);
-        letter-spacing: 0.04em;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--txt);
+        letter-spacing: 0.01em;
       }
       .ov-sub {
-        font-size: 10px;
-        color: var(--txt3);
-        margin-top: 3px;
+        font-size: 12px;
+        color: var(--txt2);
+        margin-top: 4px;
       }
       .ov-prog-wrap {
         width: 160px;
@@ -964,18 +1023,19 @@
         flex-shrink: 0;
       }
       .bottom-hint {
-        font-size: 10px;
+        font-size: 12px;
         color: var(--txt3);
       }
 
       /* alerts */
       .alert {
-        margin: 8px 14px;
-        border-radius: 4px;
-        padding: 8px 12px;
-        font-size: 11px;
+        margin: 10px 18px;
+        border-radius: var(--r-md);
+        padding: 11px 14px;
+        font-size: 13px;
+        line-height: 1.5;
         display: flex;
-        gap: 8px;
+        gap: 9px;
         align-items: flex-start;
         flex-shrink: 0;
       }
@@ -2529,8 +2589,8 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                     <div
                       className="key-panel"
                       style={{
-                        background: "rgba(56,189,248,0.06)",
-                        borderColor: "rgba(56,189,248,0.25)",
+                        background: "var(--accent-soft)",
+                        borderColor: "var(--accent-bdr)",
                       }}
                     >
                       <div
@@ -2609,8 +2669,8 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                     <div
                       className="key-panel"
                       style={{
-                        background: "rgba(240,165,0,0.06)",
-                        borderColor: "rgba(240,165,0,0.25)",
+                        background: "var(--accent-soft)",
+                        borderColor: "var(--accent-bdr)",
                       }}
                     >
                       <div
@@ -2842,8 +2902,8 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                       <div
                         className="key-panel"
                         style={{
-                          background: "rgba(56,189,248,0.06)",
-                          borderColor: "rgba(56,189,248,0.25)",
+                          background: "var(--accent-soft)",
+                          borderColor: "var(--accent-bdr)",
                         }}
                       >
                         <div
@@ -3264,8 +3324,8 @@ Extract ALL: technical specs, performance, brand/model, material/standard, testi
                                 <textarea
                                   className="cell-in"
                                   style={{
-                                    fontFamily: "'JetBrains Mono',monospace",
-                                    fontSize: 11,
+                                    fontFamily: "var(--font-thai)",
+                                    fontSize: 14,
                                   }}
                                   value={row.remarks}
                                   onChange={(e) =>
