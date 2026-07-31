@@ -37,16 +37,18 @@ Vision**.
 
 ## Tech stack
 
-- **One file:** [`index.html`](index.html) is the entire app — React 18
-  compiled **in the browser** by Babel-standalone. No build step, no `package.json`.
-- **CDN libraries:** PDF.js (read + rasterize), SheetJS (`xlsx` export), Tesseract.js (browser OCR),
-  React/ReactDOM, Babel, Google Fonts (Sarabun for Thai).
+- **Vite + React 18 + TypeScript.** The app is bundled (minified, cached) — no in-browser compile.
+  Source lives in [`src/`](src): `App.tsx` (UI) imports typed, unit-tested logic from
+  [`src/lib/`](src/lib) (`pdf.ts`, `ocr.ts`, `extract.ts`, `constants.ts`, `types.ts`); styles in
+  [`src/styles.css`](src/styles.css). `npm run build` emits `dist/`.
+- **npm dependencies** (bundled, not CDN): `react`/`react-dom`, `pdfjs-dist`, `tesseract.js`, `xlsx`.
+  Fonts (Inter / Sarabun / JetBrains Mono) load from Google Fonts via `index.html`.
 - **Serverless proxies (Cloudflare Pages Functions):** [`functions/api/claude.js`](functions/api/claude.js),
   [`functions/api/typhoon.js`](functions/api/typhoon.js), and [`functions/api/vision.js`](functions/api/vision.js)
   forward to the Anthropic / Typhoon / Google Vision APIs and inject the keys server-side, so those keys
   never reach the browser.
-- **Hosting:** Cloudflare Pages (static). The app is `index.html` (Pages serves it at `/` natively);
-  `/api/*` is handled by the Functions. No build step, no client-side routing (so no `_redirects` needed).
+- **Hosting:** Cloudflare Pages builds the app (`npm run build`) and serves `dist/`; `/api/*` is handled
+  by the Functions (which run alongside the built output). No client-side routing.
 
 ## Setup & deploy (Cloudflare Pages)
 
@@ -55,8 +57,9 @@ Vision**.
    **Connect to Git** → select `Taam4142/Yog-Sothoth`. This must be a **Pages** project — a Workers
    project runs `wrangler deploy` and cannot serve the `functions/` dir or the static file (see
    Troubleshooting).
-3. Build settings: **Framework preset = None**, **Build command = `exit 0`** (Cloudflare recommends this
-   over blank so Pages Functions stay enabled), **Build output directory = `/`**.
+3. Build settings: **Framework preset = None** (or Vite), **Build command = `npm run build`**, **Build
+   output directory = `dist`**. (⚠️ If you previously used `exit 0` / `/`, you **must** change it to this,
+   or the deploy will publish the unbuilt source and the page will fail to load.)
 4. **Settings → Environment variables** (add to Production *and* Preview):
    - `ANTHROPIC_API_KEY` — from `console.anthropic.com` (a claude.ai subscription is **not** API credits).
    - `TYPHOON_API_KEY` — a free key from `opentyphoon.ai` (verify current free-tier limits there).
@@ -78,11 +81,19 @@ Google Vision keys stay server-side in the Cloudflare env vars above.
 
 ## Running locally
 
-Serve the folder statically (e.g. `py -m http.server 8080`) and open
-`http://localhost:8080/` (served as `index.html`). Caveats:
+Requires **Node 20+**. Install once, then run the dev server:
+
+```bash
+npm install
+npm run dev      # http://localhost:5173 — hot-reloading dev server
+```
+
+Other scripts: `npm run build` (→ `dist/`), `npm run preview` (serve the build), `npm run typecheck`,
+`npm run test` (Vitest). Caveats:
 
 - The **Typhoon** and **Claude** engines and the **Google Vision** feeder call `/api/*`, which only exist
-  on the deployed Cloudflare site (or via `npx wrangler pages dev .`). Locally they fail with a network error.
+  on the deployed Cloudflare site (or via `npx wrangler pages dev` against the build). Locally they fail
+  with a network error.
 - **Browser OCR** and **Gemini** work fully locally.
 
 ## Known limitations
@@ -101,7 +112,10 @@ what's planned.
 
 | Path                         | Purpose                                                        |
 | ---------------------------- | -------------------------------------------------------------- |
-| `index.html`                 | The entire single-file app (UI + all logic).                   |
+| `index.html`                 | Vite entry (mounts `src/main.tsx`).                            |
+| `src/App.tsx`                | Root UI component (state + render).                            |
+| `src/lib/`                   | Typed, unit-tested logic: pdf, ocr, extract, constants, types. |
+| `src/styles.css`             | Design tokens + all component styles.                          |
 | `functions/api/claude.js`    | Cloudflare Pages Function — proxy to the Anthropic API.         |
 | `functions/api/typhoon.js`   | Cloudflare Pages Function — proxy to the Typhoon OCR API.       |
 | `functions/api/vision.js`    | Cloudflare Pages Function — proxy to the Google Vision API.     |

@@ -1,7 +1,9 @@
 # SKILL.md — Yog-Sothoth (TOR Compliance Matrix)
 
 > Reference document for building, extending, and debugging the Yog-Sothoth (TOR Compliance Matrix) web app.
-> Last updated: 2026-07-27 (reconciled to the four-engine app; see CHANGELOG.md)
+> Last updated: 2026-08-01. **Build note (v0.3.0):** the app is now a **Vite + React + TypeScript** build
+> — logic lives in typed `src/lib/*` modules, UI in `src/App.tsx`, styles in `src/styles.css`. References
+> below to a single in-browser-Babel `index.html` describe the pre-v0.3.0 structure. See CHANGELOG.md.
 
 ---
 

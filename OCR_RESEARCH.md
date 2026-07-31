@@ -79,6 +79,7 @@ Excellent models, all open weights, but each needs a GPU to run at usable speed 
 | ------ | ---- | ------- | ----- |
 | **Tesseract** | Yes (weak) | Apache-2.0 | Runs in-browser via `tesseract.js` (what we use as the offline no-key path) or on CPU. 100+ langs. |
 | **PaddleOCR** (PP-OCRv5 / v6) | v5 explicit Thai (~82.7%); v6 unified 50 langs | Apache-2.0 | Best classic self-host engine; CPU-capable. Needs a Python service. |
+| **TurboOCR** (aiptimizer) | Via PaddleOCR PP-OCRv5 (~83%) | MIT | **GPU-only** (Linux + NVIDIA Turing+, CUDA/TensorRT). A C++/TensorRT *serving layer* over PaddleOCR (PP-OCRv6 + retained PP-OCRv5 recognizers) — OCR + layout + tables→HTML + formulas→LaTeX → Markdown, via HTTP/gRPC. Headline is **throughput** (200–559 img/s, ~20 pg/s). Not a new model: Thai = PaddleOCR (below Typhoon). **Batch/high-volume only** — no fit for our interactive, no-backend flow. |
 | **Surya** | Yes (widest script coverage) | GPL / commercial | Strong multilingual; GPU-leaning. |
 | **EasyOCR** | Yes (moderate) | Apache-2.0 | Simple Python API; CPU/GPU. |
 | **docTR** | Limited (Latin-focused) | Apache-2.0 | Clean digital docs; weak on Thai. |
@@ -113,7 +114,10 @@ Excellent models, all open weights, but each needs a GPU to run at usable speed 
 - **Watch Baidu Unlimited-OCR** — if credible Thai benchmarks appear, reconsider for long-document TORs.
 - **Re-check Typhoon Pro pricing** when it launches (free tier may change).
 - **Batch/bulk OCR:** for a large one-off pile of scans, run local Typhoon OCR (or PaddleOCR) on a free GPU
-  notebook (Kaggle ~30 h/week, Colab T4) and import the Markdown — free, and avoids API rate limits.
+  notebook (Kaggle ~30 h/week, Colab T4) and import the Markdown — free, and avoids API rate limits. If
+  raw **throughput** ever matters at scale, **TurboOCR** (MIT; GPU-only PaddleOCR-on-TensorRT; 200–559
+  img/s; layout + tables→HTML + formulas→LaTeX) is the fast-serving option — evaluated 2026-08-01, but its
+  Thai is still just PaddleOCR (below Typhoon), so it's speed-only, not an accuracy upgrade.
 - **OCR.space** remains a documented zero-setup, no-card option (weak Thai) if a keyless fallback is ever
   wanted again — but **Google Cloud Vision is the wired fallback** as of v0.2.0.
 
@@ -122,4 +126,5 @@ Excellent models, all open weights, but each needs a GPU to run at usable speed 
 - OCR.space: [Thai OCR](https://ocr.space/thai) · [Free OCR API](https://ocr.space/ocrapi)
 - Baidu Unlimited-OCR: [GitHub](https://github.com/baidu/Unlimited-OCR) · [MarkTechPost](https://www.marktechpost.com/2026/06/24/baidu-releases-unlimited-ocr-a-3b-model-that-keeps-the-kv-cache-flat-for-long-document-parsing/)
 - PaddleOCR: [GitHub](https://github.com/PaddlePaddle/PaddleOCR) · [PaddleOCR-VL](https://paddleocrvl.online/)
+- TurboOCR: [GitHub](https://github.com/aiptimizer/TurboOCR) · [docs](https://turboocr.com/docs/)
 - Landscape: [Open-source OCR VLMs to self-host (Spheron)](https://www.spheron.network/blog/best-open-source-ocr-vlm-self-host-gpu-cloud-2026/) · [Best open-source OCR (Unstract)](https://unstract.com/blog/best-opensource-ocr-tools/) · [Free OCR tools/APIs (Eden AI)](https://www.edenai.co/post/top-free-ocr-tools-apis-and-open-source-models)

@@ -1,0 +1,333 @@
+import { VALID_CATS, mkRow } from "./constants";
+import { fileToBase64 } from "./pdf";
+import type { ExtractedItem, PdfType, Row } from "./types";
+
+export function isLikelyTranslated(txt: string): boolean {
+  return !/[฀-๿]/.test(txt) && txt.trim().length > 0;
+}
+
+/**
+ * Parse a model response into a JSON array of items — resilient to markdown fences,
+ * surrounding prose, trailing commas, and truncated responses (RISK_REVIEW R3/R4).
+ */
+export function parseJsonArray(raw: string): ExtractedItem[] {
+  const cleaned = raw.replace(/```json|```/g, "").trim();
+  const tolerateTrailingCommas = (s: string) => s.replace(/,\s*([\]}])/g, "$1");
+  const tryParse = (s: string): ExtractedItem[] | null => {
+    try {
+      const v = JSON.parse(s);
+      return Array.isArray(v) ? v : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 1) Direct parse.
+  let arr = tryParse(cleaned) ?? tryParse(tolerateTrailingCommas(cleaned));
+  if (arr) return arr;
+
+  // 2) Extract the first balanced [...] block (ignores any surrounding prose).
+  const start = cleaned.indexOf("[");
+  if (start !== -1) {
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let i = start; i < cleaned.length; i++) {
+      const c = cleaned[i];
+      if (esc) {
+        esc = false;
+        continue;
+      }
+      if (c === "\\") {
+        esc = true;
+        continue;
+      }
+      if (c === '"') inStr = !inStr;
+      if (inStr) continue;
+      if (c === "[") depth++;
+      else if (c === "]") {
+        depth--;
+        if (depth === 0) {
+          const block = cleaned.slice(start, i + 1);
+          arr = tryParse(block) ?? tryParse(tolerateTrailingCommas(block));
+          if (arr) return arr;
+          break;
+        }
+      }
+    }
+    // 3) Never closed → truncated. Salvage the complete objects, drop the dangling tail.
+    if (depth > 0) {
+      const lastObjEnd = cleaned.lastIndexOf("}");
+      if (lastObjEnd > start) {
+        const salvaged = cleaned.slice(start, lastObjEnd + 1) + "]";
+        arr =
+          tryParse(salvaged) ?? tryParse(tolerateTrailingCommas(salvaged));
+        if (arr) return arr;
+      }
+      throw new Error(
+        "The extraction was cut off (the response ran too long). Try a shorter document, split it into parts, or switch models.",
+      );
+    }
+  }
+  throw new Error(
+    "Could not parse the extraction result — the model may have returned prose instead of JSON. Try again or switch models.",
+  );
+}
+
+// No-AI fallback: split raw OCR text into requirement rows heuristically.
+export function structureWithoutAI(
+  rawText: string,
+): { ref: string; requirement: string; category: string }[] {
+  const lines = rawText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && l !== "--- PAGE BREAK ---");
+  const rows: { ref: string; requirement: string; category: string }[] = [];
+  let counter = 1;
+  // Thai/Arabic numbered clause patterns: "1.", "1.1", "ข้อ 1", "(1)", "- "
+  const clauseStart = /^(\d+[\.\)]|\d+\.\d+|ข้อ\s*\d+|\(\d+\)|[-•·●])/;
+  let buffer = "";
+  let bufferRef = "";
+  const flush = () => {
+    if (buffer.trim().length > 0) {
+      rows.push({
+        ref: bufferRef || `CL-${String(counter).padStart(3, "0")}`,
+        requirement: buffer.trim(),
+        category: "General",
+      });
+      counter++;
+    }
+    buffer = "";
+    bufferRef = "";
+  };
+  for (const line of lines) {
+    if (clauseStart.test(line)) {
+      flush();
+      const m = line.match(clauseStart);
+      bufferRef = m ? m[0].replace(/[\.\)]$/, "") : "";
+      buffer = line;
+    } else {
+      buffer += (buffer ? " " : "") + line;
+    }
+  }
+  flush();
+  // If nothing matched clause patterns, fall back to one row per non-trivial line.
+  if (rows.length === 0) {
+    lines.forEach((l, i) => {
+      if (l.length > 10)
+        rows.push({
+          ref: `CL-${String(i + 1).padStart(3, "0")}`,
+          requirement: l,
+          category: "General",
+        });
+    });
+  }
+  return rows;
+}
+
+export function buildSystemPrompt(
+  withTranslation: boolean,
+  isOCR: boolean,
+): string {
+  let sp = `You are an expert automation and IIoT engineer reading a Terms of Reference (TOR) document, which may be in Thai, English, or mixed Thai/English.
+
+CRITICAL RULE — VERBATIM COPY:
+The "requirement" field must be copied CHARACTER FOR CHARACTER exactly as it appears in the source document.
+- Thai text → copy exactly in Thai (ภาษาไทย)
+- English text → copy exactly in English
+- Mixed Thai/English → copy exactly as mixed
+- Do NOT translate Thai to English in the requirement field
+- Do NOT paraphrase, summarize, or reword
+- Do NOT clean up grammar or fix spelling
+- Copy every word, number, unit, and symbol exactly
+
+Return ONLY a valid JSON array. No markdown fences. No backticks. No preamble. No explanation.
+If you add ANY text outside the JSON array the parser will fail.
+
+Each object must have exactly these keys:
+{"ref":"clause number from document e.g. '2.1' or 'ข้อ 5'. If none, use 'CL-001','CL-002' etc.","requirement":"VERBATIM text copied exactly from TOR — Thai or English as written","category":"exactly one of: General|Mechanical|Electrical|Control/PLC|IIoT/SCADA|BMS|Network|Safety|Documentation|Testing|Other"}
+
+CORRECT: {"ref":"3.2","requirement":"ระบบควบคุมจะต้องใช้ PLC ยี่ห้อ Siemens รุ่น S7-1500 เท่านั้น","category":"Control/PLC"}
+WRONG:   {"ref":"3.2","requirement":"The control system must use Siemens S7-1500 PLC only","category":"Control/PLC"} ← translated, not verbatim
+
+Extract ALL of: technical specs, performance requirements, brand/model requirements, material/standard requirements, testing/commissioning requirements, documentation requirements, warranty/maintenance requirements, safety requirements.`;
+
+  if (withTranslation) {
+    sp += `\n\nADDITIONAL: Also add a "translation" field with an English translation of each requirement.
+The "requirement" field stays VERBATIM original language. The "translation" field is your English translation.
+Extended format: {"ref":"...","requirement":"VERBATIM Thai","translation":"English translation","category":"..."}`;
+  }
+
+  if (isOCR) {
+    sp += `\n\nNOTE: The input text was extracted by OCR from a scanned document. There may be minor OCR errors (broken words, wrong characters). Identify the intended meaning from context, but still copy the text verbatim including OCR artifacts — do not silently fix them. The engineer will review and correct.`;
+  }
+
+  return sp;
+}
+
+export async function extractRequirements(
+  file: File,
+  model: string,
+  withTranslation: boolean,
+  pdfType: PdfType,
+  ocrText: string | null,
+): Promise<ExtractedItem[]> {
+  const sp = buildSystemPrompt(withTranslation, pdfType === "scanned");
+
+  let messages: any;
+  if (pdfType === "digital") {
+    const b64 = await fileToBase64(file);
+    messages = [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: b64,
+            },
+          },
+          {
+            type: "text",
+            text: "Extract all requirements from this TOR document as a JSON array. Return only the JSON array, nothing else.",
+          },
+        ],
+      },
+    ];
+  } else {
+    messages = [
+      {
+        role: "user",
+        content: `The following text was extracted via OCR from a scanned TOR document.\n\n${ocrText}\n\nExtract all requirements as a JSON array. Return only the JSON array, nothing else.`,
+      },
+    ];
+  }
+
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, max_tokens: 4000, system: sp, messages }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `Claude API ${res.status}`);
+  }
+  const data = await res.json();
+  const raw = data.content?.find((b: any) => b.type === "text")?.text || "[]";
+  const parsed = parseJsonArray(raw);
+  if (!Array.isArray(parsed) || parsed.length === 0)
+    throw new Error(
+      "No requirements found. PDF may have no structured text layer.",
+    );
+  return parsed;
+}
+
+export function buildGeminiPrompt(
+  withTranslation: boolean,
+  isOCR: boolean,
+): string {
+  let p = `You are an expert automation and IIoT engineer reading a Terms of Reference (TOR) document in Thai, English, or mixed.
+
+CRITICAL RULE — VERBATIM COPY:
+The "requirement" field must be copied CHARACTER FOR CHARACTER exactly as it appears.
+- Thai text → copy exactly in Thai
+- English text → copy exactly in English
+- Mixed → copy exactly as mixed
+- Do NOT translate, paraphrase, summarize, or reword
+- Copy every word, number, unit, and symbol exactly
+
+Return ONLY a valid JSON array. No markdown. No backticks. No explanation.
+
+Each object:
+{"ref":"clause number e.g. '2.1' or 'ข้อ 5', else 'CL-001'","requirement":"VERBATIM text from TOR","category":"one of: General|Mechanical|Electrical|Control/PLC|IIoT/SCADA|BMS|Network|Safety|Documentation|Testing|Other"}
+
+CORRECT: {"ref":"3.2","requirement":"ระบบควบคุมจะต้องใช้ PLC ยี่ห้อ Siemens รุ่น S7-1500 เท่านั้น","category":"Control/PLC"}
+WRONG:   {"ref":"3.2","requirement":"The control system must use Siemens S7-1500 PLC only","category":"Control/PLC"}
+
+Extract ALL: technical specs, performance, brand/model, material/standard, testing, documentation, warranty, safety requirements.`;
+
+  if (withTranslation) {
+    p += `\n\nAlso add "translation" field with English translation. "requirement" stays VERBATIM original. Format: {"ref":"...","requirement":"VERBATIM Thai","translation":"English translation","category":"..."}`;
+  }
+  if (isOCR) {
+    p += `\n\nInput is OCR text — may have minor errors. Copy verbatim including artifacts. Do not silently fix OCR errors.`;
+  }
+  return p;
+}
+
+export async function extractWithGemini(
+  file: File,
+  geminiKey: string,
+  geminiModel: string,
+  withTranslation: boolean,
+  pdfType: PdfType,
+  ocrText: string | null,
+): Promise<ExtractedItem[]> {
+  const prompt = buildGeminiPrompt(withTranslation, pdfType === "scanned");
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+
+  let parts: any;
+  if (pdfType === "digital") {
+    const b64 = await fileToBase64(file);
+    parts = [
+      { inline_data: { mime_type: "application/pdf", data: b64 } },
+      {
+        text:
+          prompt +
+          "\n\nExtract all requirements from this TOR document. Return only the JSON array.",
+      },
+    ];
+  } else {
+    parts = [
+      {
+        text:
+          prompt +
+          `\n\nThe following is OCR text from a scanned TOR document:\n\n${ocrText}\n\nExtract all requirements. Return only the JSON array.`,
+      },
+    ];
+  }
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `Gemini API ${res.status}`);
+  }
+  const data = await res.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+  const parsed = parseJsonArray(raw);
+  if (!Array.isArray(parsed) || parsed.length === 0)
+    throw new Error("No requirements found in Gemini response.");
+  return parsed;
+}
+
+export function validateAndMap(
+  parsed: ExtractedItem[],
+  withTranslation: boolean,
+): Row[] {
+  return parsed.map((item, i) => {
+    const ref = String(item.ref || `CL-${String(i + 1).padStart(3, "0")}`);
+    const req = String(item.requirement || "").trim();
+    const tr = withTranslation ? String(item.translation || "").trim() : "";
+    let cat = String(item.category || "Other");
+    if (!VALID_CATS.includes(cat)) cat = "Other";
+    const warn = req.length > 0 && isLikelyTranslated(req);
+    return mkRow({
+      ref,
+      requirement: req,
+      translation: tr,
+      category: cat,
+      status: "comply",
+      remarks: "",
+      _warn: warn,
+    });
+  });
+}

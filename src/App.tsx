@@ -1,0 +1,1705 @@
+// @ts-nocheck
+// Carried over from the single-file app during the Vite + TypeScript migration.
+// This UI component is pending gradual typing; the extracted logic in src/lib/* is
+// fully typed and unit-tested. Behavior is unchanged from the pre-migration app.
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import * as XLSX from "xlsx";
+import { pdfjsLib, detectPDFType, rasterizePage } from "./lib/pdf";
+import {
+  ocrPDFTesseract,
+  ocrPDFTyphoon,
+  ocrPDFVision,
+  ocrPageWithGemini,
+  TYPHOON_MODEL,
+} from "./lib/ocr";
+import {
+  extractRequirements,
+  extractWithGemini,
+  structureWithoutAI,
+  validateAndMap,
+} from "./lib/extract";
+import {
+  DEFAULT_LIB,
+  STATUS_OPTS,
+  STATUS_LABELS,
+  STAT_COLORS,
+  VALID_CATS,
+  mkRow,
+} from "./lib/constants";
+
+function App() {
+        const [rows, setRows] = useState([]);
+        const [lib, setLib] = useState(DEFAULT_LIB);
+        const [loading, setLoading] = useState(false);
+        const [loadMsg, setLoadMsg] = useState("");
+        const [loadSub, setLoadSub] = useState("");
+        const [loadPct, setLoadPct] = useState(null);
+        const [error, setError] = useState(null);
+        const [warning, setWarning] = useState(null);
+        const [info, setInfo] = useState(null);
+        const [pdfFile, setPdfFile] = useState(null);
+        const [pdfType, setPdfType] = useState(null);
+        const [model, setModel] = useState("claude-sonnet-4-20250514");
+        const [project, setProject] = useState("");
+        const [filter, setFilter] = useState("all");
+        const [showTr, setShowTr] = useState(false);
+        const [showCat, setShowCat] = useState(true);
+        const [selectedRow, setSelectedRow] = useState(null);
+        const [dragging, setDragging] = useState(false);
+        const [showLibAdd, setShowLibAdd] = useState(false);
+        const [newLib, setNewLib] = useState({
+          label: "",
+          text: "",
+          status: "comply",
+        });
+        const [ocrEngine, setOcrEngine] = useState("typhoon");
+        const [aiEngine, setAiEngine] = useState("typhoon");
+        const [geminiKey, setGeminiKey] = useState("");
+        const [geminiModel, setGeminiModel] = useState("gemini-2.0-flash");
+        const fileRef = useRef();
+        const tableRef = useRef();
+
+        const upd = (id, f, v) =>
+          setRows((r) =>
+            r.map((row) => (row.id === id ? { ...row, [f]: v } : row)),
+          );
+        const del = (id) => setRows((r) => r.filter((row) => row.id !== id));
+        const addRow = () => {
+          const r = mkRow({
+            ref: `CL-${String(rows.length + 1).padStart(3, "0")}`,
+          });
+          setRows((p) => [...p, r]);
+          setTimeout(() => {
+            const ta = tableRef.current?.querySelectorAll("textarea");
+            if (ta && ta.length) ta[ta.length - 2]?.focus();
+          }, 60);
+        };
+
+        const handleFile = useCallback(async (file) => {
+          if (!file || file.type !== "application/pdf") {
+            setError("Please select a PDF file.");
+            return;
+          }
+          setPdfFile(file);
+          setRows([]);
+          setError(null);
+          setWarning(null);
+          setInfo(null);
+          setPdfType(null);
+          setLoading(true);
+          setLoadMsg("Detecting PDF type...");
+          setLoadSub("");
+          setLoadPct(null);
+          try {
+            const type = await detectPDFType(file);
+            setPdfType(type);
+            if (type === "scanned") {
+              setInfo(
+                "Scanned PDF detected. Choose an OCR engine below, fill in credentials if needed, then click Extract.",
+              );
+            } else {
+              setInfo("Digital PDF detected — ready for extraction.");
+            }
+          } catch (e) {
+            setError(
+              "Could not read PDF. Try re-saving as PDF/A or printing to PDF.",
+            );
+          } finally {
+            setLoading(false);
+          }
+        }, []);
+
+        const onDrop = useCallback(
+          (e) => {
+            e.preventDefault();
+            setDragging(false);
+            handleFile(e.dataTransfer.files[0]);
+          },
+          [handleFile],
+        );
+
+        const doExtract = async () => {
+          if (!pdfFile) return;
+          setLoading(true);
+          setError(null);
+          setWarning(null);
+          setInfo(null);
+
+          try {
+            // ===== BROWSER-ONLY MODE: Tesseract.js OCR + heuristic structuring, ZERO API =====
+            if (aiEngine === "browser") {
+              setLoadMsg("Browser OCR (Tesseract.js)...");
+              setLoadSub(
+                "First run downloads the Thai language pack (~15MB, cached after)",
+              );
+              setLoadPct(2);
+              const ocrText = await ocrPDFTesseract(
+                pdfFile,
+                (page, total, pct) => {
+                  if (page && total) {
+                    setLoadSub(`OCR page ${page} of ${total}`);
+                    setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
+                  } else if (pct != null) {
+                    setLoadSub(`Recognizing text — ${pct}%`);
+                  }
+                },
+              );
+              setLoadMsg("Structuring text...");
+              setLoadSub("Splitting into requirement rows");
+              setLoadPct(92);
+              const parsedRows = structureWithoutAI(ocrText);
+              if (parsedRows.length === 0)
+                throw new Error(
+                  "No text could be extracted. The scan may be too low quality — try Typhoon or another engine.",
+                );
+              const mapped = parsedRows.map((it) =>
+                mkRow({
+                  ref: it.ref,
+                  requirement: it.requirement,
+                  category: it.category || "General",
+                  status: "comply",
+                }),
+              );
+              setRows(mapped);
+              setLoadPct(100);
+              setWarning(
+                "Browser OCR done with no AI. Rows were split heuristically — review the clause boundaries and Thai accuracy, then adjust. For cleaner structuring, switch to an AI engine.",
+              );
+              setTimeout(() => {
+                setLoading(false);
+                setLoadPct(null);
+              }, 400);
+              return;
+            }
+
+            // ===== TYPHOON MODE: Typhoon OCR (Thai) + heuristic structuring, free tier =====
+            if (aiEngine === "typhoon") {
+              setLoadMsg("Typhoon OCR (Thai)...");
+              setLoadSub("Reading pages with Typhoon — via proxy");
+              setLoadPct(2);
+              const tOcr = await ocrPDFTyphoon(pdfFile, (page, total) => {
+                setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
+              });
+              setLoadMsg("Structuring text...");
+              setLoadSub("Splitting into requirement rows");
+              setLoadPct(92);
+              const parsedRows = structureWithoutAI(tOcr);
+              if (parsedRows.length === 0)
+                throw new Error(
+                  "No text could be extracted. Try another engine or check the PDF quality.",
+                );
+              const mapped = parsedRows.map((it) =>
+                mkRow({
+                  ref: it.ref,
+                  requirement: it.requirement,
+                  category: it.category || "General",
+                  status: "comply",
+                }),
+              );
+              setRows(mapped);
+              setLoadPct(100);
+              setWarning(
+                "Typhoon OCR done. Rows were split heuristically — review the clause boundaries, then adjust. For AI-structured rows, use Typhoon as the OCR feeder with the Claude or Gemini engine.",
+              );
+              setTimeout(() => {
+                setLoading(false);
+                setLoadPct(null);
+              }, 400);
+              return;
+            }
+
+            let ocrText = null;
+
+            if (pdfType === "scanned") {
+              if (ocrEngine === "tesseract") {
+                setLoadMsg("Browser OCR (Tesseract.js)...");
+                setLoadSub(
+                  "First run downloads Thai language pack (~15MB, cached)",
+                );
+                ocrText = await ocrPDFTesseract(pdfFile, (page, total, pct) => {
+                  if (page && total) {
+                    setLoadSub(`OCR page ${page} of ${total}`);
+                    setLoadPct(Math.round(((page - 1) / total) * 55) + 5);
+                  } else if (pct != null) {
+                    setLoadSub(`Recognizing — ${pct}%`);
+                  }
+                });
+              } else if (ocrEngine === "gemini") {
+                if (!geminiKey) {
+                  setError("Gemini API key is required for Gemini OCR.");
+                  setLoading(false);
+                  return;
+                }
+                setLoadMsg("OCR via Gemini Vision...");
+                const ab = await pdfFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+                const total = pdf.numPages;
+                const texts = [];
+                for (let p = 1; p <= total; p++) {
+                  setLoadPct(Math.round((p / total) * 60));
+                  setLoadSub(`Gemini Vision — page ${p} of ${total}`);
+                  const b64 = await rasterizePage(pdf, p);
+                  const txt = await ocrPageWithGemini(
+                    b64,
+                    p,
+                    geminiKey,
+                    geminiModel,
+                  );
+                  texts.push(txt);
+                }
+                ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
+              } else if (ocrEngine === "claude") {
+                setLoadMsg("OCR via Claude Vision...");
+                setLoadSub("Reading pages with Claude — routed via proxy");
+                const ab = await pdfFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+                const total = pdf.numPages;
+                const texts = [];
+                for (let p = 1; p <= total; p++) {
+                  setLoadPct(Math.round((p / total) * 60));
+                  setLoadSub(`Claude Vision — page ${p} of ${total}`);
+                  const b64 = await rasterizePage(pdf, p);
+                  const res = await fetch("/api/claude", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      model,
+                      max_tokens: 2000,
+                      messages: [
+                        {
+                          role: "user",
+                          content: [
+                            {
+                              type: "image",
+                              source: {
+                                type: "base64",
+                                media_type: "image/png",
+                                data: b64,
+                              },
+                            },
+                            {
+                              type: "text",
+                              text:
+                                "This is page " +
+                                p +
+                                " of a scanned Thai TOR document. Extract ALL text verbatim including Thai. Preserve numbering and structure. Return only extracted text.",
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  });
+                  if (!res.ok) {
+                    const e = await res.json().catch(() => ({}));
+                    throw new Error(
+                      e?.error?.message || `Claude Vision ${res.status}`,
+                    );
+                  }
+                  const data = await res.json();
+                  texts.push(
+                    data.content?.find((b) => b.type === "text")?.text || "",
+                  );
+                }
+                ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");
+              } else if (ocrEngine === "typhoon") {
+                setLoadMsg("OCR via Typhoon (Thai)...");
+                setLoadSub("Reading pages with Typhoon — via proxy");
+                ocrText = await ocrPDFTyphoon(pdfFile, (page, total) => {
+                  setLoadPct(Math.round((page / total) * 60));
+                  setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                });
+              } else if (ocrEngine === "vision") {
+                setLoadMsg("OCR via Google Vision...");
+                setLoadSub("Reading pages with Google Cloud Vision — via proxy");
+                ocrText = await ocrPDFVision(pdfFile, (page, total) => {
+                  setLoadPct(Math.round((page / total) * 60));
+                  setLoadSub(`Google Vision — page ${page} of ${total}`);
+                });
+              }
+              setLoadPct(65);
+            }
+
+            setLoadMsg("Extracting requirements...");
+            setLoadPct(pdfType === "digital" ? 20 : 75);
+
+            let parsed;
+            if (aiEngine === "gemini") {
+              if (!geminiKey) {
+                setError("Gemini API key is required.");
+                setLoading(false);
+                return;
+              }
+              setLoadSub(`Using ${geminiModel}`);
+              parsed = await extractWithGemini(
+                pdfFile,
+                geminiKey,
+                geminiModel,
+                showTr,
+                pdfType,
+                ocrText,
+              );
+            } else {
+              setLoadSub(
+                `Using ${model === "claude-sonnet-4-20250514" ? "Sonnet" : "Opus"} via proxy`,
+              );
+              parsed = await extractRequirements(
+                pdfFile,
+                model,
+                showTr,
+                pdfType,
+                ocrText,
+              );
+            }
+
+            setLoadPct(95);
+            setLoadMsg("Validating...");
+            setLoadSub("");
+            const mapped = validateAndMap(parsed, showTr);
+            setRows(mapped);
+            setLoadPct(100);
+            const warned = mapped.filter((r) => r._warn).length;
+            if (warned > 0) {
+              setWarning(
+                `${warned} requirement${warned > 1 ? "s" : ""} appear to be translated rather than verbatim Thai — highlighted rows need review.`,
+              );
+            }
+            setTimeout(() => {
+              setLoading(false);
+              setLoadPct(null);
+            }, 400);
+          } catch (e) {
+            setError(e.message || "Extraction failed.");
+            setLoading(false);
+            setLoadPct(null);
+          }
+        };
+
+        const applyLib = (item) => {
+          if (selectedRow !== null) {
+            upd(selectedRow, "remarks", item.text);
+            setSelectedRow(null);
+          } else {
+            setRows((r) =>
+              r.map((row) =>
+                row.status === item.status
+                  ? { ...row, remarks: item.text }
+                  : row,
+              ),
+            );
+          }
+        };
+
+        const addLibItem = () => {
+          if (!newLib.label.trim() || !newLib.text.trim()) return;
+          setLib((l) => [
+            ...l,
+            {
+              id: "u" + Date.now(),
+              label: newLib.label.trim(),
+              text: newLib.text.trim(),
+              status: newLib.status,
+            },
+          ]);
+          setNewLib({ label: "", text: "", status: "comply" });
+          setShowLibAdd(false);
+        };
+
+        const [testStatus, setTestStatus] = useState(null); // null | 'testing' | 'ok' | 'fail'
+        const [testMsg, setTestMsg] = useState("");
+
+        const testConnection = async () => {
+          setTestStatus("testing");
+          setTestMsg("");
+          try {
+            if (aiEngine === "gemini") {
+              if (!geminiKey) {
+                setTestStatus("fail");
+                setTestMsg("No API key entered.");
+                return;
+              }
+              const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [
+                    { parts: [{ text: "Reply with the single word: OK" }] },
+                  ],
+                  generationConfig: { maxOutputTokens: 5 },
+                }),
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                // Parse common errors into plain language
+                if (msg.includes("quota") || msg.includes("limit: 0")) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Quota exceeded. Your free tier is used up — enable billing at aistudio.google.com or try a different Google account.",
+                  );
+                } else if (
+                  msg.includes("API_KEY_INVALID") ||
+                  msg.includes("invalid")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Invalid API key. Re-copy it from aistudio.google.com → API Keys.",
+                  );
+                } else if (
+                  msg.includes("not found") ||
+                  msg.includes("not supported")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    `Model "${geminiModel}" not available on your account. Try switching to Flash.`,
+                  );
+                } else {
+                  setTestStatus("fail");
+                  setTestMsg(msg);
+                }
+              } else {
+                const reply =
+                  data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                setTestStatus("ok");
+                setTestMsg(
+                  `Connected ✓ — ${geminiModel} responded: "${reply.trim()}"`,
+                );
+              }
+            } else if (aiEngine === "typhoon") {
+              const res = await fetch("/api/typhoon", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: TYPHOON_MODEL,
+                  max_tokens: 5,
+                  messages: [
+                    { role: "user", content: "Reply with the single word: OK" },
+                  ],
+                }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                if (res.status === 404) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Proxy /api/typhoon not found. Make sure functions/api/typhoon.js is deployed on Cloudflare Pages.",
+                  );
+                } else if (
+                  res.status === 401 ||
+                  res.status === 403 ||
+                  msg.toLowerCase().includes("api key") ||
+                  msg.toLowerCase().includes("unauthor")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Invalid or missing TYPHOON_API_KEY in Cloudflare Pages env vars. Get a free key at opentyphoon.ai.",
+                  );
+                } else {
+                  setTestStatus("fail");
+                  setTestMsg(msg);
+                }
+              } else {
+                const reply = data?.choices?.[0]?.message?.content || "";
+                setTestStatus("ok");
+                setTestMsg(
+                  `Connected ✓ — Typhoon reachable${reply ? ` — responded: "${reply.trim()}"` : ""}`,
+                );
+              }
+            } else {
+              // Claude — test via proxy
+              const res = await fetch("/api/claude", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model,
+                  max_tokens: 5,
+                  messages: [
+                    { role: "user", content: "Reply with the single word: OK" },
+                  ],
+                }),
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                if (msg.includes("credit") || msg.includes("balance")) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "No API credits. Top up at console.anthropic.com → Billing. (Your claude.ai subscription is separate from API billing.)",
+                  );
+                } else if (
+                  msg.includes("401") ||
+                  msg.includes("invalid x-api-key")
+                ) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Invalid API key in your Cloudflare Pages env vars. Check ANTHROPIC_API_KEY in the Pages project → Settings → Environment variables.",
+                  );
+                } else if (res.status === 404) {
+                  setTestStatus("fail");
+                  setTestMsg(
+                    "Proxy /api/claude not found. Make sure functions/api/claude.js is deployed on Cloudflare Pages.",
+                  );
+                } else {
+                  setTestStatus("fail");
+                  setTestMsg(msg);
+                }
+              } else {
+                const reply = data?.content?.[0]?.text || "";
+                setTestStatus("ok");
+                setTestMsg(`Connected ✓ — Claude responded: "${reply.trim()}"`);
+              }
+            }
+          } catch (e) {
+            if (e.message === "Failed to fetch") {
+              if (aiEngine === "claude" || aiEngine === "typhoon") {
+                setTestStatus("fail");
+                setTestMsg(
+                  `Proxy /api/${aiEngine} not reachable. It only works on the deployed Cloudflare Pages site, not when opening the file locally.`,
+                );
+              } else {
+                setTestStatus("fail");
+                setTestMsg(
+                  "Network error reaching Gemini. Check your internet connection or API key.",
+                );
+              }
+            } else {
+              setTestStatus("fail");
+              setTestMsg(e.message || "Unknown error.");
+            }
+          }
+        };
+
+        const exportXLSX = () => {
+          if (!rows.length) return;
+          const hasTranslation = showTr && rows.some((r) => r.translation);
+          const headers = [
+            "Item No.",
+            "Reference",
+            "Requirement / Specification",
+          ];
+          if (hasTranslation) headers.push("English Translation");
+          if (showCat) headers.push("Category");
+          headers.push("Compliance Status", "Remarks", "Verified By", "Date");
+          const wsd = [
+            headers,
+            ...rows.map((row, i) => {
+              const base = [i + 1, row.ref, row.requirement];
+              if (hasTranslation) base.push(row.translation);
+              if (showCat) base.push(row.category);
+              base.push(
+                STATUS_LABELS[row.status] || row.status,
+                row.remarks,
+                "",
+                "",
+              );
+              return base;
+            }),
+          ];
+          const ws = XLSX.utils.aoa_to_sheet(wsd);
+          const colWidths = [{ wch: 8 }, { wch: 10 }, { wch: 65 }];
+          if (hasTranslation) colWidths.push({ wch: 55 });
+          if (showCat) colWidths.push({ wch: 14 });
+          colWidths.push({ wch: 16 }, { wch: 55 }, { wch: 14 }, { wch: 12 });
+          ws["!cols"] = colWidths;
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, (project || "TOR").slice(0, 30));
+          XLSX.writeFile(
+            wb,
+            `${project || "TOR"}_Compliance_Matrix_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+          setInfo(
+            'Exported. Open in Excel and set column C font to "TH Sarabun New" or "Cordia New" for correct Thai rendering.',
+          );
+        };
+
+        const stats = useMemo(
+          () => ({
+            total: rows.length,
+            comply: rows.filter((r) => r.status === "comply").length,
+            partial: rows.filter((r) => r.status === "partial").length,
+            notcomply: rows.filter((r) => r.status === "notcomply").length,
+            na: rows.filter((r) => r.status === "na").length,
+          }),
+          [rows],
+        );
+
+        const filtered = useMemo(
+          () =>
+            filter === "all" ? rows : rows.filter((r) => r.status === filter),
+          [rows, filter],
+        );
+
+        return (
+          <div className="app">
+            {/* TOPBAR */}
+            <div className="topbar">
+              <div className="brand">
+                <div className="brand-pulse" />
+                <span className="brand-name">Yog-Sothoth</span>
+              </div>
+              <div className="brand-sep" />
+              <input
+                className="proj-input"
+                placeholder="Project name…"
+                value={project}
+                onChange={(e) => setProject(e.target.value)}
+              />
+              <div className="topbar-right">
+                <select
+                  className="model-sel"
+                  value={aiEngine}
+                  onChange={(e) => {
+                    setAiEngine(e.target.value);
+                    setTestStatus(null);
+                    setTestMsg("");
+                  }}
+                >
+                  <option value="typhoon">✦ Typhoon — Thai · Free</option>
+                  <option value="browser">🆓 Browser OCR — No Key</option>
+                  <option value="claude">⚡ Claude</option>
+                  <option value="gemini">✦ Gemini</option>
+                </select>
+                {aiEngine === "claude" && (
+                  <select
+                    className="model-sel"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                  >
+                    <option value="claude-sonnet-4-20250514">
+                      Sonnet — Fast
+                    </option>
+                    <option value="claude-opus-4-5">Opus — Max Accuracy</option>
+                  </select>
+                )}
+                {aiEngine === "gemini" && (
+                  <select
+                    className="model-sel"
+                    value={geminiModel}
+                    onChange={(e) => setGeminiModel(e.target.value)}
+                  >
+                    <option value="gemini-2.0-flash">Flash — Fast</option>
+                    <option value="gemini-2.5-pro-preview-06-05">
+                      2.5 Pro — Max Accuracy
+                    </option>
+                  </select>
+                )}
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={addRow}
+                  disabled={loading}
+                >
+                  + Row
+                </button>
+                <button
+                  className="btn btn-amber btn-sm"
+                  onClick={exportXLSX}
+                  disabled={!rows.length}
+                >
+                  ↓ Export .xlsx
+                </button>
+              </div>
+            </div>
+
+            <div className="body">
+              {/* SIDEBAR */}
+              <div className="sidebar">
+                {/* PDF section */}
+                <div className="sb-sec">
+                  <div className="sb-label">TOR Document</div>
+                  {!pdfFile ? (
+                    <div
+                      className={`upload-zone${dragging ? " drag" : ""}`}
+                      onClick={() => fileRef.current.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={onDrop}
+                    >
+                      <div className="upload-ico">📄</div>
+                      <div className="upload-txt">
+                        <strong>Click or drag PDF</strong>
+                        <br />
+                        Thai / English TOR document
+                      </div>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="file-input"
+                        onChange={(e) => handleFile(e.target.files[0])}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="file-badge">
+                        <span className="file-ico">📄</span>
+                        <span className="file-name">{pdfFile.name}</span>
+                        <button
+                          className="file-clear"
+                          onClick={() => {
+                            setPdfFile(null);
+                            setPdfType(null);
+                            setRows([]);
+                            setError(null);
+                            setWarning(null);
+                            setInfo(null);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {pdfType && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            marginTop: 5,
+                            color:
+                              pdfType === "digital"
+                                ? "var(--comply)"
+                                : "var(--warn)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          {pdfType === "digital"
+                            ? "✓ Digital PDF"
+                            : "⚠ Scanned PDF"}
+                        </div>
+                      )}
+                      <button
+                        className="btn btn-amber extract-btn"
+                        onClick={doExtract}
+                        disabled={loading || !pdfType}
+                      >
+                        {loading ? "Processing…" : "⚡ Extract Requirements"}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Typhoon — Thai, free tier via proxy */}
+                {aiEngine === "typhoon" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Typhoon OCR — Thai · Free</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(34,197,94,0.06)",
+                        borderColor: "rgba(34,197,94,0.25)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--comply)" }}
+                      >
+                        ✦ Thai-specialized · via /api/typhoon proxy
+                      </div>
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                        }}
+                        onClick={testConnection}
+                        disabled={testStatus === "testing"}
+                      >
+                        {testStatus === "testing"
+                          ? "Testing…"
+                          : "⚡ Test Connection"}
+                      </button>
+                      {testStatus && testStatus !== "testing" && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: "6px 8px",
+                            borderRadius: 3,
+                            lineHeight: 1.55,
+                            marginBottom: 5,
+                            background:
+                              testStatus === "ok"
+                                ? "rgba(34,197,94,0.1)"
+                                : "rgba(239,68,68,0.1)",
+                            border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                            color:
+                              testStatus === "ok" ? "var(--comply)" : "var(--notcomply)",
+                          }}
+                        >
+                          {testMsg}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--txt3)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Best free Thai OCR. Needs{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          TYPHOON_API_KEY
+                        </strong>{" "}
+                        in Cloudflare Pages env vars — free key at{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          opentyphoon.ai
+                        </strong>{" "}
+                        (free tier: 20 req/min). Rows are split heuristically —
+                        review boundaries, or use Typhoon as the OCR feeder under
+                        Claude/Gemini for AI-structured rows.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Browser OCR mode — no key needed */}
+                {aiEngine === "browser" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Browser OCR — 100% Free</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(34,197,94,0.06)",
+                        borderColor: "rgba(34,197,94,0.25)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--comply)" }}
+                      >
+                        🆓 No API key · No billing · No login
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "var(--txt3)",
+                          lineHeight: 1.65,
+                        }}
+                      >
+                        Runs{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          Tesseract.js
+                        </strong>{" "}
+                        entirely in your browser — Thai + English. Works for
+                        both digital and scanned PDFs. Just press Extract.
+                        <br />
+                        <br />
+                        <strong style={{ color: "var(--warn)" }}>
+                          Trade-off:
+                        </strong>{" "}
+                        OCR accuracy is lower than AI engines, and rows are
+                        split by a simple rule (clause numbers / bullets), so
+                        you'll review boundaries. First run downloads a ~15MB
+                        Thai pack, then it's cached offline.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gemini API key — always visible when Gemini is selected as AI engine */}
+                {aiEngine === "gemini" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Gemini API Key</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "var(--accent-soft)",
+                        borderColor: "var(--accent-bdr)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--info)" }}
+                      >
+                        ✦ Google AI Studio Key
+                      </div>
+                      <input
+                        className="key-input"
+                        type="password"
+                        placeholder="AIza... (from aistudio.google.com)"
+                        value={geminiKey}
+                        onChange={(e) => {
+                          setGeminiKey(e.target.value);
+                          setTestStatus(null);
+                          setTestMsg("");
+                        }}
+                      />
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                        }}
+                        onClick={testConnection}
+                        disabled={testStatus === "testing" || !geminiKey}
+                      >
+                        {testStatus === "testing"
+                          ? "Testing…"
+                          : "⚡ Test Connection"}
+                      </button>
+                      {testStatus && testStatus !== "testing" && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: "6px 8px",
+                            borderRadius: 3,
+                            lineHeight: 1.55,
+                            marginBottom: 5,
+                            background:
+                              testStatus === "ok"
+                                ? "rgba(34,197,94,0.1)"
+                                : "rgba(239,68,68,0.1)",
+                            border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                            color:
+                              testStatus === "ok" ? "var(--comply)" : "var(--notcomply)",
+                          }}
+                        >
+                          {testMsg}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--txt3)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Get free key at{" "}
+                        <strong style={{ color: "var(--info)" }}>
+                          aistudio.google.com
+                        </strong>{" "}
+                        → API Keys. Free tier: 1,500 req/day on Flash. No
+                        billing required. Cleared on reload.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Claude connection test — visible when Claude engine selected */}
+                {aiEngine === "claude" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Claude Connection</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "var(--accent-soft)",
+                        borderColor: "var(--accent-bdr)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--amber)" }}
+                      >
+                        ⚡ Via /api/claude proxy
+                      </div>
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{
+                          width: "100%",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                        }}
+                        onClick={testConnection}
+                        disabled={testStatus === "testing"}
+                      >
+                        {testStatus === "testing"
+                          ? "Testing…"
+                          : "⚡ Test Connection"}
+                      </button>
+                      {testStatus && testStatus !== "testing" && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            padding: "6px 8px",
+                            borderRadius: 3,
+                            lineHeight: 1.55,
+                            background:
+                              testStatus === "ok"
+                                ? "rgba(34,197,94,0.1)"
+                                : "rgba(239,68,68,0.1)",
+                            border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                            color:
+                              testStatus === "ok" ? "var(--comply)" : "var(--notcomply)",
+                          }}
+                        >
+                          {testMsg}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "var(--txt3)",
+                          lineHeight: 1.6,
+                          marginTop: 6,
+                        }}
+                      >
+                        Requires{" "}
+                        <strong style={{ color: "var(--amber)" }}>
+                          ANTHROPIC_API_KEY
+                        </strong>{" "}
+                        in Vercel env vars and API credits at{" "}
+                        <strong style={{ color: "var(--amber)" }}>
+                          console.anthropic.com
+                        </strong>
+                        . Claude.ai subscription ≠ API credits.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* OCR Engine selector — only when scanned AND using an AI engine */}
+                {pdfType === "scanned" &&
+                  (aiEngine === "claude" || aiEngine === "gemini") && (
+                  <div className="sb-sec">
+                    <div className="sb-label">OCR Engine (Scanned PDF)</div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 4,
+                        marginBottom: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {[
+                        ["typhoon", "Typhoon (Thai)"],
+                        ["vision", "Google Vision"],
+                        ["tesseract", "Browser Free"],
+                        ["claude", "Claude Vision"],
+                        ["gemini", "Gemini Vision"],
+                      ].map(([v, l]) => (
+                        <button
+                          key={v}
+                          onClick={() => setOcrEngine(v)}
+                          style={{
+                            flex: "1 1 45%",
+                            fontFamily: "inherit",
+                            fontSize: 9,
+                            fontWeight: 600,
+                            letterSpacing: ".03em",
+                            padding: "5px 4px",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            border: "1px solid",
+                            textTransform: "uppercase",
+                            transition: "all .15s",
+                            background:
+                              ocrEngine === v ? "var(--amber)" : "transparent",
+                            color: ocrEngine === v ? "#0c0e14" : "var(--txt3)",
+                            borderColor:
+                              ocrEngine === v ? "var(--amber)" : "var(--bdr2)",
+                          }}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+
+                    {ocrEngine === "typhoon" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          ✦ Typhoon Vision — Thai · free tier
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Reads each page with Typhoon (Thai-specialized) via the
+                          /api/typhoon proxy, then your AI engine structures the
+                          text. Needs TYPHOON_API_KEY in Cloudflare env (free key
+                          at opentyphoon.ai).
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "vision" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          🆓 Google Cloud Vision — free tier, good Thai
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 9,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Reads each page via the{" "}
+                          <code style={{ color: "var(--comply)" }}>
+                            /api/vision
+                          </code>{" "}
+                          proxy. Needs{" "}
+                          <strong style={{ color: "var(--comply)" }}>
+                            GOOGLE_VISION_API_KEY
+                          </strong>{" "}
+                          in Cloudflare env. Free tier:{" "}
+                          <strong>1,000 pages/month</strong> (Google Cloud
+                          account + card required). Good Thai; a solid backup to
+                          Typhoon.
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "tesseract" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          🆓 Free browser OCR + AI structuring
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Tesseract.js reads the pages free in-browser, then
+                          your selected AI engine structures the text into clean
+                          requirements. Best of both — no OCR cost.
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "claude" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "rgba(34,197,94,0.06)",
+                          borderColor: "rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--comply)" }}
+                        >
+                          ✓ Uses Claude proxy — no extra key
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Reads each page image via Claude Vision through your
+                          /api/claude proxy. Billed to your Anthropic API.
+                        </div>
+                      </div>
+                    )}
+                    {ocrEngine === "gemini" && (
+                      <div
+                        className="key-panel"
+                        style={{
+                          background: "var(--accent-soft)",
+                          borderColor: "var(--accent-bdr)",
+                        }}
+                      >
+                        <div
+                          className="key-panel-title"
+                          style={{ color: "var(--info)" }}
+                        >
+                          ✦ Uses Gemini Vision — needs key above
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--txt3)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Calls Gemini directly from browser (no proxy needed).
+                          Free tier covers most TOR workloads. Add your Gemini
+                          key in the section above.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Library */}
+                <div
+                  className="sb-sec"
+                  style={{ paddingBottom: 6, flexShrink: 0 }}
+                >
+                  <div className="sb-label">Comply Library</div>
+                  <div className="sb-hint">
+                    {selectedRow !== null
+                      ? "Row selected — click item to apply to that row only."
+                      : "Click item to fill all matching-status rows. Or select a row first."}
+                  </div>
+                </div>
+                <div className="lib-scroll">
+                  {lib.map((item) => (
+                    <div
+                      key={item.id}
+                      className="lib-item"
+                      onClick={() => applyLib(item)}
+                    >
+                      <div className="lib-item-top">
+                        <div>
+                          <div
+                            className="lib-item-label"
+                            style={{ color: STAT_COLORS[item.status] }}
+                          >
+                            {item.label}
+                          </div>
+                          <div className="lib-item-text">{item.text}</div>
+                        </div>
+                        <button
+                          className="lib-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLib((l) => l.filter((x) => x.id !== item.id));
+                          }}
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!showLibAdd ? (
+                    <button
+                      className="lib-add-btn"
+                      onClick={() => setShowLibAdd(true)}
+                    >
+                      ＋ Add custom response
+                    </button>
+                  ) : (
+                    <div className="lib-add-form">
+                      <label className="lib-add-label">Label</label>
+                      <input
+                        className="lib-add-input"
+                        placeholder="e.g. Comply — IIoT Gateway"
+                        value={newLib.label}
+                        onChange={(e) =>
+                          setNewLib((p) => ({ ...p, label: e.target.value }))
+                        }
+                      />
+                      <label className="lib-add-label">Response text</label>
+                      <textarea
+                        className="lib-add-input"
+                        placeholder="Standard compliance response…"
+                        value={newLib.text}
+                        onChange={(e) =>
+                          setNewLib((p) => ({ ...p, text: e.target.value }))
+                        }
+                        rows={3}
+                        style={{
+                          resize: "none",
+                          display: "block",
+                          fontFamily: "'Sarabun',sans-serif",
+                        }}
+                      />
+                      <label className="lib-add-label">Applies to status</label>
+                      <select
+                        className="lib-add-sel"
+                        value={newLib.status}
+                        onChange={(e) =>
+                          setNewLib((p) => ({ ...p, status: e.target.value }))
+                        }
+                      >
+                        <option value="comply">Comply</option>
+                        <option value="partial">Partial</option>
+                        <option value="notcomply">Not Comply</option>
+                        <option value="na">N/A</option>
+                      </select>
+                      <div className="lib-add-btns">
+                        <button
+                          className="btn btn-amber btn-xs"
+                          style={{ flex: 1, justifyContent: "center" }}
+                          onClick={addLibItem}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-xs"
+                          style={{ flex: 1, justifyContent: "center" }}
+                          onClick={() => setShowLibAdd(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CONTENT */}
+              <div className="content">
+                {loading && (
+                  <div className="progress">
+                    <div className="progress-fill" />
+                  </div>
+                )}
+
+                {/* alerts */}
+                {error && (
+                  <div className="alert alert-err">
+                    <span className="alert-icon">⚠</span>
+                    <div className="alert-body">{error}</div>
+                    <button
+                      className="alert-dismiss"
+                      onClick={() => setError(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {warning && (
+                  <div className="alert alert-warn">
+                    <span className="alert-icon">⚠</span>
+                    <div className="alert-body">{warning}</div>
+                    <button
+                      className="alert-dismiss"
+                      onClick={() => setWarning(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {info && (
+                  <div className="alert alert-info">
+                    <span className="alert-icon">ℹ</span>
+                    <div className="alert-body">{info}</div>
+                    <button
+                      className="alert-dismiss"
+                      onClick={() => setInfo(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {/* toolbar */}
+                {rows.length > 0 && (
+                  <div className="toolbar">
+                    <div className="stats">
+                      <div className="stat">
+                        <div
+                          className="stat-dot"
+                          style={{ background: "var(--txt3)" }}
+                        />
+                        <span className="stat-lbl">Total</span>&nbsp;
+                        <span className="stat-val">{stats.total}</span>
+                      </div>
+                      {[
+                        ["comply", "Comply"],
+                        ["partial", "Partial"],
+                        ["notcomply", "Not Comply"],
+                        ["na", "N/A"],
+                      ].map(([s, l]) => (
+                        <div key={s} className="stat">
+                          <div
+                            className="stat-dot"
+                            style={{ background: STAT_COLORS[s] }}
+                          />
+                          <span className="stat-lbl">{l}</span>&nbsp;
+                          <span className="stat-val">{stats[s]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="toolbar-sep" />
+                    <div className="filters">
+                      {[
+                        ["all", "All", "f-all"],
+                        ["comply", "Comply", "f-comply"],
+                        ["partial", "Partial", "f-partial"],
+                        ["notcomply", "Not Comply", "f-notcomply"],
+                        ["na", "N/A", "f-na"],
+                      ].map(([v, l, cls]) => (
+                        <button
+                          key={v}
+                          className={`f-btn ${cls}${filter === v ? " on" : ""}`}
+                          onClick={() => setFilter(v)}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="toggles">
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={showTr}
+                          onChange={(e) => setShowTr(e.target.checked)}
+                        />
+                        Translation col
+                      </label>
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={showCat}
+                          onChange={(e) => setShowCat(e.target.checked)}
+                        />
+                        Category col
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* table */}
+                <div className="table-area" ref={tableRef}>
+                  {loading && (
+                    <div className="overlay">
+                      <div className="spinner" />
+                      <div className="ov-msg">{loadMsg}</div>
+                      {loadSub && <div className="ov-sub">{loadSub}</div>}
+                      {loadPct !== null && (
+                        <div className="ov-prog-wrap">
+                          <div
+                            className="ov-prog-fill"
+                            style={{ width: `${loadPct}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {rows.length === 0 && !loading ? (
+                    <div className="empty">
+                      <div className="empty-ico">⬡</div>
+                      <div className="empty-title">No requirements loaded</div>
+                      <div className="empty-sub">
+                        Upload a TOR PDF and click{" "}
+                        <strong>Extract Requirements</strong>
+                        <br />
+                        or click <strong>+ Row</strong> to enter manually.
+                      </div>
+                    </div>
+                  ) : (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th className="c-no">#</th>
+                          <th className="c-ref">Ref.</th>
+                          <th className="c-req">
+                            Requirement / Specification
+                            <span
+                              style={{
+                                color: "var(--txt3)",
+                                fontWeight: 400,
+                                marginLeft: 4,
+                              }}
+                            >
+                              (verbatim)
+                            </span>
+                          </th>
+                          {showTr && (
+                            <th className="c-tr">English Translation</th>
+                          )}
+                          {showCat && <th className="c-cat">Category</th>}
+                          <th className="c-sts">Status</th>
+                          <th className="c-rem">Remarks</th>
+                          <th className="c-del" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((row, i) => (
+                          <tr
+                            key={row.id}
+                            className={selectedRow === row.id ? "sel-row" : ""}
+                            onClick={() =>
+                              setSelectedRow(
+                                selectedRow === row.id ? null : row.id,
+                              )
+                            }
+                          >
+                            <td className="c-no">
+                              <div className="td-p no-txt">{i + 1}</div>
+                            </td>
+                            <td
+                              className="c-ref"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <input
+                                  className="ref-in"
+                                  value={row.ref}
+                                  onChange={(e) =>
+                                    upd(row.id, "ref", e.target.value)
+                                  }
+                                  placeholder="CL-001"
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className="c-req"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <textarea
+                                  className="cell-in"
+                                  value={row.requirement}
+                                  onChange={(e) =>
+                                    upd(row.id, "requirement", e.target.value)
+                                  }
+                                  placeholder="Verbatim requirement text (Thai/English)…"
+                                  rows={2}
+                                />
+                                {row._warn && (
+                                  <div className="warn-flag">
+                                    ⚠ May be translated — verify verbatim
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            {showTr && (
+                              <td
+                                className="c-tr"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="td-p">
+                                  <textarea
+                                    className="cell-in"
+                                    value={row.translation}
+                                    onChange={(e) =>
+                                      upd(row.id, "translation", e.target.value)
+                                    }
+                                    placeholder="English translation…"
+                                    rows={2}
+                                  />
+                                </div>
+                              </td>
+                            )}
+                            {showCat && (
+                              <td
+                                className="c-cat"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="td-p">
+                                  <select
+                                    className="cat-sel"
+                                    value={row.category}
+                                    onChange={(e) =>
+                                      upd(row.id, "category", e.target.value)
+                                    }
+                                  >
+                                    {VALID_CATS.map((c) => (
+                                      <option key={c} value={c}>
+                                        {c}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </td>
+                            )}
+                            <td
+                              className="c-sts"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <select
+                                  className={`sts-sel sts-${row.status}`}
+                                  value={row.status}
+                                  onChange={(e) =>
+                                    upd(row.id, "status", e.target.value)
+                                  }
+                                >
+                                  {STATUS_OPTS.map((o) => (
+                                    <option key={o.v} value={o.v}>
+                                      {o.l}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            <td
+                              className="c-rem"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <textarea
+                                  className="cell-in"
+                                  style={{
+                                    fontFamily: "var(--font-thai)",
+                                    fontSize: 14,
+                                  }}
+                                  value={row.remarks}
+                                  onChange={(e) =>
+                                    upd(row.id, "remarks", e.target.value)
+                                  }
+                                  placeholder="Standard response or notes…"
+                                  rows={2}
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className="c-del"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="td-p">
+                                <button
+                                  className="row-del"
+                                  onClick={() => del(row.id)}
+                                  title="Delete row"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                <div className="bottom-bar">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={addRow}
+                    disabled={loading}
+                  >
+                    + Add Row
+                  </button>
+                  {selectedRow !== null && (
+                    <span className="bottom-hint">
+                      Row selected — click a library item to apply its text to
+                      Remarks, or click row again to deselect.
+                    </span>
+                  )}
+                  {selectedRow === null && rows.length > 0 && (
+                    <span className="bottom-hint">
+                      Click any row to select it for targeted library
+                      application.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+export default App;

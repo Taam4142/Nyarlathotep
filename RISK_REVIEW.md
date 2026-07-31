@@ -10,6 +10,9 @@ inputs · **Low** = quality / edge case.
 
 ## Correctness
 
+> ✅ **R1–R4 fixed in v0.3.0** (the Vite/TS migration). Line anchors below point at the pre-migration
+> single-file `index.html` and are historical; the logic now lives in `src/lib/{pdf,extract}.ts`.
+
 | ID  | Risk | Sev | Why it matters | How to fix |
 | --- | ---- | --- | -------------- | ---------- |
 | R1  | Dead + broken `ocrPDFClaude()` (`:1280`) — never called, and it hits `api.anthropic.com` directly with **no** `x-api-key` header. | Low | Confuses readers; would fail CORS + 401 if ever wired up. The live Claude-Vision path inlines its own proxy `fetch` (~`:1793`) instead. | Delete the dead function, or refactor the inline block to a single shared proxy helper. |

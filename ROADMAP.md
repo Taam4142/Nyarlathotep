@@ -4,8 +4,17 @@
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
 > Last updated 2026-07-28.
 
-## Shipped in v0.2.0
+## Shipped
 
+**v0.3.0 (in progress) — modernization Phase 1:**
+- **A2 — Vite + React + TypeScript build.** Retired in-browser Babel; the single file is decomposed into
+  typed, unit-tested `src/lib/*` modules + `src/App.tsx` + `src/styles.css`. Faster load, types, tests.
+- **R1 / R2 / R3 / R4** fixed during the port (dead code, large-PDF base64, robust JSON parsing).
+- _Trigger for the priority re-order:_ the "free / no-backend" constraint was dropped; now optimizing for
+  efficiency/correctness/performance. Next: Phase 2 (remaining fixes + hardened backend), Phase 3
+  (persistence + optional self-hosted OCR).
+
+**v0.2.0:**
 - **Free Thai OCR** — added the Typhoon engine (default) + Google Cloud Vision feeder (free tier, good
   Thai); removed Google Doc AI. (OCR.space was evaluated and dropped — weak Thai.)
 - **Cloudflare Pages** migration (retired Vercel); proxies are now Pages Functions.

@@ -13,6 +13,12 @@ There are no version tags yet, so released history below is grouped by date and 
 - `OCR_RESEARCH.md` — survey of the OCR landscape and the lineup decision.
 
 ### Changed
+- **Migrated to a Vite + React + TypeScript build.** The app is now bundled (minified, code-hashed,
+  cached) instead of compiled in the browser by Babel-standalone on every load — much faster first paint.
+  The single `index.html` was decomposed into typed, unit-tested modules in `src/lib/` (`pdf`, `ocr`,
+  `extract`, `constants`, `types`), the UI in `src/App.tsx`, and styles in `src/styles.css`; added Vitest.
+  Behavior and look are unchanged. **Deploy change:** the Cloudflare Pages build command is now
+  `npm run build` with output directory `dist`.
 - **Migrated hosting from Vercel to Cloudflare Pages.** Proxies moved to Pages Functions
   (`functions/api/{claude,typhoon,vision}.js`); the app is served as `index.html`; removed `vercel.json`
   and the `api/` folder. Default engine is now Typhoon.
@@ -25,6 +31,11 @@ There are no version tags yet, so released history below is grouped by date and 
 - **Google Document AI** OCR path (paid + heavy setup) — engine option, credential panel, and its code.
 
 ### Fixed
+- **R2** — large-PDF crash: base64 encoding is now chunked (`fileToBase64`), replacing
+  `btoa(String.fromCharCode(...))` which overflowed the call stack on big PDFs.
+- **R3 / R4** — extraction now uses a robust `parseJsonArray` that survives markdown fences, surrounding
+  prose, trailing commas, and truncated responses (salvaging complete rows) instead of failing outright.
+- **R1** — removed the dead, broken `ocrPDFClaude` function.
 - **Cloudflare deploy redirect loop** — renamed the app to `index.html` and removed the `_redirects`
   catch-all, which caused `ERR_TOO_MANY_REDIRECTS` (it collided with Cloudflare Pages' clean-URL handling).
   README now spells out that the project must be a **Pages** deployment, not Workers.
