@@ -14,8 +14,8 @@ There are no version tags yet, so released history below is grouped by date and 
 
 ### Changed
 - **Migrated hosting from Vercel to Cloudflare Pages.** Proxies moved to Pages Functions
-  (`functions/api/claude.js`, `functions/api/typhoon.js`); added `_redirects`; removed `vercel.json` and
-  the `api/` folder. Default engine is now Typhoon.
+  (`functions/api/{claude,typhoon,vision}.js`); the app is served as `index.html`; removed `vercel.json`
+  and the `api/` folder. Default engine is now Typhoon.
 - **Renamed the project to Yog-Sothoth** — app title/brand, all docs, and the GitHub repo
   (`Taam4142/TOR-Extract` → `Taam4142/Yog-Sothoth`); "TOR" kept only where it means the document type.
 - **Minimal auto light/dark redesign** — the UI now follows the viewer's `prefers-color-scheme` (light is
@@ -23,6 +23,11 @@ There are no version tags yet, so released history below is grouped by date and 
 
 ### Removed
 - **Google Document AI** OCR path (paid + heavy setup) — engine option, credential panel, and its code.
+
+### Fixed
+- **Cloudflare deploy redirect loop** — renamed the app to `index.html` and removed the `_redirects`
+  catch-all, which caused `ERR_TOO_MANY_REDIRECTS` (it collided with Cloudflare Pages' clean-URL handling).
+  README now spells out that the project must be a **Pages** deployment, not Workers.
 
 ## [0.1.0] - 2026-07-27
 

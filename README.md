@@ -37,7 +37,7 @@ Vision**.
 
 ## Tech stack
 
-- **One file:** [`tor_compliance_matrix.html`](tor_compliance_matrix.html) is the entire app — React 18
+- **One file:** [`index.html`](index.html) is the entire app — React 18
   compiled **in the browser** by Babel-standalone. No build step, no `package.json`.
 - **CDN libraries:** PDF.js (read + rasterize), SheetJS (`xlsx` export), Tesseract.js (browser OCR),
   React/ReactDOM, Babel, Google Fonts (Sarabun for Thai).
@@ -45,8 +45,8 @@ Vision**.
   [`functions/api/typhoon.js`](functions/api/typhoon.js), and [`functions/api/vision.js`](functions/api/vision.js)
   forward to the Anthropic / Typhoon / Google Vision APIs and inject the keys server-side, so those keys
   never reach the browser.
-- **Hosting:** Cloudflare Pages (static). [`_redirects`](_redirects) serves the single-page app; `/api/*`
-  is handled by the Functions. No build step.
+- **Hosting:** Cloudflare Pages (static). The app is `index.html` (Pages serves it at `/` natively);
+  `/api/*` is handled by the Functions. No build step, no client-side routing (so no `_redirects` needed).
 
 ## Setup & deploy (Cloudflare Pages)
 
@@ -79,7 +79,7 @@ Google Vision keys stay server-side in the Cloudflare env vars above.
 ## Running locally
 
 Serve the folder statically (e.g. `py -m http.server 8080`) and open
-`http://localhost:8080/tor_compliance_matrix.html`. Caveats:
+`http://localhost:8080/` (served as `index.html`). Caveats:
 
 - The **Typhoon** and **Claude** engines and the **Google Vision** feeder call `/api/*`, which only exist
   on the deployed Cloudflare site (or via `npx wrangler pages dev .`). Locally they fail with a network error.
@@ -101,11 +101,10 @@ what's planned.
 
 | Path                         | Purpose                                                        |
 | ---------------------------- | -------------------------------------------------------------- |
-| `tor_compliance_matrix.html` | The entire single-file app (UI + all logic).                   |
+| `index.html`                 | The entire single-file app (UI + all logic).                   |
 | `functions/api/claude.js`    | Cloudflare Pages Function — proxy to the Anthropic API.         |
 | `functions/api/typhoon.js`   | Cloudflare Pages Function — proxy to the Typhoon OCR API.       |
 | `functions/api/vision.js`    | Cloudflare Pages Function — proxy to the Google Vision API.     |
-| `_redirects`                 | Cloudflare Pages routing (serves the SPA).                     |
 | `SKILL.md`                   | What the tool is and how it's wired (reference).               |
 | `CLAUDE.md`                  | Prompt engineering + AI behaviour rules.                       |
 | `OCR_RESEARCH.md`            | Survey of OCR options + the lineup decision.                   |

@@ -2,7 +2,7 @@
 
 > Known correctness, security, and robustness risks in the current code, with why each matters and how to
 > fix it. Advisory register — record, don't silently skip. Reviewed 2026-07-27 against commit `a547bdd`.
-> Line anchors point into [`tor_compliance_matrix.html`](tor_compliance_matrix.html) unless noted.
+> Line anchors point into [`index.html`](index.html) unless noted.
 > Fixes are scheduled in [`ROADMAP.md`](ROADMAP.md).
 
 Severity: **High** = wrong output, crash, or credit/security exposure · **Med** = fails on realistic

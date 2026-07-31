@@ -1,4 +1,0 @@
-# Cloudflare Pages routing.
-# /api/* is served by Pages Functions (functions/api/*), which match before this file.
-# Everything else serves the single-page app.
-/*    /tor_compliance_matrix.html    200
