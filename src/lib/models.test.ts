@@ -4,6 +4,7 @@ import {
   GEMINI_MODELS,
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_GEMINI_MODEL,
+  TYPHOON_MODEL,
   claudeModelShort,
 } from "./models";
 
@@ -20,6 +21,11 @@ describe("model registry (A1)", () => {
     expect(ids).not.toContain("claude-opus-4-5");
     expect(ids).not.toContain("gemini-2.0-flash");
     expect(ids).not.toContain("gemini-2.5-pro-preview-06-05");
+  });
+
+  it("uses Typhoon OCR 1.5, not the deprecated v1 preview", () => {
+    // typhoon-ocr-preview was deprecated 2025-12-31.
+    expect(TYPHOON_MODEL).toBe("typhoon-ocr");
   });
 
   it("claudeModelShort resolves the short label, falling back to the id", () => {

@@ -1,13 +1,14 @@
 // Cloudflare Pages Function — proxy to the Typhoon (OpenTyphoon) OCR API.
 // Route: /api/typhoon  (keeps TYPHOON_API_KEY server-side)
-// OpenAI-compatible chat/completions; model "typhoon-ocr-preview".
+// OpenAI-compatible chat/completions; model "typhoon-ocr" (Typhoon OCR 1.5).
 // Hardened via ./_guard.js (RISK_REVIEW R6): origin allow-list, body cap,
 // per-IP rate limit, model allow-list, optional shared secret.
 
 import { guard, corsHeaders, json } from "./_guard.js";
 
 // Keep in sync with src/lib/models.ts. Override via the ALLOWED_MODELS env var.
-const TYPHOON_MODELS = ["typhoon-ocr-preview"];
+// (typhoon-ocr = v1.5; the legacy typhoon-ocr-preview was deprecated 2025-12-31.)
+const TYPHOON_MODELS = ["typhoon-ocr"];
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, { status: 204, headers: corsHeaders(request, env) });

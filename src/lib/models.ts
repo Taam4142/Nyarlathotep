@@ -25,8 +25,10 @@ export const GEMINI_MODELS: ModelOption[] = [
 ];
 export const DEFAULT_GEMINI_MODEL = GEMINI_MODELS[0].id;
 
-/** Typhoon OCR — Thai-specialized VLM, via the /api/typhoon proxy. */
-export const TYPHOON_MODEL = "typhoon-ocr-preview";
+/** Typhoon OCR — Thai-specialized VLM, via the /api/typhoon proxy.
+ * "typhoon-ocr" is Typhoon OCR 1.5, the current model. (The old
+ * "typhoon-ocr-preview" / v1 was deprecated 2025-12-31.) */
+export const TYPHOON_MODEL = "typhoon-ocr";
 
 /** Short display name for a Claude model id (used in progress messages). */
 export function claudeModelShort(id: string): string {

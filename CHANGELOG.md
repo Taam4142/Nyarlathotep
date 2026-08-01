@@ -30,6 +30,10 @@ There are no version tags yet, so released history below is grouped by date and 
 - `OCR_RESEARCH.md` — survey of the OCR landscape and the lineup decision.
 
 ### Changed
+- **Typhoon OCR model → `typhoon-ocr` (v1.5).** The default OCR engine now targets Typhoon OCR 1.5, the
+  current model. The old `typhoon-ocr-preview` (v1) was deprecated on 2025-12-31, so it was likely already
+  failing. The response unwrap (`extractTyphoonText`) is format-agnostic, so it handles v1.5's output
+  whether it's the `{"natural_text": …}` envelope or plain layout-aware Markdown.
 - **Migrated to a Vite + React + TypeScript build.** The app is now bundled (minified, code-hashed,
   cached) instead of compiled in the browser by Babel-standalone on every load — much faster first paint.
   The single `index.html` was decomposed into typed, unit-tested modules in `src/lib/` (`pdf`, `ocr`,
