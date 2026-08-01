@@ -39,7 +39,8 @@ Vision**.
 
 - **Vite + React 18 + TypeScript.** The app is bundled (minified, cached) — no in-browser compile.
   Source lives in [`src/`](src): `App.tsx` (UI) imports typed, unit-tested logic from
-  [`src/lib/`](src/lib) (`pdf.ts`, `ocr.ts`, `extract.ts`, `constants.ts`, `types.ts`); styles in
+  [`src/lib/`](src/lib) (`pdf.ts`, `ocr.ts`, `extract.ts`, `net.ts`, `models.ts`, `typhoon.ts`,
+  `constants.ts`, `types.ts`); styles in
   [`src/styles.css`](src/styles.css). `npm run build` emits `dist/`.
 - **npm dependencies** (bundled, not CDN): `react`/`react-dom`, `pdfjs-dist`, `tesseract.js`, `xlsx`.
   Fonts (Inter / Sarabun / JetBrains Mono) load from Google Fonts via `index.html`.
@@ -67,6 +68,10 @@ Vision**.
      (Google Cloud account + card; free tier 1,000 pages/month).
 5. **Deploy.** Note the `*.pages.dev` URL. Functions under `functions/` are picked up automatically.
 6. Optional local dev of the Functions: `npx wrangler pages dev .`.
+
+> 🔒 **Secure the proxies before you share the URL.** The `/api/*` routes are public and spend your API
+> credits. At minimum set `ALLOWED_ORIGINS` and bind a `RATE_LIMIT` KV namespace — full click-by-click
+> steps (with `curl` checks) are in [`DEPLOY.md`](DEPLOY.md).
 
 ### Troubleshooting
 
@@ -114,11 +119,13 @@ what's planned.
 | ---------------------------- | -------------------------------------------------------------- |
 | `index.html`                 | Vite entry (mounts `src/main.tsx`).                            |
 | `src/App.tsx`                | Root UI component (state + render).                            |
-| `src/lib/`                   | Typed, unit-tested logic: pdf, ocr, extract, constants, types. |
+| `src/lib/`                   | Typed, unit-tested logic: pdf, ocr, extract, net (retry), models, typhoon, constants, types. |
 | `src/styles.css`             | Design tokens + all component styles.                          |
 | `functions/api/claude.js`    | Cloudflare Pages Function — proxy to the Anthropic API.         |
 | `functions/api/typhoon.js`   | Cloudflare Pages Function — proxy to the Typhoon OCR API.       |
 | `functions/api/vision.js`    | Cloudflare Pages Function — proxy to the Google Vision API.     |
+| `functions/api/_guard.js`    | Shared proxy hardening — origin/model allow-list, body cap, rate limit (R6). |
+| `DEPLOY.md`                  | Cloudflare deploy + proxy-hardening click-steps.               |
 | `SKILL.md`                   | What the tool is and how it's wired (reference).               |
 | `CLAUDE.md`                  | Prompt engineering + AI behaviour rules.                       |
 | `OCR_RESEARCH.md`            | Survey of OCR options + the lineup decision.                   |
