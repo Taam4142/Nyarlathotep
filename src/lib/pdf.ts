@@ -9,10 +9,22 @@ export { pdfjsLib };
 export async function detectPDFType(file: File): Promise<PdfType> {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-  const page = await pdf.getPage(1);
-  const tc = await page.getTextContent();
-  const text = tc.items.map((i: any) => ("str" in i ? i.str : "")).join("");
-  return text.trim().length > 50 ? "digital" : "scanned";
+  // Sample several pages, not just page 1 — a scanned cover on an otherwise
+  // digital PDF (or a text-only TOC on a scanned one) must not misclassify the
+  // whole document (RISK_REVIEW R5).
+  const sample = Math.min(pdf.numPages, 5);
+  let total = 0;
+  for (let n = 1; n <= sample; n++) {
+    const page = await pdf.getPage(n);
+    const tc = await page.getTextContent();
+    total += tc.items
+      .map((i: any) => ("str" in i ? i.str : ""))
+      .join("")
+      .trim().length;
+    // Once we've clearly seen a real text layer, it's digital — stop early.
+    if (total > 100) return "digital";
+  }
+  return total > 50 ? "digital" : "scanned";
 }
 
 /** Rasterize one PDF page to a base64 PNG (no data: prefix). */

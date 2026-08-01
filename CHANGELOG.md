@@ -6,6 +6,23 @@ There are no version tags yet, so released history below is grouped by date and 
 ## [Unreleased]
 
 ### Added
+- **Cancel button** on the progress overlay — a running OCR/extraction can now be stopped. An
+  `AbortController` threads through every engine call; multi-page loops stop between pages; a cancelled run
+  reports "Extraction cancelled" instead of an error. (RISK_REVIEW R10.)
+- **Proxy hardening** (`functions/api/_guard.js`) — the three API proxies now enforce an origin allow-list,
+  a model allow-list, a body-size cap (8 MB), a per-IP rate limit (KV-backed), and an optional shared
+  secret. Every layer degrades gracefully, so landing this does not break an existing deploy — activate the
+  layers by setting `ALLOWED_ORIGINS` (and optionally binding a `RATE_LIMIT` KV namespace, `PROXY_SECRET`,
+  or `ALLOWED_MODELS`) in Cloudflare. (RISK_REVIEW R6.)
+- **Centralized model registry** (`src/lib/models.ts`) — Claude and Gemini model IDs/labels now live in one
+  place instead of scattered literals in `App.tsx`. Refreshed to the current lineup: Claude
+  `claude-sonnet-5` / `claude-opus-5` (was `claude-sonnet-4-20250514` / `claude-opus-4-5`) and Gemini
+  `gemini-3.6-flash` / `gemini-3.1-pro` (was `gemini-2.0-flash` / `gemini-2.5-pro-preview-06-05`) — the old
+  IDs predated the current models and could reject. (RISK_REVIEW A1.)
+- **Retry/backoff on all API calls** (`src/lib/net.ts` `fetchWithRetry`) — exponential backoff with jitter,
+  honoring `Retry-After`, on 408/425/429/5xx/529 and transient network errors, across every extraction and
+  OCR engine (Claude, Gemini, Typhoon, Google Vision). Takes an `AbortSignal` (groundwork for cancellation).
+  (RISK_REVIEW R9.)
 - **Typhoon OCR engine** (default) — Thai-specialized, free tier via the `/api/typhoon` proxy; usable both
   standalone (OCR → heuristic rows) and as an OCR feeder for the Claude/Gemini engines.
 - **Google Cloud Vision** OCR feeder (via `functions/api/vision.js`) — free tier 1,000 pages/month, good
@@ -31,6 +48,15 @@ There are no version tags yet, so released history below is grouped by date and 
 - **Google Document AI** OCR path (paid + heavy setup) — engine option, credential panel, and its code.
 
 ### Fixed
+- **Typhoon OCR one-giant-row bug** — the `typhoon-ocr` model returns its result as a JSON envelope
+  `{"natural_text": "…\n…"}` with escaped newlines, not plain text. That whole blob was fed to the row
+  splitter, collapsing a page into a single row full of literal `\n` symbols. `extractTyphoonText`
+  (`src/lib/typhoon.ts`) now unwraps `natural_text` (restoring real newlines), so Typhoon splits into
+  per-clause rows exactly like the Browser-OCR path — with better OCR quality.
+- **R5** — `detectPDFType` now samples up to 5 pages (summing extracted-text length, early-exiting on a
+  real text layer) instead of page 1 only, so a scanned cover no longer misclassifies a digital PDF.
+- **R11** — Gemini extraction is pinned to JSON output (`responseMimeType: "application/json"`), so it
+  stops wrapping results in prose that trips the parser.
 - **R2** — large-PDF crash: base64 encoding is now chunked (`fileToBase64`), replacing
   `btoa(String.fromCharCode(...))` which overflowed the call stack on big PDFs.
 - **R3 / R4** — extraction now uses a robust `parseJsonArray` that survives markdown fences, surrounding

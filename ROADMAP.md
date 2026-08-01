@@ -6,7 +6,21 @@
 
 ## Shipped
 
-**v0.3.0 (in progress) — modernization Phase 1:**
+**Phase 2 (2026-08-01) — correctness, reliability & security. Fix list complete:**
+- **A1** — model IDs refreshed + centralized in `src/lib/models.ts` (Claude → `claude-sonnet-5` /
+  `claude-opus-5`; Gemini → `gemini-3.6-flash` / `gemini-3.1-pro`).
+- **R9** — retry/backoff on all engine calls (`src/lib/net.ts` `fetchWithRetry`).
+- **R11** — Gemini pinned to JSON output.
+- **R5** — multi-page `detectPDFType` sampling.
+- **R10** — cancellation: `AbortController` threaded through every engine call + a Cancel button in the
+  progress overlay.
+- **R6** — proxies hardened **in place** (`functions/api/_guard.js`): origin allow-list, model allow-list,
+  body-size cap, per-IP KV rate limit, optional shared secret. Chose in-place hardening over a login/backend
+  (keeps the tool public, no access-model change). **Engineer action to activate:** set `ALLOWED_ORIGINS`
+  (and optionally bind a `RATE_LIMIT` KV namespace / set `PROXY_SECRET` / `ALLOWED_MODELS`) in Cloudflare.
+- _Deferred to a later pass:_ R7, R8, R12; and the bigger backend/persistence work is Phase 3.
+
+**v0.3.0 — modernization Phase 1:**
 - **A2 — Vite + React + TypeScript build.** Retired in-browser Babel; the single file is decomposed into
   typed, unit-tested `src/lib/*` modules + `src/App.tsx` + `src/styles.css`. Faster load, types, tests.
 - **R1 / R2 / R3 / R4** fixed during the port (dead code, large-PDF base64, robust JSON parsing).
@@ -69,7 +83,7 @@ Small, self-contained, mostly bug/security hardening. None changes the UX shape.
 | Item | Trigger to pick it up |
 | ---- | --------------------- |
 | A2 — Vite/TS migration | First-paint load time becomes a complaint, or more than one person starts editing the file regularly. |
-| A1 — model-ID refresh | **Before the next real extraction run** — the current IDs (`claude-sonnet-4-20250514`, `claude-opus-4-5`, `gemini-2.0-flash`, `gemini-2.5-pro-preview-06-05`) predate the current lineup and may reject. Verify exact current IDs first. |
+| ~~A1 — model-ID refresh~~ | ✅ **Done (Phase 2, 2026-08-01)** — centralized in `src/lib/models.ts`, refreshed to `claude-sonnet-5` / `claude-opus-5` / `gemini-3.6-flash` / `gemini-3.1-pro`. |
 | F2 — ExcelJS | A user reports the manual Thai-font step as a real pain, or exports go to non-technical reviewers. |
 | Google Doc AI polish | A batch of heavily degraded scans that Tesseract/Claude/Gemini vision can't read. |
 

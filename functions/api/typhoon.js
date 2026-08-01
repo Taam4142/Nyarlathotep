@@ -1,38 +1,36 @@
 // Cloudflare Pages Function — proxy to the Typhoon (OpenTyphoon) OCR API.
 // Route: /api/typhoon  (keeps TYPHOON_API_KEY server-side)
 // OpenAI-compatible chat/completions; model "typhoon-ocr-preview".
-// NOTE: CORS is open ("*") with no auth/rate-limit — see RISK_REVIEW.md R6.
+// Hardened via ./_guard.js (RISK_REVIEW R6): origin allow-list, body cap,
+// per-IP rate limit, model allow-list, optional shared secret.
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+import { guard, corsHeaders, json } from "./_guard.js";
 
-export async function onRequestOptions() {
-  return new Response(null, { status: 204, headers: CORS });
+// Keep in sync with src/lib/models.ts. Override via the ALLOWED_MODELS env var.
+const TYPHOON_MODELS = ["typhoon-ocr-preview"];
+
+export async function onRequestOptions({ request, env }) {
+  return new Response(null, { status: 204, headers: corsHeaders(request, env) });
 }
 
 export async function onRequestPost({ request, env }) {
+  const g = await guard(request, env, TYPHOON_MODELS);
+  if (g.error) return g.error;
   try {
-    const body = await request.text();
     const resp = await fetch("https://api.opentyphoon.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${env.TYPHOON_API_KEY}`,
       },
-      body,
+      body: g.body,
     });
     const text = await resp.text();
     return new Response(text, {
       status: resp.status,
-      headers: { "Content-Type": "application/json", ...CORS },
+      headers: { "Content-Type": "application/json", ...g.cors },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json", ...CORS },
-    });
+    return json(500, { error: e.message }, g.cors);
   }
 }

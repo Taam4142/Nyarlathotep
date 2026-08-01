@@ -992,6 +992,9 @@
         border-radius: 1px;
         transition: width 0.4s;
       }
+      .ov-cancel {
+        margin-top: 16px;
+      }
 
       /* bottom bar */
       .bottom-bar {

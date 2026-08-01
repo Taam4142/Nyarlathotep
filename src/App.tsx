@@ -10,7 +10,6 @@ import {
   ocrPDFTyphoon,
   ocrPDFVision,
   ocrPageWithGemini,
-  TYPHOON_MODEL,
 } from "./lib/ocr";
 import {
   extractRequirements,
@@ -18,6 +17,15 @@ import {
   structureWithoutAI,
   validateAndMap,
 } from "./lib/extract";
+import {
+  CLAUDE_MODELS,
+  GEMINI_MODELS,
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  TYPHOON_MODEL,
+  claudeModelShort,
+} from "./lib/models";
+import { fetchWithRetry } from "./lib/net";
 import {
   DEFAULT_LIB,
   STATUS_OPTS,
@@ -39,7 +47,7 @@ function App() {
         const [info, setInfo] = useState(null);
         const [pdfFile, setPdfFile] = useState(null);
         const [pdfType, setPdfType] = useState(null);
-        const [model, setModel] = useState("claude-sonnet-4-20250514");
+        const [model, setModel] = useState(DEFAULT_CLAUDE_MODEL);
         const [project, setProject] = useState("");
         const [filter, setFilter] = useState("all");
         const [showTr, setShowTr] = useState(false);
@@ -55,9 +63,10 @@ function App() {
         const [ocrEngine, setOcrEngine] = useState("typhoon");
         const [aiEngine, setAiEngine] = useState("typhoon");
         const [geminiKey, setGeminiKey] = useState("");
-        const [geminiModel, setGeminiModel] = useState("gemini-2.0-flash");
+        const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
         const fileRef = useRef();
         const tableRef = useRef();
+        const abortRef = useRef(null);
 
         const upd = (id, f, v) =>
           setRows((r) =>
@@ -124,6 +133,9 @@ function App() {
           setError(null);
           setWarning(null);
           setInfo(null);
+          const ctrl = new AbortController();
+          abortRef.current = ctrl;
+          const signal = ctrl.signal;
 
           try {
             // ===== BROWSER-ONLY MODE: Tesseract.js OCR + heuristic structuring, ZERO API =====
@@ -143,6 +155,7 @@ function App() {
                     setLoadSub(`Recognizing text — ${pct}%`);
                   }
                 },
+                signal,
               );
               setLoadMsg("Structuring text...");
               setLoadSub("Splitting into requirement rows");
@@ -177,10 +190,14 @@ function App() {
               setLoadMsg("Typhoon OCR (Thai)...");
               setLoadSub("Reading pages with Typhoon — via proxy");
               setLoadPct(2);
-              const tOcr = await ocrPDFTyphoon(pdfFile, (page, total) => {
-                setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
-                setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
-              });
+              const tOcr = await ocrPDFTyphoon(
+                pdfFile,
+                (page, total) => {
+                  setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                  setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
+                },
+                signal,
+              );
               setLoadMsg("Structuring text...");
               setLoadSub("Splitting into requirement rows");
               setLoadPct(92);
@@ -217,14 +234,18 @@ function App() {
                 setLoadSub(
                   "First run downloads Thai language pack (~15MB, cached)",
                 );
-                ocrText = await ocrPDFTesseract(pdfFile, (page, total, pct) => {
-                  if (page && total) {
-                    setLoadSub(`OCR page ${page} of ${total}`);
-                    setLoadPct(Math.round(((page - 1) / total) * 55) + 5);
-                  } else if (pct != null) {
-                    setLoadSub(`Recognizing — ${pct}%`);
-                  }
-                });
+                ocrText = await ocrPDFTesseract(
+                  pdfFile,
+                  (page, total, pct) => {
+                    if (page && total) {
+                      setLoadSub(`OCR page ${page} of ${total}`);
+                      setLoadPct(Math.round(((page - 1) / total) * 55) + 5);
+                    } else if (pct != null) {
+                      setLoadSub(`Recognizing — ${pct}%`);
+                    }
+                  },
+                  signal,
+                );
               } else if (ocrEngine === "gemini") {
                 if (!geminiKey) {
                   setError("Gemini API key is required for Gemini OCR.");
@@ -237,6 +258,8 @@ function App() {
                 const total = pdf.numPages;
                 const texts = [];
                 for (let p = 1; p <= total; p++) {
+                  if (signal.aborted)
+                    throw new DOMException("Aborted", "AbortError");
                   setLoadPct(Math.round((p / total) * 60));
                   setLoadSub(`Gemini Vision — page ${p} of ${total}`);
                   const b64 = await rasterizePage(pdf, p);
@@ -245,6 +268,7 @@ function App() {
                     p,
                     geminiKey,
                     geminiModel,
+                    signal,
                   );
                   texts.push(txt);
                 }
@@ -257,12 +281,15 @@ function App() {
                 const total = pdf.numPages;
                 const texts = [];
                 for (let p = 1; p <= total; p++) {
+                  if (signal.aborted)
+                    throw new DOMException("Aborted", "AbortError");
                   setLoadPct(Math.round((p / total) * 60));
                   setLoadSub(`Claude Vision — page ${p} of ${total}`);
                   const b64 = await rasterizePage(pdf, p);
-                  const res = await fetch("/api/claude", {
+                  const res = await fetchWithRetry("/api/claude", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
+                    signal,
                     body: JSON.stringify({
                       model,
                       max_tokens: 2000,
@@ -305,17 +332,25 @@ function App() {
               } else if (ocrEngine === "typhoon") {
                 setLoadMsg("OCR via Typhoon (Thai)...");
                 setLoadSub("Reading pages with Typhoon — via proxy");
-                ocrText = await ocrPDFTyphoon(pdfFile, (page, total) => {
-                  setLoadPct(Math.round((page / total) * 60));
-                  setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
-                });
+                ocrText = await ocrPDFTyphoon(
+                  pdfFile,
+                  (page, total) => {
+                    setLoadPct(Math.round((page / total) * 60));
+                    setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                  },
+                  signal,
+                );
               } else if (ocrEngine === "vision") {
                 setLoadMsg("OCR via Google Vision...");
                 setLoadSub("Reading pages with Google Cloud Vision — via proxy");
-                ocrText = await ocrPDFVision(pdfFile, (page, total) => {
-                  setLoadPct(Math.round((page / total) * 60));
-                  setLoadSub(`Google Vision — page ${page} of ${total}`);
-                });
+                ocrText = await ocrPDFVision(
+                  pdfFile,
+                  (page, total) => {
+                    setLoadPct(Math.round((page / total) * 60));
+                    setLoadSub(`Google Vision — page ${page} of ${total}`);
+                  },
+                  signal,
+                );
               }
               setLoadPct(65);
             }
@@ -338,17 +373,17 @@ function App() {
                 showTr,
                 pdfType,
                 ocrText,
+                signal,
               );
             } else {
-              setLoadSub(
-                `Using ${model === "claude-sonnet-4-20250514" ? "Sonnet" : "Opus"} via proxy`,
-              );
+              setLoadSub(`Using ${claudeModelShort(model)} via proxy`);
               parsed = await extractRequirements(
                 pdfFile,
                 model,
                 showTr,
                 pdfType,
                 ocrText,
+                signal,
               );
             }
 
@@ -369,9 +404,15 @@ function App() {
               setLoadPct(null);
             }, 400);
           } catch (e) {
-            setError(e.message || "Extraction failed.");
+            if (e?.name === "AbortError") {
+              setInfo("Extraction cancelled.");
+            } else {
+              setError(e.message || "Extraction failed.");
+            }
             setLoading(false);
             setLoadPct(null);
+          } finally {
+            abortRef.current = null;
           }
         };
 
@@ -667,10 +708,11 @@ function App() {
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                   >
-                    <option value="claude-sonnet-4-20250514">
-                      Sonnet — Fast
-                    </option>
-                    <option value="claude-opus-4-5">Opus — Max Accuracy</option>
+                    {CLAUDE_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
                   </select>
                 )}
                 {aiEngine === "gemini" && (
@@ -679,10 +721,11 @@ function App() {
                     value={geminiModel}
                     onChange={(e) => setGeminiModel(e.target.value)}
                   >
-                    <option value="gemini-2.0-flash">Flash — Fast</option>
-                    <option value="gemini-2.5-pro-preview-06-05">
-                      2.5 Pro — Max Accuracy
-                    </option>
+                    {GEMINI_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
                   </select>
                 )}
                 <button
@@ -1483,6 +1526,12 @@ function App() {
                           />
                         </div>
                       )}
+                      <button
+                        className="btn btn-ghost btn-sm ov-cancel"
+                        onClick={() => abortRef.current?.abort()}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   )}
 

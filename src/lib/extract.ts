@@ -1,5 +1,6 @@
 import { VALID_CATS, mkRow } from "./constants";
 import { fileToBase64 } from "./pdf";
+import { fetchWithRetry } from "./net";
 import type { ExtractedItem, PdfType, Row } from "./types";
 
 export function isLikelyTranslated(txt: string): boolean {
@@ -171,6 +172,7 @@ export async function extractRequirements(
   withTranslation: boolean,
   pdfType: PdfType,
   ocrText: string | null,
+  signal?: AbortSignal,
 ): Promise<ExtractedItem[]> {
   const sp = buildSystemPrompt(withTranslation, pdfType === "scanned");
 
@@ -205,10 +207,11 @@ export async function extractRequirements(
     ];
   }
 
-  const res = await fetch("/api/claude", {
+  const res = await fetchWithRetry("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, max_tokens: 4000, system: sp, messages }),
+    signal,
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
@@ -264,6 +267,7 @@ export async function extractWithGemini(
   withTranslation: boolean,
   pdfType: PdfType,
   ocrText: string | null,
+  signal?: AbortSignal,
 ): Promise<ExtractedItem[]> {
   const prompt = buildGeminiPrompt(withTranslation, pdfType === "scanned");
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
@@ -289,13 +293,20 @@ export async function extractWithGemini(
     ];
   }
 
-  const res = await fetch(endpoint, {
+  const res = await fetchWithRetry(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 8192,
+        // Pin the response to JSON so Gemini stops wrapping output in prose
+        // (which then trips the parser) — RISK_REVIEW R11.
+        responseMimeType: "application/json",
+      },
     }),
+    signal,
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));

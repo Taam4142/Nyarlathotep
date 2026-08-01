@@ -1,8 +1,12 @@
 import { createWorker } from "tesseract.js";
 import { pdfjsLib, rasterizePage } from "./pdf";
+import { fetchWithRetry } from "./net";
+import { extractTyphoonText } from "./typhoon";
 import type { OcrProgress } from "./types";
+import { TYPHOON_MODEL } from "./models";
 
-export const TYPHOON_MODEL = "typhoon-ocr-preview";
+// Re-exported so existing `import { TYPHOON_MODEL } from "./ocr"` sites keep working.
+export { TYPHOON_MODEL };
 // Verbatim OCR prompt. Can be swapped for the typhoon-ocr package's exact prompt.
 export const TYPHOON_OCR_PROMPT =
   "Below is an image of one page from a Thai/English document (a Terms of Reference). Read it and return the text exactly as it appears — verbatim, preserving Thai text, numbers, units, and the clause numbering/structure. Return clean Markdown. Do NOT translate, summarize, or add commentary.";
@@ -24,6 +28,7 @@ async function getTessWorker(onLog?: (m: any) => void) {
 export async function ocrPDFTesseract(
   file: File,
   onProgress?: OcrProgress,
+  signal?: AbortSignal,
 ): Promise<string> {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
@@ -34,6 +39,8 @@ export async function ocrPDFTesseract(
   });
   const texts: string[] = [];
   for (let p = 1; p <= total; p++) {
+    // Worker OCR can't be aborted mid-page, but stop before the next one.
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     onProgress && onProgress(p, total, 0);
     const b64 = await rasterizePage(pdf, p, 3); // higher scale = better Thai accuracy
     const {
@@ -48,17 +55,20 @@ export async function ocrPDFTesseract(
 export async function ocrPDFTyphoon(
   file: File,
   onProgress?: (page: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
   const numPages = pdf.numPages;
   const texts: string[] = [];
   for (let p = 1; p <= numPages; p++) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     onProgress && onProgress(p, numPages);
     const b64 = await rasterizePage(pdf, p);
-    const res = await fetch("/api/typhoon", {
+    const res = await fetchWithRetry("/api/typhoon", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal,
       body: JSON.stringify({
         model: TYPHOON_MODEL,
         max_tokens: 16000,
@@ -82,7 +92,10 @@ export async function ocrPDFTyphoon(
     }
     const data = await res.json();
     const txt = data.choices?.[0]?.message?.content || "";
-    texts.push(txt);
+    // typhoon-ocr wraps its result in {"natural_text": "...\n..."} — unwrap it
+    // so the structurer sees real newlines and splits into rows (bug: one giant
+    // row of literal \n symbols otherwise).
+    texts.push(extractTyphoonText(txt));
   }
   return texts.join(PAGE_BREAK);
 }
@@ -92,17 +105,20 @@ export async function ocrPDFTyphoon(
 export async function ocrPDFVision(
   file: File,
   onProgress?: (page: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
   const numPages = pdf.numPages;
   const texts: string[] = [];
   for (let p = 1; p <= numPages; p++) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     onProgress && onProgress(p, numPages);
     const b64 = await rasterizePage(pdf, p);
-    const res = await fetch("/api/vision", {
+    const res = await fetchWithRetry("/api/vision", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal,
       body: JSON.stringify({
         requests: [
           {
@@ -131,11 +147,13 @@ export async function ocrPageWithGemini(
   pageNum: number,
   geminiKey: string,
   geminiModel: string,
+  signal?: AbortSignal,
 ): Promise<string> {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-  const res = await fetch(endpoint, {
+  const res = await fetchWithRetry(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal,
     body: JSON.stringify({
       contents: [
         {
