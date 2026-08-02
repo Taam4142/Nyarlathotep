@@ -1,36 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { textItemsToLines } from "./pdf";
+import { itemsToCells } from "./pdf";
 
-describe("textItemsToLines (digital text extraction)", () => {
-  it("uses hasEOL markers to end lines and joins runs on the same line", () => {
+describe("itemsToCells (pdf.js item → positional cell)", () => {
+  it("pulls x/y/width/height/str and skips empty items", () => {
     const items = [
-      { str: "Hello " },
-      { str: "world", hasEOL: true },
-      { str: "second line", hasEOL: true },
+      { str: "hi", width: 12, height: 10, transform: [1, 0, 0, 10, 20, 700] },
+      { str: "", width: 0, height: 10, transform: [1, 0, 0, 10, 40, 700] },
+      { str: "yo", width: 14, transform: [1, 0, 0, 12, 60, 680] },
     ];
-    expect(textItemsToLines(items)).toEqual(["Hello world", "second line"]);
+    const cells = itemsToCells(items);
+    expect(cells).toHaveLength(2);
+    expect(cells[0]).toMatchObject({ x: 20, y: 700, width: 12, height: 10, str: "hi" });
+    // height falls back to |transform[3]| when the item has no height
+    expect(cells[1]).toMatchObject({ x: 60, y: 680, str: "yo", height: 12 });
   });
 
-  it("keeps a trailing run with no final EOL", () => {
-    const items = [
-      { str: "line one", hasEOL: true },
-      { str: "no eol here" },
-    ];
-    expect(textItemsToLines(items)).toEqual(["line one", "no eol here"]);
-  });
-
-  it("falls back to baseline-y grouping when no hasEOL is present", () => {
-    // Higher y = higher on the page; a drop of >3 starts a new line.
-    const items = [
-      { str: "row A", transform: [1, 0, 0, 1, 0, 700] },
-      { str: " cont", transform: [1, 0, 0, 1, 40, 700] },
-      { str: "row B", transform: [1, 0, 0, 1, 0, 680] },
-    ];
-    expect(textItemsToLines(items)).toEqual(["row A cont", "row B"]);
-  });
-
-  it("ignores non-string items", () => {
-    const items = [{ str: "ok", hasEOL: true }, {} as any, { str: "x", hasEOL: true }];
-    expect(textItemsToLines(items)).toEqual(["ok", "x"]);
+  it("tolerates missing transform", () => {
+    const cells = itemsToCells([{ str: "x" }]);
+    expect(cells[0]).toMatchObject({ x: 0, y: 0, str: "x" });
   });
 });

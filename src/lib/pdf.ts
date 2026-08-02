@@ -1,6 +1,12 @@
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { PdfType } from "./types";
+import {
+  groupIntoRows,
+  detectColumnBoundaries,
+  rowToLine,
+  type RowCell,
+} from "./tables";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -60,53 +66,29 @@ export async function fileToBase64(file: File): Promise<string> {
 
 const PAGE_BREAK = "\n\n--- PAGE BREAK ---\n\n";
 
-/** The subset of a pdf.js text item we rely on for line reconstruction. */
-export interface PdfTextItem {
-  str: string;
-  hasEOL?: boolean;
-  transform?: number[];
-}
-
-/**
- * Reconstruct visual lines from one page's pdf.js text items. Uses pdf.js's own
- * end-of-line markers (`hasEOL`) when the page provides them; otherwise falls
- * back to grouping by baseline-y. Pure + unit-tested (no pdf.js dependency).
- */
-export function textItemsToLines(items: PdfTextItem[]): string[] {
-  const its = items.filter((it) => typeof it.str === "string");
-  const lines: string[] = [];
-  let line = "";
-  if (its.some((it) => it.hasEOL)) {
-    for (const it of its) {
-      line += it.str;
-      if (it.hasEOL) {
-        lines.push(line);
-        line = "";
-      }
-    }
-    if (line) lines.push(line);
-  } else {
-    // No EOL markers → break when the baseline y jumps between items.
-    let lastY: number | null = null;
-    for (const it of its) {
-      const y = it.transform ? it.transform[5] : null;
-      if (lastY !== null && y !== null && Math.abs(y - lastY) > 3 && line) {
-        lines.push(line);
-        line = "";
-      }
-      line += it.str;
-      lastY = y;
-    }
-    if (line) lines.push(line);
+/** Map pdf.js text items to positional cells (x, y, width, height, str). */
+export function itemsToCells(items: any[]): RowCell[] {
+  const cells: RowCell[] = [];
+  for (const it of items) {
+    if (typeof it?.str !== "string" || it.str === "") continue;
+    const t = it.transform || [1, 0, 0, 1, 0, 0];
+    cells.push({
+      x: t[4],
+      y: t[5],
+      width: it.width ?? 0,
+      height: it.height || Math.abs(t[3]) || 10,
+      str: it.str,
+    });
   }
-  return lines;
+  return cells;
 }
 
 /**
- * Extract the embedded text layer of a **digital** PDF, page by page, preserving
- * line breaks — instant, free, lossless, no AI and no OCR. Scanned PDFs have no
- * text layer, so callers must gate on `detectPDFType` first. Pages are joined
- * with the same PAGE_BREAK marker the row structurer skips.
+ * Extract the embedded text layer of a **digital** PDF, page by page — instant,
+ * free, lossless, no AI and no OCR. Reconstructs visual lines and, when a page
+ * has an aligned table, separates its columns with a delimiter (see tables.ts)
+ * so multi-column rows stay readable. Scanned PDFs have no text layer, so callers
+ * must gate on `detectPDFType` first.
  */
 export async function extractDigitalText(
   file: File,
@@ -122,7 +104,9 @@ export async function extractDigitalText(
     onProgress && onProgress(p, total);
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
-    pages.push(textItemsToLines(tc.items as PdfTextItem[]).join("\n"));
+    const rows = groupIntoRows(itemsToCells(tc.items));
+    const boundaries = detectColumnBoundaries(rows);
+    pages.push(rows.map((r) => rowToLine(r, boundaries)).join("\n"));
   }
   return pages.join(PAGE_BREAK);
 }
