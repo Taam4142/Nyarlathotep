@@ -41,23 +41,39 @@ describe("parseJsonArray (R3/R4)", () => {
   });
 });
 
-describe("structureWithoutAI", () => {
-  it("splits clause-numbered lines into rows with refs", () => {
+describe("structureWithoutAI (one line = one row)", () => {
+  it("makes each line its own row and reads ASCII clause refs", () => {
     const rows = structureWithoutAI(
-      "1. First requirement\n2.1 Second requirement continued\nmore text",
+      "1. First requirement\n2.1 Second requirement\nmore text",
     );
-    expect(rows.length).toBe(2);
+    expect(rows.length).toBe(3);
     expect(rows[0].ref).toBe("1");
-    expect(rows[1].requirement).toContain("more text");
+    expect(rows[1].ref).toBe("2.1");
+    expect(rows[2].ref).toBe("CL-003"); // no clause number → auto ref
+    expect(rows[2].requirement).toBe("more text");
   });
 
-  it("merges lines with no clause markers into a single row", () => {
+  it("recognizes Thai-numeral clause refs (regression: the ๓.๑๑.๒.๒ merge)", () => {
     const rows = structureWithoutAI(
-      "this line is long enough\nmore context here\nanother sufficiently long line",
+      "- มีระบบ Surge Protection เพื่อป้องกันฟ้าผ่า ไม่ต่ำกว่า ๑๐ kV\n" +
+        "๓.๑๑.๒.๒ อุปกรณ์ตรวจวัดค่าสถานะการทำงานเครื่องสูบน้ำ",
     );
-    expect(rows.length).toBe(1);
-    expect(rows[0].requirement).toContain("this line is long enough");
-    expect(rows[0].requirement).toContain("another sufficiently long line");
+    expect(rows.length).toBe(2); // the two lines must NOT merge
+    expect(rows[0].requirement).toContain("Surge Protection");
+    expect(rows[1].ref).toBe("๓.๑๑.๒.๒");
+    expect(rows[1].requirement).toContain("อุปกรณ์ตรวจวัด");
+  });
+
+  it("reads ข้อ, parenthesized, and Thai dotted refs", () => {
+    const rows = structureWithoutAI("ข้อ ๕ blah\n(๑) item\n๒.๑) wrapped");
+    expect(rows[0].ref).toBe("๕");
+    expect(rows[1].ref).toBe("๑");
+    expect(rows[2].ref).toBe("๒.๑");
+  });
+
+  it("skips page-break markers and blank lines", () => {
+    const rows = structureWithoutAI("a line\n\n--- PAGE BREAK ---\nb line");
+    expect(rows.length).toBe(2);
   });
 });
 

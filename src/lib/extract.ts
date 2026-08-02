@@ -75,7 +75,21 @@ export function parseJsonArray(raw: string): ExtractedItem[] {
   );
 }
 
-// No-AI fallback: split raw OCR text into requirement rows heuristically.
+// Digit class covering both ASCII (0-9) and Thai (๐-๙, U+0E50–U+0E59) numerals.
+const D = "[0-9๐-๙]";
+// A leading clause reference: "3", "3.2", "๓.๑๑.๒.๒", "ข้อ ๕", "(๑)".
+// Thai TORs number clauses with Thai digits, so the old ASCII-only /\d/ pattern
+// missed them and merged e.g. "๓.๑๑.๒.๒ ..." into the preceding bullet.
+const CLAUSE_REF = new RegExp(
+  `^(?:(${D}+(?:\\.${D}+)*)[.)]?|ข้อ\\s*(${D}+)|\\((${D}+)\\))(?=\\s|$)`,
+);
+
+/**
+ * No-AI fallback: split raw OCR text into requirement rows, **one row per line**
+ * (respecting the source document's line structure). A leading clause reference —
+ * ASCII or Thai numerals — populates `ref`; otherwise an auto `CL-###` is used.
+ * The full line is kept verbatim as the requirement (per the verbatim law).
+ */
 export function structureWithoutAI(
   rawText: string,
 ): { ref: string; requirement: string; category: string }[] {
@@ -83,45 +97,14 @@ export function structureWithoutAI(
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0 && l !== "--- PAGE BREAK ---");
+
   const rows: { ref: string; requirement: string; category: string }[] = [];
-  let counter = 1;
-  // Thai/Arabic numbered clause patterns: "1.", "1.1", "ข้อ 1", "(1)", "- "
-  const clauseStart = /^(\d+[\.\)]|\d+\.\d+|ข้อ\s*\d+|\(\d+\)|[-•·●])/;
-  let buffer = "";
-  let bufferRef = "";
-  const flush = () => {
-    if (buffer.trim().length > 0) {
-      rows.push({
-        ref: bufferRef || `CL-${String(counter).padStart(3, "0")}`,
-        requirement: buffer.trim(),
-        category: "General",
-      });
-      counter++;
-    }
-    buffer = "";
-    bufferRef = "";
-  };
   for (const line of lines) {
-    if (clauseStart.test(line)) {
-      flush();
-      const m = line.match(clauseStart);
-      bufferRef = m ? m[0].replace(/[\.\)]$/, "") : "";
-      buffer = line;
-    } else {
-      buffer += (buffer ? " " : "") + line;
-    }
-  }
-  flush();
-  // If nothing matched clause patterns, fall back to one row per non-trivial line.
-  if (rows.length === 0) {
-    lines.forEach((l, i) => {
-      if (l.length > 10)
-        rows.push({
-          ref: `CL-${String(i + 1).padStart(3, "0")}`,
-          requirement: l,
-          category: "General",
-        });
-    });
+    const m = line.match(CLAUSE_REF);
+    const ref =
+      (m && (m[1] || m[2] || m[3])) ||
+      `CL-${String(rows.length + 1).padStart(3, "0")}`;
+    rows.push({ ref, requirement: line, category: "General" });
   }
   return rows;
 }
