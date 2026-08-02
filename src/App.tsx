@@ -34,6 +34,186 @@ import {
   VALID_CATS,
   mkRow,
 } from "./lib/constants";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { insertAfterId, reorderByIds } from "./lib/rows";
+
+// One matrix row, made sortable via @dnd-kit. The grip in the number cell is the
+// only drag activator (so editing cell text still works); dragging is disabled
+// when a status filter is active (reordering a subset can't map to hidden rows).
+function SortableRow({
+  row,
+  index,
+  showTr,
+  showCat,
+  selectedRow,
+  setSelectedRow,
+  upd,
+  del,
+  insertAfter,
+  dragEnabled,
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id, disabled: !dragEnabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: isDragging ? "relative" : undefined,
+    zIndex: isDragging ? 2 : undefined,
+  };
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={selectedRow === row.id ? "sel-row" : ""}
+      onClick={() => setSelectedRow(selectedRow === row.id ? null : row.id)}
+    >
+      <td className="c-no" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p no-txt">
+          {dragEnabled && (
+            <button
+              type="button"
+              className="row-grip"
+              ref={setActivatorNodeRef}
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              title="Drag to reorder"
+              aria-label="Drag to reorder"
+            >
+              ⠿
+            </button>
+          )}
+          <span className="no-num">{index + 1}</span>
+        </div>
+      </td>
+      <td className="c-ref" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p">
+          <input
+            className="ref-in"
+            value={row.ref}
+            onChange={(e) => upd(row.id, "ref", e.target.value)}
+            placeholder="CL-001"
+          />
+        </div>
+      </td>
+      <td className="c-req" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p">
+          <textarea
+            className="cell-in"
+            value={row.requirement}
+            onChange={(e) => upd(row.id, "requirement", e.target.value)}
+            placeholder="Verbatim requirement text (Thai/English)…"
+            rows={2}
+          />
+          {row._warn && (
+            <div className="warn-flag">
+              ⚠ May be translated — verify verbatim
+            </div>
+          )}
+        </div>
+      </td>
+      {showTr && (
+        <td className="c-tr" onClick={(e) => e.stopPropagation()}>
+          <div className="td-p">
+            <textarea
+              className="cell-in"
+              value={row.translation}
+              onChange={(e) => upd(row.id, "translation", e.target.value)}
+              placeholder="English translation…"
+              rows={2}
+            />
+          </div>
+        </td>
+      )}
+      {showCat && (
+        <td className="c-cat" onClick={(e) => e.stopPropagation()}>
+          <div className="td-p">
+            <select
+              className="cat-sel"
+              value={row.category}
+              onChange={(e) => upd(row.id, "category", e.target.value)}
+            >
+              {VALID_CATS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </td>
+      )}
+      <td className="c-sts" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p">
+          <select
+            className={`sts-sel sts-${row.status}`}
+            value={row.status}
+            onChange={(e) => upd(row.id, "status", e.target.value)}
+          >
+            {STATUS_OPTS.map((o) => (
+              <option key={o.v} value={o.v}>
+                {o.l}
+              </option>
+            ))}
+          </select>
+        </div>
+      </td>
+      <td className="c-rem" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p">
+          <textarea
+            className="cell-in"
+            style={{ fontFamily: "var(--font-thai)", fontSize: 14 }}
+            value={row.remarks}
+            onChange={(e) => upd(row.id, "remarks", e.target.value)}
+            placeholder="Standard response or notes…"
+            rows={2}
+          />
+        </div>
+      </td>
+      <td className="c-del" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p row-actions">
+          <button
+            className="row-ins"
+            onClick={() => insertAfter(row.id)}
+            title="Insert row below"
+            aria-label="Insert row below"
+          >
+            +
+          </button>
+          <button
+            className="row-del"
+            onClick={() => del(row.id)}
+            title="Delete row"
+            aria-label="Delete row"
+          >
+            ×
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 function App() {
         const [rows, setRows] = useState([]);
@@ -82,6 +262,25 @@ function App() {
             const ta = tableRef.current?.querySelectorAll("textarea");
             if (ta && ta.length) ta[ta.length - 2]?.focus();
           }, 60);
+        };
+        // Insert a blank row directly below `id`; it inherits the neighbor's
+        // status so it stays visible even when a status filter is active.
+        const insertAfter = (id) =>
+          setRows((p) => {
+            const i = p.findIndex((row) => row.id === id);
+            const nr = mkRow({ status: i >= 0 ? p[i].status : "comply" });
+            return insertAfterId(p, id, nr);
+          });
+        const sensors = useSensors(
+          useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+          useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+          }),
+        );
+        const onDragEnd = (e) => {
+          const { active, over } = e;
+          if (over && active.id !== over.id)
+            setRows((p) => reorderByIds(p, active.id, over.id));
         };
 
         const handleFile = useCallback(async (file) => {
@@ -1559,6 +1758,15 @@ function App() {
                       </div>
                     </div>
                   ) : (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={onDragEnd}
+                    >
+                      <SortableContext
+                        items={filtered.map((r) => r.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
                     <table>
                       <thead>
                         <tr>
@@ -1587,152 +1795,24 @@ function App() {
                       </thead>
                       <tbody>
                         {filtered.map((row, i) => (
-                          <tr
+                          <SortableRow
                             key={row.id}
-                            className={selectedRow === row.id ? "sel-row" : ""}
-                            onClick={() =>
-                              setSelectedRow(
-                                selectedRow === row.id ? null : row.id,
-                              )
-                            }
-                          >
-                            <td className="c-no">
-                              <div className="td-p no-txt">{i + 1}</div>
-                            </td>
-                            <td
-                              className="c-ref"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="td-p">
-                                <input
-                                  className="ref-in"
-                                  value={row.ref}
-                                  onChange={(e) =>
-                                    upd(row.id, "ref", e.target.value)
-                                  }
-                                  placeholder="CL-001"
-                                />
-                              </div>
-                            </td>
-                            <td
-                              className="c-req"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="td-p">
-                                <textarea
-                                  className="cell-in"
-                                  value={row.requirement}
-                                  onChange={(e) =>
-                                    upd(row.id, "requirement", e.target.value)
-                                  }
-                                  placeholder="Verbatim requirement text (Thai/English)…"
-                                  rows={2}
-                                />
-                                {row._warn && (
-                                  <div className="warn-flag">
-                                    ⚠ May be translated — verify verbatim
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            {showTr && (
-                              <td
-                                className="c-tr"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="td-p">
-                                  <textarea
-                                    className="cell-in"
-                                    value={row.translation}
-                                    onChange={(e) =>
-                                      upd(row.id, "translation", e.target.value)
-                                    }
-                                    placeholder="English translation…"
-                                    rows={2}
-                                  />
-                                </div>
-                              </td>
-                            )}
-                            {showCat && (
-                              <td
-                                className="c-cat"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="td-p">
-                                  <select
-                                    className="cat-sel"
-                                    value={row.category}
-                                    onChange={(e) =>
-                                      upd(row.id, "category", e.target.value)
-                                    }
-                                  >
-                                    {VALID_CATS.map((c) => (
-                                      <option key={c} value={c}>
-                                        {c}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </td>
-                            )}
-                            <td
-                              className="c-sts"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="td-p">
-                                <select
-                                  className={`sts-sel sts-${row.status}`}
-                                  value={row.status}
-                                  onChange={(e) =>
-                                    upd(row.id, "status", e.target.value)
-                                  }
-                                >
-                                  {STATUS_OPTS.map((o) => (
-                                    <option key={o.v} value={o.v}>
-                                      {o.l}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </td>
-                            <td
-                              className="c-rem"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="td-p">
-                                <textarea
-                                  className="cell-in"
-                                  style={{
-                                    fontFamily: "var(--font-thai)",
-                                    fontSize: 14,
-                                  }}
-                                  value={row.remarks}
-                                  onChange={(e) =>
-                                    upd(row.id, "remarks", e.target.value)
-                                  }
-                                  placeholder="Standard response or notes…"
-                                  rows={2}
-                                />
-                              </div>
-                            </td>
-                            <td
-                              className="c-del"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="td-p">
-                                <button
-                                  className="row-del"
-                                  onClick={() => del(row.id)}
-                                  title="Delete row"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                            row={row}
+                            index={i}
+                            showTr={showTr}
+                            showCat={showCat}
+                            selectedRow={selectedRow}
+                            setSelectedRow={setSelectedRow}
+                            upd={upd}
+                            del={del}
+                            insertAfter={insertAfter}
+                            dragEnabled={filter === "all"}
+                          />
                         ))}
                       </tbody>
                     </table>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
 

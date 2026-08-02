@@ -774,7 +774,7 @@
 
       /* column widths */
       .c-no {
-        width: 42px;
+        width: 58px;
       }
       .c-ref {
         width: 80px;
@@ -795,7 +795,7 @@
         min-width: 180px;
       }
       .c-del {
-        width: 38px;
+        width: 60px;
       }
 
       /* cell inputs */
@@ -905,14 +905,58 @@
         color: var(--notcomply);
         background: var(--notcomply-bg);
       }
+      .row-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+      .row-ins {
+        background: none;
+        border: none;
+        color: var(--txt3);
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        padding: 2px 5px;
+        border-radius: 4px;
+      }
+      .row-ins:hover {
+        color: var(--accent);
+        background: var(--sur3);
+      }
       .no-txt {
         font-family: var(--font-mono);
         font-size: 13px;
         font-variant-numeric: tabular-nums;
         color: var(--txt3);
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
         padding: 4px 0;
         user-select: none;
+      }
+      .no-num {
+        font-variant-numeric: tabular-nums;
+      }
+      .row-grip {
+        background: none;
+        border: none;
+        color: var(--txt3);
+        cursor: grab;
+        font-size: 13px;
+        line-height: 1;
+        padding: 2px 3px;
+        border-radius: 4px;
+        touch-action: none;
+      }
+      .row-grip:hover {
+        color: var(--txt2);
+        background: var(--sur3);
+      }
+      .row-grip:active {
+        cursor: grabbing;
       }
 
       /* empty state */
