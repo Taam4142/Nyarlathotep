@@ -522,23 +522,29 @@ function App() {
               const data = await res.json().catch(() => ({}));
               if (!res.ok) {
                 const msg = data?.error?.message || `HTTP ${res.status}`;
+                const lower = msg.toLowerCase();
+                setTestStatus("fail");
                 if (res.status === 404) {
-                  setTestStatus("fail");
                   setTestMsg(
                     "Proxy /api/typhoon not found. Make sure functions/api/typhoon.js is deployed on Cloudflare Pages.",
                   );
+                } else if (lower.includes("origin")) {
+                  setTestMsg(
+                    "Blocked by the proxy origin allow-list. In Cloudflare Pages → Settings → Variables, set ALLOWED_ORIGINS to this site's origin (include https://, e.g. https://yog-sothoth.pages.dev) and redeploy.",
+                  );
+                } else if (res.status === 429 || lower.includes("rate limit")) {
+                  setTestMsg(
+                    "Rate limited by the proxy. Wait a moment and try again.",
+                  );
                 } else if (
                   res.status === 401 ||
-                  res.status === 403 ||
-                  msg.toLowerCase().includes("api key") ||
-                  msg.toLowerCase().includes("unauthor")
+                  lower.includes("api key") ||
+                  lower.includes("unauthor")
                 ) {
-                  setTestStatus("fail");
                   setTestMsg(
                     "Invalid or missing TYPHOON_API_KEY in Cloudflare Pages env vars. Get a free key at opentyphoon.ai.",
                   );
                 } else {
-                  setTestStatus("fail");
                   setTestMsg(msg);
                 }
               } else {
@@ -564,26 +570,32 @@ function App() {
               const data = await res.json();
               if (!res.ok) {
                 const msg = data?.error?.message || `HTTP ${res.status}`;
+                const lower = msg.toLowerCase();
+                setTestStatus("fail");
                 if (msg.includes("credit") || msg.includes("balance")) {
-                  setTestStatus("fail");
                   setTestMsg(
                     "No API credits. Top up at console.anthropic.com → Billing. (Your claude.ai subscription is separate from API billing.)",
+                  );
+                } else if (lower.includes("origin")) {
+                  setTestMsg(
+                    "Blocked by the proxy origin allow-list. In Cloudflare Pages → Settings → Variables, set ALLOWED_ORIGINS to this site's origin (include https://) and redeploy.",
+                  );
+                } else if (res.status === 429 || lower.includes("rate limit")) {
+                  setTestMsg(
+                    "Rate limited by the proxy. Wait a moment and try again.",
                   );
                 } else if (
                   msg.includes("401") ||
                   msg.includes("invalid x-api-key")
                 ) {
-                  setTestStatus("fail");
                   setTestMsg(
                     "Invalid API key in your Cloudflare Pages env vars. Check ANTHROPIC_API_KEY in the Pages project → Settings → Environment variables.",
                   );
                 } else if (res.status === 404) {
-                  setTestStatus("fail");
                   setTestMsg(
                     "Proxy /api/claude not found. Make sure functions/api/claude.js is deployed on Cloudflare Pages.",
                   );
                 } else {
-                  setTestStatus("fail");
                   setTestMsg(msg);
                 }
               } else {

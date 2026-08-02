@@ -21,6 +21,32 @@ function allowedOrigins(env) {
     .filter(Boolean);
 }
 
+// Canonical host[:port] — lowercased, scheme + trailing slash stripped — so a
+// configured "yog-sothoth.pages.dev" matches the browser's scheme-prefixed
+// Origin header "https://yog-sothoth.pages.dev". (Browsers always send the full
+// origin, so an exact match against a bare host silently 403s — hence this.)
+function canonicalHost(o) {
+  return (o || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/+$/, "");
+}
+
+// True if the request Origin matches any allow-list entry. Entries may be a full
+// origin, a bare host, or a "*.example.com" suffix wildcard (opt-in — handy for
+// Cloudflare Pages preview deployments).
+function originMatches(origin, allow) {
+  const host = canonicalHost(origin);
+  if (!host) return false;
+  return allow.some((entry) => {
+    const e = canonicalHost(entry);
+    if (e.startsWith("*."))
+      return host === e.slice(2) || host.endsWith(e.slice(1));
+    return host === e;
+  });
+}
+
 export function corsHeaders(request, env) {
   const origin = request.headers.get("Origin");
   const allow = allowedOrigins(env);
@@ -31,8 +57,8 @@ export function corsHeaders(request, env) {
   };
   if (allow.length === 0) {
     headers["Access-Control-Allow-Origin"] = "*"; // not configured → open (legacy)
-  } else if (origin && allow.includes(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin;
+  } else if (origin && originMatches(origin, allow)) {
+    headers["Access-Control-Allow-Origin"] = origin; // reflect full origin (CORS needs the scheme)
   }
   // else: no ACAO header → the browser blocks a cross-origin response.
   return headers;
@@ -41,8 +67,7 @@ export function corsHeaders(request, env) {
 function originAllowed(request, env) {
   const allow = allowedOrigins(env);
   if (allow.length === 0) return true; // not configured → allow (other guards apply)
-  const origin = request.headers.get("Origin");
-  return !!origin && allow.includes(origin);
+  return originMatches(request.headers.get("Origin"), allow);
 }
 
 export function json(status, obj, cors) {
