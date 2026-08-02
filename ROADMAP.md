@@ -2,9 +2,28 @@
 
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
-> Last updated 2026-07-28.
+> Last updated 2026-08-01.
+
+## ▶ Next up (locked with the engineer, 2026-08-01)
+
+**F1 — Persistence** is the agreed next work — the single biggest gap (a refresh wipes all work):
+- localStorage **autosave** of the current matrix + project name (survives refresh).
+- Explicit **Save / Load matrix as JSON** (export/import) to keep, share, or resume a document.
+- Switch row IDs from the `_rc` counter to **UUIDs** so loaded sessions never collide.
+
+Strong runner-up: **F2 — ExcelJS export with embedded Thai font** (fixes the manual-Thai-font step for
+reviewers **and** retires the `xlsx@0.18.5` security advisory in one move).
 
 ## Shipped
+
+**Post-Phase-2 features (2026-08-01):**
+- **OCR row-splitter fix** — one-row-per-line + Thai-numeral clause detection (`๓.๑๑.๒.๒` → Ref).
+- **Reorderable rows** — drag-to-reorder (@dnd-kit) + per-row "insert below"; `src/lib/rows.ts`.
+- **"Text PDF — No AI · exact" mode** — reads a digital PDF's embedded text layer directly (instant, free,
+  lossless) into the matrix; `src/lib/pdf.ts` `extractDigitalText`.
+- **Multi-column table support** — column detection in the Text-PDF mode; a table row's columns are joined
+  into the Requirement with a ` — ` delimiter, col1 → Ref; `src/lib/tables.ts`. _(Deterministic; clean
+  aligned tables only — messy/borderless tables would want an AI table-prompt.)_
 
 **Phase 2 (2026-08-01) — correctness, reliability & security. Fix list complete:**
 - **A1** — model IDs refreshed + centralized in `src/lib/models.ts` (Claude → `claude-sonnet-5` /
