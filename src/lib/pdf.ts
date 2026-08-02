@@ -57,3 +57,72 @@ export async function fileToBase64(file: File): Promise<string> {
   }
   return btoa(binary);
 }
+
+const PAGE_BREAK = "\n\n--- PAGE BREAK ---\n\n";
+
+/** The subset of a pdf.js text item we rely on for line reconstruction. */
+export interface PdfTextItem {
+  str: string;
+  hasEOL?: boolean;
+  transform?: number[];
+}
+
+/**
+ * Reconstruct visual lines from one page's pdf.js text items. Uses pdf.js's own
+ * end-of-line markers (`hasEOL`) when the page provides them; otherwise falls
+ * back to grouping by baseline-y. Pure + unit-tested (no pdf.js dependency).
+ */
+export function textItemsToLines(items: PdfTextItem[]): string[] {
+  const its = items.filter((it) => typeof it.str === "string");
+  const lines: string[] = [];
+  let line = "";
+  if (its.some((it) => it.hasEOL)) {
+    for (const it of its) {
+      line += it.str;
+      if (it.hasEOL) {
+        lines.push(line);
+        line = "";
+      }
+    }
+    if (line) lines.push(line);
+  } else {
+    // No EOL markers → break when the baseline y jumps between items.
+    let lastY: number | null = null;
+    for (const it of its) {
+      const y = it.transform ? it.transform[5] : null;
+      if (lastY !== null && y !== null && Math.abs(y - lastY) > 3 && line) {
+        lines.push(line);
+        line = "";
+      }
+      line += it.str;
+      lastY = y;
+    }
+    if (line) lines.push(line);
+  }
+  return lines;
+}
+
+/**
+ * Extract the embedded text layer of a **digital** PDF, page by page, preserving
+ * line breaks — instant, free, lossless, no AI and no OCR. Scanned PDFs have no
+ * text layer, so callers must gate on `detectPDFType` first. Pages are joined
+ * with the same PAGE_BREAK marker the row structurer skips.
+ */
+export async function extractDigitalText(
+  file: File,
+  onProgress?: (page: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  const total = pdf.numPages;
+  const pages: string[] = [];
+  for (let p = 1; p <= total; p++) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    onProgress && onProgress(p, total);
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    pages.push(textItemsToLines(tc.items as PdfTextItem[]).join("\n"));
+  }
+  return pages.join(PAGE_BREAK);
+}

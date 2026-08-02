@@ -4,7 +4,12 @@
 // fully typed and unit-tested. Behavior is unchanged from the pre-migration app.
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { pdfjsLib, detectPDFType, rasterizePage } from "./lib/pdf";
+import {
+  pdfjsLib,
+  detectPDFType,
+  rasterizePage,
+  extractDigitalText,
+} from "./lib/pdf";
 import {
   ocrPDFTesseract,
   ocrPDFTyphoon,
@@ -417,6 +422,54 @@ function App() {
               setLoadPct(100);
               setWarning(
                 "Typhoon OCR done. Rows were split heuristically — review the clause boundaries, then adjust. For AI-structured rows, use Typhoon as the OCR feeder with the Claude or Gemini engine.",
+              );
+              setTimeout(() => {
+                setLoading(false);
+                setLoadPct(null);
+              }, 400);
+              return;
+            }
+
+            // ===== DIGITAL TEXT MODE: read the PDF's embedded text layer, no AI, no OCR =====
+            if (aiEngine === "digitaltext") {
+              if (pdfType === "scanned") {
+                setError(
+                  "This mode reads text already embedded in a digital PDF, but this file looks scanned (no text layer). Use Typhoon, Browser OCR, or an AI engine instead.",
+                );
+                setLoading(false);
+                return;
+              }
+              setLoadMsg("Reading embedded text…");
+              setLoadSub("No AI, no OCR — exact text from the PDF");
+              setLoadPct(2);
+              const dText = await extractDigitalText(
+                pdfFile,
+                (page, total) => {
+                  setLoadSub(`Reading page ${page} of ${total}`);
+                  setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
+                },
+                signal,
+              );
+              setLoadMsg("Structuring text…");
+              setLoadSub("Splitting into rows");
+              setLoadPct(92);
+              const parsedRows = structureWithoutAI(dText);
+              if (parsedRows.length === 0)
+                throw new Error(
+                  "No text found in this PDF's text layer — it may be scanned. Try an OCR or AI engine.",
+                );
+              const mapped = parsedRows.map((it) =>
+                mkRow({
+                  ref: it.ref,
+                  requirement: it.requirement,
+                  category: it.category || "General",
+                  status: "comply",
+                }),
+              );
+              setRows(mapped);
+              setLoadPct(100);
+              setWarning(
+                "Extracted the PDF's embedded text exactly (no AI). Each line is a row — review the boundaries and adjust. For AI-structured requirement rows, switch to Claude or Gemini.",
               );
               setTimeout(() => {
                 setLoading(false);
@@ -910,6 +963,7 @@ function App() {
                 >
                   <option value="typhoon">✦ Typhoon — Thai · Free</option>
                   <option value="browser">🆓 Browser OCR — No Key</option>
+                  <option value="digitaltext">✎ Text PDF — No AI · exact</option>
                   <option value="claude">⚡ Claude</option>
                   <option value="gemini">✦ Gemini</option>
                 </select>
@@ -1149,6 +1203,48 @@ function App() {
                         split by a simple rule (clause numbers / bullets), so
                         you'll review boundaries. First run downloads a ~15MB
                         Thai pack, then it's cached offline.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {aiEngine === "digitaltext" && (
+                  <div className="sb-sec">
+                    <div className="sb-label">Text PDF — No AI, exact</div>
+                    <div
+                      className="key-panel"
+                      style={{
+                        background: "rgba(34,197,94,0.06)",
+                        borderColor: "rgba(34,197,94,0.25)",
+                      }}
+                    >
+                      <div
+                        className="key-panel-title"
+                        style={{ color: "var(--comply)" }}
+                      >
+                        ✎ No key · No AI · No OCR
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "var(--txt3)",
+                          lineHeight: 1.65,
+                        }}
+                      >
+                        Reads the{" "}
+                        <strong style={{ color: "var(--comply)" }}>
+                          embedded text layer
+                        </strong>{" "}
+                        of a digital PDF directly — instant, free, and exact
+                        (character-for-character). Every line becomes a row.
+                        <br />
+                        <br />
+                        <strong style={{ color: "var(--warn)" }}>
+                          Digital PDFs only:
+                        </strong>{" "}
+                        scanned PDFs have no text layer — for those use Typhoon,
+                        Browser OCR, or an AI engine. Rows are split by a simple
+                        rule (clause numbers / lines), so review the boundaries.
                       </div>
                     </div>
                   </div>
