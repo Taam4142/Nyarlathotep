@@ -1,6 +1,6 @@
 # CLAUDE.md — Prompt Engineering Reference
 
-> Prompt designs, system prompts, and AI behavior rules for Yog-Sothoth (the TOR Compliance Matrix tool).
+> Prompt designs, system prompts, and AI behavior rules for Nyarlathotep (the TOR Compliance Matrix tool).
 > Last updated: 2026-07-27
 
 ---

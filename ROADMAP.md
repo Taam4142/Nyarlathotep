@@ -1,4 +1,4 @@
-# ROADMAP.md — Yog-Sothoth
+# ROADMAP.md — Nyarlathotep
 
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.

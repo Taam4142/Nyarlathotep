@@ -1,4 +1,4 @@
-# RISK_REVIEW.md — Yog-Sothoth
+# RISK_REVIEW.md — Nyarlathotep
 
 > Known correctness, security, and robustness risks in the current code, with why each matters and how to
 > fix it. Advisory register — record, don't silently skip. Reviewed 2026-07-27 against commit `a547bdd`.

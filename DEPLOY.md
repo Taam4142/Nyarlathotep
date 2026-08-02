@@ -1,4 +1,4 @@
-# DEPLOY.md — deploying & securing Yog-Sothoth on Cloudflare Pages
+# DEPLOY.md — deploying & securing Nyarlathotep on Cloudflare Pages
 
 Step-by-step click paths for the engineer. Covers the **base deploy**, the **server-side API keys**, and
 the **proxy hardening** (RISK_REVIEW **R6**) — the part that stops strangers from spending your API credits.
@@ -37,7 +37,7 @@ what caps their spend. Do both.
 ## 2. Server-side API keys (prerequisite)
 
 These are what the proxies inject. Add them as **Secret** (encrypted) variables. In the Cloudflare
-dashboard: **Workers & Pages → your Yog-Sothoth project → Settings → Variables and Secrets**
+dashboard: **Workers & Pages → your Pages project → Settings → Variables and Secrets**
 *(older UI: "Environment variables")*. Add to **Production** (and **Preview** if you test on preview URLs):
 
 | Name | Type | Where to get it |
@@ -72,7 +72,7 @@ browser controls it — so checking it reliably answers "did this come from my a
   else gets **`403 Origin not allowed`** (including requests that send *no* `Origin`).
 
 ### Steps
-1. **Workers & Pages → Yog-Sothoth → Settings → Variables and Secrets → Add variable**.
+1. **Workers & Pages → your Pages project → Settings → Variables and Secrets → Add variable**.
 2. Type **Plaintext** (it's not a secret).
 3. **Name:** `ALLOWED_ORIGINS`
 4. **Value:** every origin the app is actually served from, comma-separated:
@@ -106,7 +106,7 @@ The guard allows **60 requests per minute per IP** (keyed on Cloudflare's `CF-Co
 ### Steps
 1. **Create the namespace:** Cloudflare dashboard → **Storage & Databases → KV → Create a namespace**
    *(older UI: Workers → KV)*. Name it e.g. `yog-sothoth-ratelimit`.
-2. **Bind it to the Pages project:** **Workers & Pages → Yog-Sothoth → Settings → Bindings**
+2. **Bind it to the Pages project:** **Workers & Pages → your Pages project → Settings → Bindings**
    *(older UI: "Functions → KV namespace bindings")* → **Add → KV namespace**.
    - **Variable name:** `RATE_LIMIT`  ← must be exactly this
    - **KV namespace:** the one you just created

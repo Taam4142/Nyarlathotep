@@ -942,7 +942,7 @@ function App() {
             <div className="topbar">
               <div className="brand">
                 <div className="brand-pulse" />
-                <span className="brand-name">Yog-Sothoth</span>
+                <span className="brand-name">Nyarlathotep</span>
               </div>
               <div className="brand-sep" />
               <input

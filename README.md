@@ -1,4 +1,4 @@
-# Yog-Sothoth
+# Nyarlathotep
 
 > A **TOR Compliance Matrix** tool (formerly *TOR-Extract*).
 

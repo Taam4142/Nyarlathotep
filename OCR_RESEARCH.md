@@ -1,4 +1,4 @@
-# OCR_RESEARCH.md — OCR options survey (for Yog-Sothoth)
+# OCR_RESEARCH.md — OCR options survey (for Nyarlathotep)
 
 > Reference survey of OCR tools for turning Thai/English TOR PDFs into text, kept for later research.
 > **Compiled 2026-07-28.** All figures (models, prices, benchmarks, free-tier limits) are **point-in-time**
@@ -6,7 +6,7 @@
 
 ## Why this doc / our constraints
 
-Yog-Sothoth must stay **free** and read **Thai** well, and it deploys as a **static site + a tiny proxy
+Nyarlathotep must stay **free** and read **Thai** well, and it deploys as a **static site + a tiny proxy
 function** (no GPU, no always-on server). So an OCR option only *fits us* if it is:
 
 1. **Free** (or has a usable free tier), 2. **Good at Thai**, 3. **No self-hosted GPU/backend required**.

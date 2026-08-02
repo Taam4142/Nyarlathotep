@@ -1,11 +1,22 @@
 # Changelog
 
-All notable changes to Yog-Sothoth (formerly TOR-Extract). Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to Nyarlathotep (formerly Yog-Sothoth, formerly TOR-Extract). Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 There are no version tags yet, so released history below is grouped by date and git commit.
 
 ## [Unreleased]
 
+### Changed
+- **Renamed the project to Nyarlathotep** — the Lovecraft Messenger of a thousand forms fits a tool that
+  translates and converts between formats; the earlier "Yog-Sothoth" (all-knowledge) did not. App title/
+  brand, `package.json`, and all docs updated. The GitHub repo and the `yog-sothoth.pages.dev` deploy URL
+  are unchanged (separate, engineer-triggered renames).
+
 ### Added
+- **Row reordering & insert-between** — drag a row (grip handle, @dnd-kit) to reorder, and an "insert below"
+  (+) button on each row; pure ops in `src/lib/rows.ts`.
+- **"Text PDF — No AI · exact" engine** — reads a digital PDF's embedded text layer directly (instant, free,
+  lossless) into the matrix; `src/lib/pdf.ts`. Includes **multi-column table detection** (`src/lib/tables.ts`):
+  a table row's columns are joined into the Requirement with a ` — ` delimiter, column 1 → Ref.
 - **Cancel button** on the progress overlay — a running OCR/extraction can now be stopped. An
   `AbortController` threads through every engine call; multi-page loops stop between pages; a cancelled run
   reports "Extraction cancelled" instead of an error. (RISK_REVIEW R10.)
