@@ -55,7 +55,7 @@ Vision**.
 
 1. Create a free **Cloudflare** account.
 2. Dashboard → **Workers & Pages → Create**. Choose the **Pages** tab (⚠️ **not** Workers) →
-   **Connect to Git** → select `Taam4142/Yog-Sothoth`. This must be a **Pages** project — a Workers
+   **Connect to Git** → select `Taam4142/Nyarlathotep`. This must be a **Pages** project — a Workers
    project runs `wrangler deploy` and cannot serve the `functions/` dir or the static file (see
    Troubleshooting).
 3. Build settings: **Framework preset = None** (or Vite), **Build command = `npm run build`**, **Build
