@@ -1,9 +1,10 @@
 # SKILL.md — Nyarlathotep (TOR Compliance Matrix)
 
 > Reference document for building, extending, and debugging the Nyarlathotep (TOR Compliance Matrix) web app.
-> Last updated: 2026-08-01. **Build note (v0.3.0):** the app is now a **Vite + React + TypeScript** build
-> — logic lives in typed `src/lib/*` modules, UI in `src/App.tsx`, styles in `src/styles.css`. References
-> below to a single in-browser-Babel `index.html` describe the pre-v0.3.0 structure. See CHANGELOG.md.
+> Last updated: 2026-08-03. **Build note (v0.3.0+):** the app is a **Vite + React + TypeScript** build
+> — logic lives in typed `src/lib/*` modules, UI in `src/App.tsx`, styles in `src/styles.css`; `npm run
+> build` emits `dist/`. Any remaining references below to a single in-browser-Babel `index.html` or CDN
+> `<script>` tags describe the **pre-v0.3.0** structure and no longer reflect the build. See CHANGELOG.md.
 
 ---
 
@@ -15,7 +16,7 @@ then exports it as a signed-off `.xlsx` ready for bid submission.
 Core flow:
 
 ```
-TOR PDF → [Detect type] → [OCR if scanned] → [Claude extracts verbatim clauses]
+TOR PDF → [Detect type] → [OCR if scanned] → [engine extracts verbatim clauses]
        → [User edits status + remarks] → [Export .xlsx]
 ```
 
@@ -374,41 +375,33 @@ cell is additionally bold + colour-coded from `STAT_COLORS`.
 
 ---
 
-## CDN Dependencies (all from allowed origins)
+## Dependencies (bundled by Vite)
 
-> Gemini and Google Document AI are called directly with `fetch` (no SDK). Claude goes through the
-> `/api/claude` proxy. The scripts below are what the HTML `<head>` actually loads.
+> **v0.3.0+ reality.** These are **npm packages bundled at build time** — there is no in-browser Babel
+> and no CDN `<script>` list. `npm run build` emits a hashed, minified `dist/`. (The pre-v0.3.0 app loaded
+> CDN scripts + Babel-standalone from `index.html`; that's gone.)
 
-```html
-<!-- PDF.js — PDF reading and rasterization -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+| Package | Role |
+| --- | --- |
+| `react` / `react-dom` | UI (compiled by Vite/esbuild — no runtime Babel) |
+| `pdfjs-dist` | PDF text extraction + page rasterization (`src/lib/pdf.ts`) |
+| `tesseract.js` | Browser-OCR engine (offline, Thai+English) |
+| `exceljs` | `.xlsx` export with per-cell Thai font (`src/lib/xlsx.ts`; **dynamic-imported** → own chunk) |
+| `@dnd-kit/*` | matrix row drag-reorder |
 
-<!-- SheetJS — Excel export -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-<!-- Tesseract.js — client-side OCR (Browser OCR engine, Thai+English) -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js"></script>
-
-<!-- React -->
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-<!-- Babel (for JSX) -->
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<!-- Google Fonts — Thai support -->
-<link
-  href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500&display=swap"
-  rel="stylesheet"
-/>
-```
+- **Gemini** is called directly from the browser with `fetch` (in-session key). **Claude / Typhoon /
+  Google Vision** go through the `/api/*` Cloudflare Pages Functions, which inject the server-side keys.
+  (Google Document AI was removed in v0.2.0 — it is **not** a dependency.)
+- **Fonts** (Inter / Sarabun / JetBrains Mono) load from Google Fonts via `index.html`.
+- Only two runtime packages carry weight — `pdfjs-dist` (worker chunk) and `exceljs` (lazy chunk); both
+  are code-split so they don't inflate first paint.
 
 ---
 
 ## Known Limitations
 
-1. **Tesseract.js is now the free fallback** — runs fully client-side (Thai+English), no API key, no billing. Lower accuracy than AI/cloud OCR and produces heuristically-split rows, so it's the "just works offline" option. AI engines (Claude/Gemini) or Google Doc AI remain the high-accuracy paths.
-2. **No persistent storage** — all data lives in React state. Refreshing the page clears the matrix. Future: add localStorage auto-save or Google Drive export.
-3. **Large PDFs** — Claude has a document size limit. TORs over ~100 pages may need to be split. Future: add page range selector.
-4. **Scanned PDF OCR** — Google Document AI requires the user to have a Google Cloud project with Document AI API enabled and a processor created. This is a one-time setup.
+1. **Tesseract.js is the offline free fallback** — runs fully client-side (Thai+English), no API key, no billing. Lower accuracy than AI/cloud OCR and produces heuristically-split rows, so it's the "just works offline" option. The high-accuracy paths are the AI engines (Claude / Gemini) and, for Thai, Typhoon.
+2. **Persistence is local-only** — the matrix autosaves to `localStorage` and restores on reload (F1); explicit **Save/Load .json** moves it between machines. There is no server-side account/sync — clearing the browser or using another device without the JSON loses it.
+3. **Large PDFs** — the AI engines have a document/context size limit. TORs over ~100 pages may need to be split. Future: page-range selector.
+4. **Scanned PDF OCR** — a scanned PDF must go through an OCR feeder first (Typhoon / Google Vision / Tesseract / Claude- or Gemini-Vision). Typhoon (Thai-tuned, free tier) is the recommended feeder; the "Text PDF" engine only works on **digital** PDFs.
 5. **Excel Thai font** — the export sets *TH Sarabun New* per cell automatically (ExcelJS), so no manual font change is needed. A `.xlsx` can't embed a font, so a machine without TH Sarabun New installed shows a substituted font (still legible Thai). _(Was a manual step under the old SheetJS export.)_
