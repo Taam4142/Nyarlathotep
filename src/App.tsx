@@ -425,6 +425,9 @@ function App() {
         const [pdfType, setPdfType] = useState(null);
         const [model, setModel] = useState(DEFAULT_CLAUDE_MODEL);
         const [project, setProject] = useState(() => persisted?.project ?? "");
+        const [verifiedBy, setVerifiedBy] = useState(
+          () => persisted?.verifiedBy ?? "",
+        );
         const [filter, setFilter] = useState("all");
         const [showTr, setShowTr] = useState(() => persisted?.showTr ?? false);
         const [showCat, setShowCat] = useState(() => persisted?.showCat ?? true);
@@ -483,11 +486,11 @@ function App() {
         // Autosave the working matrix to this browser (debounced). F1 persistence.
         useEffect(() => {
           const t = setTimeout(
-            () => writeLocal({ project, rows, lib, showTr, showCat }),
+            () => writeLocal({ project, verifiedBy, rows, lib, showTr, showCat }),
             400,
           );
           return () => clearTimeout(t);
-        }, [project, rows, lib, showTr, showCat]);
+        }, [project, verifiedBy, rows, lib, showTr, showCat]);
 
         // Tell the user once when a previous session was restored from this browser.
         useEffect(() => {
@@ -500,7 +503,7 @@ function App() {
 
         const jsonRef = useRef();
         const saveJson = () => {
-          const blob = new Blob([matrixToJson(project, rows, lib)], {
+          const blob = new Blob([matrixToJson(project, rows, lib, verifiedBy)], {
             type: "application/json",
           });
           const url = URL.createObjectURL(blob);
@@ -519,6 +522,7 @@ function App() {
             const parsed = matrixFromJson(await file.text());
             setRows(parsed.rows);
             setProject(parsed.project);
+            setVerifiedBy(parsed.verifiedBy);
             if (parsed.lib) setLib(parsed.lib);
             setSelectedRow(null);
             setError(null);
@@ -539,6 +543,7 @@ function App() {
             return;
           setRows([]);
           setProject("");
+          setVerifiedBy("");
           setSelectedRow(null);
           clearLocal();
         };
@@ -1136,9 +1141,11 @@ function App() {
           try {
             // Dynamic import keeps ExcelJS out of the initial bundle.
             const { downloadMatrix } = await import("./lib/xlsx");
-            await downloadMatrix({ rows, project, showTr, showCat });
+            await downloadMatrix({ rows, project, showTr, showCat, verifiedBy });
             setInfo(
-              "Exported .xlsx — Thai text is set to “TH Sarabun New”. If a reviewer's PC doesn't have that font, Excel substitutes a similar one.",
+              verifiedBy.trim()
+                ? `Exported .xlsx — “Verified By” pre-filled with “${verifiedBy.trim()}” and today's date. Thai is set to “TH Sarabun New”.`
+                : "Exported .xlsx — tip: set “Verified by” in the top bar to pre-fill the sign-off columns. Thai is set to “TH Sarabun New”.",
             );
           } catch (e) {
             setError(e?.message || "Export failed.");
@@ -1187,6 +1194,13 @@ function App() {
                 placeholder="Project name…"
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
+              />
+              <input
+                className="proj-input verifier-input"
+                placeholder="Verified by…"
+                title="Reviewer name — pre-filled into the “Verified By” column of the Excel export (with today's date)"
+                value={verifiedBy}
+                onChange={(e) => setVerifiedBy(e.target.value)}
               />
               <div className="topbar-right">
                 <select

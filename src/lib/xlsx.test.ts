@@ -48,6 +48,32 @@ describe("matrixToWorkbook", () => {
     expect(ws.getRow(h + 1).getCell(4).value).toBe("y");
   });
 
+  it("pre-fills the Verified By and Date columns", () => {
+    const ws = matrixToWorkbook({
+      rows,
+      project: "",
+      showTr: false,
+      showCat: false,
+      verifiedBy: "  J. Reviewer  ",
+      date: "2026-08-03",
+    }).worksheets[0];
+    const h = headerRowNumber(ws);
+    // With no translation/category: status=4, remarks=5, verified=6, date=7.
+    expect(ws.getRow(h).getCell(6).value).toBe("Verified By");
+    expect(ws.getRow(h).getCell(7).value).toBe("Date");
+    const first = ws.getRow(h + 1);
+    expect(first.getCell(6).value).toBe("J. Reviewer"); // trimmed
+    expect(first.getCell(7).value).toBe("2026-08-03");
+  });
+
+  it("leaves Verified By blank when not provided, and Date defaults to today", () => {
+    const ws = matrixToWorkbook({ rows, project: "", showTr: false, showCat: false }).worksheets[0];
+    const h = headerRowNumber(ws);
+    const first = ws.getRow(h + 1);
+    expect(first.getCell(6).value === "" || first.getCell(6).value == null).toBe(true);
+    expect(String(first.getCell(7).value)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
   it("filename sanitizes the project and appends the date", () => {
     expect(matrixFilename("Pump / Station")).toMatch(/^Pump_Station_Compliance_Matrix_\d{4}-\d{2}-\d{2}\.xlsx$/);
     expect(matrixFilename("")).toMatch(/^TOR_Compliance_Matrix_/);

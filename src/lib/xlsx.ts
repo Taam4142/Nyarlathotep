@@ -24,6 +24,10 @@ export interface ExportOpts {
   project: string;
   showTr: boolean;
   showCat: boolean;
+  /** Reviewer name pre-filled into the "Verified By" column (editable in Excel). */
+  verifiedBy?: string;
+  /** Date pre-filled into the "Date" column; defaults to today (YYYY-MM-DD). */
+  date?: string;
 }
 
 export function matrixFilename(project: string): string {
@@ -36,6 +40,8 @@ export function matrixToWorkbook(opts: ExportOpts): ExcelJS.Workbook {
   const { rows, project } = opts;
   const showTr = opts.showTr && rows.some((r) => r.translation);
   const showCat = opts.showCat;
+  const verifiedBy = opts.verifiedBy?.trim() || "";
+  const date = opts.date || today();
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "Nyarlathotep";
@@ -80,7 +86,7 @@ export function matrixToWorkbook(opts: ExportOpts): ExcelJS.Workbook {
     const arr: (string | number)[] = [i + 1, row.ref, row.requirement];
     if (showTr) arr.push(row.translation);
     if (showCat) arr.push(row.category);
-    arr.push(STATUS_LABELS[row.status] || row.status, row.remarks, "", "");
+    arr.push(STATUS_LABELS[row.status] || row.status, row.remarks, verifiedBy, date);
     const r = ws.addRow(arr);
     r.font = { name: THAI_FONT, size: 14 };
     r.alignment = { vertical: "top", wrapText: true };

@@ -6,11 +6,17 @@
 
 ## ▶ Next up
 
-Open items, roughly in priority order: **auto-fill "Verified By"/"Date"** from project metadata in the
-exporter (deferred out of F2); **AI table-prompt** for messy/borderless tables; **auto-use the text layer**
-in Browser/Typhoon on digital PDFs; security tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
+Open items, roughly in priority order: **auto-use the text layer** in Browser/Typhoon on digital PDFs
+(skip needless OCR — reuses `extractDigitalText`); **AI table-prompt** for messy/borderless tables;
+**big-matrix editor tools** (row search/filter, bulk status-set, duplicate detection — F5); security
+tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
 
 ## Shipped
+
+**Verified-By / Date auto-fill (2026-08-03):** a **Verified by…** top-bar field pre-fills the `.xlsx`
+sign-off columns (reviewer name + today's date on every row, still editable in Excel); the name persists
+with the matrix. Closes the F2 follow-up that was deferred out of the ExcelJS work. `src/lib/xlsx.ts` +
+`storage.ts` (unit-tested).
 
 **F2 — ExcelJS export (2026-08-03):** replaced SheetJS (`xlsx`) with **ExcelJS** so the exported `.xlsx`
 sets **"TH Sarabun New"** per cell — Thai renders on open with **no manual "change the column font" step**.

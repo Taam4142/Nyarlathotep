@@ -224,6 +224,9 @@
       .proj-input::placeholder {
         color: var(--txt3);
       }
+      .verifier-input {
+        width: 160px;
+      }
       .topbar-right {
         margin-left: auto;
         display: flex;

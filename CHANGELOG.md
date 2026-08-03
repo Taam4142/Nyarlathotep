@@ -14,6 +14,10 @@ There are no version tags yet, so released history below is grouped by date and 
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **Auto-filled "Verified By" / "Date" on export** — a new **Verified by…** field in the top bar
+  pre-fills the sign-off columns of the `.xlsx` (every row gets the reviewer name + today's date), instead
+  of leaving them blank for manual entry. Both stay editable in Excel. The reviewer name persists with the
+  matrix (autosave + Save/Load `.json`). Completes the original F2 scope.
 - **"How to use" guide** — a **How to use** button in the top bar opens an in-app modal that walks through
   the 5-step workflow, the extraction engines (when to use each), editing the matrix, and saving/exporting.
   Closes on ✕, backdrop click, or Escape. No routing — it's a self-contained overlay (`HelpModal` in

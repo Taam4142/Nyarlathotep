@@ -15,6 +15,7 @@ export interface Snapshot {
   version: number;
   savedAt: string;
   project: string;
+  verifiedBy: string;
   rows: Row[];
   lib: LibItem[];
   showTr: boolean;
@@ -67,6 +68,7 @@ export function readLocal(): Partial<Snapshot> | null {
     if (!o || typeof o !== "object" || !Array.isArray(o.rows)) return null;
     return {
       project: typeof o.project === "string" ? o.project : "",
+      verifiedBy: typeof o.verifiedBy === "string" ? o.verifiedBy : "",
       rows: normalizeRows(o.rows),
       lib: normalizeLib(o.lib) ?? undefined,
       showTr: !!o.showTr,
@@ -77,9 +79,16 @@ export function readLocal(): Partial<Snapshot> | null {
   }
 }
 
-export function writeLocal(s: Omit<Snapshot, "version" | "savedAt">): void {
+export function writeLocal(
+  s: Omit<Snapshot, "version" | "savedAt" | "verifiedBy"> & { verifiedBy?: string },
+): void {
   try {
-    const snap: Snapshot = { version: SCHEMA_VERSION, savedAt: new Date().toISOString(), ...s };
+    const snap: Snapshot = {
+      version: SCHEMA_VERSION,
+      savedAt: new Date().toISOString(),
+      verifiedBy: "",
+      ...s,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
   } catch {
     /* quota exceeded / storage disabled → skip silently */
@@ -96,9 +105,14 @@ export function clearLocal(): void {
 
 // ----- explicit Save / Load as a JSON file -----
 
-export function matrixToJson(project: string, rows: Row[], lib: LibItem[]): string {
+export function matrixToJson(
+  project: string,
+  rows: Row[],
+  lib: LibItem[],
+  verifiedBy = "",
+): string {
   return JSON.stringify(
-    { version: SCHEMA_VERSION, savedAt: new Date().toISOString(), project, rows, lib },
+    { version: SCHEMA_VERSION, savedAt: new Date().toISOString(), project, verifiedBy, rows, lib },
     null,
     2,
   );
@@ -106,6 +120,7 @@ export function matrixToJson(project: string, rows: Row[], lib: LibItem[]): stri
 
 export function matrixFromJson(text: string): {
   project: string;
+  verifiedBy: string;
   rows: Row[];
   lib: LibItem[] | null;
 } {
@@ -119,6 +134,7 @@ export function matrixFromJson(text: string): {
     throw new Error("This doesn't look like a saved matrix (no “rows” array).");
   return {
     project: typeof o.project === "string" ? o.project : "",
+    verifiedBy: typeof o.verifiedBy === "string" ? o.verifiedBy : "",
     rows: normalizeRows(o.rows),
     lib: normalizeLib(o.lib),
   };
