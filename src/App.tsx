@@ -3,7 +3,6 @@
 // This UI component is pending gradual typing; the extracted logic in src/lib/* is
 // fully typed and unit-tested. Behavior is unchanged from the pre-migration app.
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import * as XLSX from "xlsx";
 import {
   pdfjsLib,
   detectPDFType,
@@ -948,47 +947,18 @@ function App() {
           }
         };
 
-        const exportXLSX = () => {
+        const exportXLSX = async () => {
           if (!rows.length) return;
-          const hasTranslation = showTr && rows.some((r) => r.translation);
-          const headers = [
-            "Item No.",
-            "Reference",
-            "Requirement / Specification",
-          ];
-          if (hasTranslation) headers.push("English Translation");
-          if (showCat) headers.push("Category");
-          headers.push("Compliance Status", "Remarks", "Verified By", "Date");
-          const wsd = [
-            headers,
-            ...rows.map((row, i) => {
-              const base = [i + 1, row.ref, row.requirement];
-              if (hasTranslation) base.push(row.translation);
-              if (showCat) base.push(row.category);
-              base.push(
-                STATUS_LABELS[row.status] || row.status,
-                row.remarks,
-                "",
-                "",
-              );
-              return base;
-            }),
-          ];
-          const ws = XLSX.utils.aoa_to_sheet(wsd);
-          const colWidths = [{ wch: 8 }, { wch: 10 }, { wch: 65 }];
-          if (hasTranslation) colWidths.push({ wch: 55 });
-          if (showCat) colWidths.push({ wch: 14 });
-          colWidths.push({ wch: 16 }, { wch: 55 }, { wch: 14 }, { wch: 12 });
-          ws["!cols"] = colWidths;
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, (project || "TOR").slice(0, 30));
-          XLSX.writeFile(
-            wb,
-            `${project || "TOR"}_Compliance_Matrix_${new Date().toISOString().slice(0, 10)}.xlsx`,
-          );
-          setInfo(
-            'Exported. Open in Excel and set column C font to "TH Sarabun New" or "Cordia New" for correct Thai rendering.',
-          );
+          try {
+            // Dynamic import keeps ExcelJS out of the initial bundle.
+            const { downloadMatrix } = await import("./lib/xlsx");
+            await downloadMatrix({ rows, project, showTr, showCat });
+            setInfo(
+              "Exported .xlsx — Thai text is set to “TH Sarabun New”. If a reviewer's PC doesn't have that font, Excel substitutes a similar one.",
+            );
+          } catch (e) {
+            setError(e?.message || "Export failed.");
+          }
         };
 
         const stats = useMemo(

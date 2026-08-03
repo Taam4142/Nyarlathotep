@@ -6,12 +6,21 @@ There are no version tags yet, so released history below is grouped by date and 
 ## [Unreleased]
 
 ### Changed
+- **Dependencies:** dropped `xlsx` (SheetJS) in favour of `exceljs` for the spreadsheet export. This
+  **retires the `xlsx@0.18.5` security advisory** (no styled-write support was the reason to switch anyway).
 - **Renamed the project to Nyarlathotep** — the Lovecraft Messenger of a thousand forms fits a tool that
   translates and converts between formats; the earlier "Yog-Sothoth" (all-knowledge) did not. App title/
   brand, `package.json`, and all docs updated. The GitHub repo and the `yog-sothoth.pages.dev` deploy URL
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **ExcelJS export with a Thai-capable font** (`src/lib/xlsx.ts`) — the exported `.xlsx` now sets
+  **"TH Sarabun New"** on every cell, so Thai renders on open with **no manual "change the column font"
+  step**. The sheet also gets a title block, colour-coded compliance-status cells, a frozen header row, and
+  borders; the filename keeps Thai project names. ExcelJS is **dynamic-imported**, so it code-splits out of
+  the initial bundle and only loads when the user clicks Export. (A font still can't be *embedded* in
+  `.xlsx` — if a reviewer's PC lacks the font, Excel substitutes a similar one — but the common case no
+  longer needs a manual step.) Replaces SheetJS (`xlsx`).
 - **Row reordering & insert-between** — drag a row (grip handle, @dnd-kit) to reorder, and an "insert below"
   (+) button on each row; pure ops in `src/lib/rows.ts`.
 - **"Text PDF — No AI · exact" engine** — reads a digital PDF's embedded text layer directly (instant, free,

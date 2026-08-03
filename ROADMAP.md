@@ -2,19 +2,23 @@
 
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
-> Last updated 2026-08-01.
+> Last updated 2026-08-03.
 
 ## ▶ Next up
 
-**F2 — ExcelJS export with embedded Thai font** — replace SheetJS with ExcelJS so the exported `.xlsx`
-renders Thai without the manual "set column font to TH Sarabun New" step (exports go to reviewers). Bonus:
-this **retires the `xlsx@0.18.5` security advisory** in the same move. Auto-fill "Verified By"/"Date" from
-project metadata while we're in the exporter.
-
-_Also open:_ AI table-prompt for messy/borderless tables; auto-use the text layer in Browser/Typhoon on
-digital PDFs; security tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
+Open items, roughly in priority order: **auto-fill "Verified By"/"Date"** from project metadata in the
+exporter (deferred out of F2); **AI table-prompt** for messy/borderless tables; **auto-use the text layer**
+in Browser/Typhoon on digital PDFs; security tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
 
 ## Shipped
+
+**F2 — ExcelJS export (2026-08-03):** replaced SheetJS (`xlsx`) with **ExcelJS** so the exported `.xlsx`
+sets **"TH Sarabun New"** per cell — Thai renders on open with **no manual "change the column font" step**.
+Also a title block, colour-coded status cells, frozen header, borders, and a Thai-safe filename. ExcelJS is
+**dynamic-imported** so it code-splits out of the initial bundle (loads only on Export). This also
+**retires the `xlsx@0.18.5` security advisory**. `src/lib/xlsx.ts` (unit-tested). _Deferred:_ auto-fill
+"Verified By"/"Date" from project metadata. Verified end-to-end (typecheck/57 tests/build + in-browser
+export → valid xlsx, no manual font step).
 
 **F1 — Persistence (2026-08-01):** localStorage **autosave** of the matrix + project + comply-library +
 column toggles (restores on reload, with a one-time "restored your session" notice) · explicit **Save /
@@ -109,7 +113,7 @@ Small, self-contained, mostly bug/security hardening. None changes the UX shape.
 | ---- | --------------------- |
 | A2 — Vite/TS migration | First-paint load time becomes a complaint, or more than one person starts editing the file regularly. |
 | ~~A1 — model-ID refresh~~ | ✅ **Done (Phase 2, 2026-08-01)** — centralized in `src/lib/models.ts`, refreshed to `claude-sonnet-5` / `claude-opus-5` / `gemini-3.6-flash` / `gemini-3.1-pro`. |
-| F2 — ExcelJS | A user reports the manual Thai-font step as a real pain, or exports go to non-technical reviewers. |
+| ~~F2 — ExcelJS~~ | ✅ **Done (2026-08-03)** — `src/lib/xlsx.ts`; Thai font set per cell, no manual step; retired the `xlsx` advisory. |
 | Google Doc AI polish | A batch of heavily degraded scans that Tesseract/Claude/Gemini vision can't read. |
 
 ## Guardrails for every phase
