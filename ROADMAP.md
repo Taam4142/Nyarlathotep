@@ -4,17 +4,23 @@
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
 > Last updated 2026-08-01.
 
-## ▶ Next up (locked with the engineer, 2026-08-01)
+## ▶ Next up
 
-**F1 — Persistence** is the agreed next work — the single biggest gap (a refresh wipes all work):
-- localStorage **autosave** of the current matrix + project name (survives refresh).
-- Explicit **Save / Load matrix as JSON** (export/import) to keep, share, or resume a document.
-- Switch row IDs from the `_rc` counter to **UUIDs** so loaded sessions never collide.
+**F2 — ExcelJS export with embedded Thai font** — replace SheetJS with ExcelJS so the exported `.xlsx`
+renders Thai without the manual "set column font to TH Sarabun New" step (exports go to reviewers). Bonus:
+this **retires the `xlsx@0.18.5` security advisory** in the same move. Auto-fill "Verified By"/"Date" from
+project metadata while we're in the exporter.
 
-Strong runner-up: **F2 — ExcelJS export with embedded Thai font** (fixes the manual-Thai-font step for
-reviewers **and** retires the `xlsx@0.18.5` security advisory in one move).
+_Also open:_ AI table-prompt for messy/borderless tables; auto-use the text layer in Browser/Typhoon on
+digital PDFs; security tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
 
 ## Shipped
+
+**F1 — Persistence (2026-08-01):** localStorage **autosave** of the matrix + project + comply-library +
+column toggles (restores on reload, with a one-time "restored your session" notice) · explicit **Save /
+Load matrix as JSON** + a **New** button · row ids switched to **UUIDs** so loaded sessions never collide ·
+imported rows validated/coerced. `src/lib/storage.ts` (pure, unit-tested). Gemini key intentionally not
+persisted. Verified end-to-end.
 
 **Post-Phase-2 features (2026-08-01):**
 - **OCR row-splitter fix** — one-row-per-line + Thai-numeral clause detection (`๓.๑๑.๒.๒` → Ref).
