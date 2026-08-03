@@ -6,12 +6,17 @@
 
 ## ▶ Next up
 
-Open items, roughly in priority order: **auto-use the text layer** in Browser/Typhoon on digital PDFs
-(skip needless OCR — reuses `extractDigitalText`); **AI table-prompt** for messy/borderless tables;
-**big-matrix editor tools** (row search/filter, bulk status-set, duplicate detection — F5); security
-tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
+Open items, roughly in priority order: **AI table-prompt** for messy/borderless tables; **big-matrix
+editor tools** (row search/filter, bulk status-set, duplicate detection — F5); security tidy-ups
+(R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
 
 ## Shipped
+
+**Digital-PDF fast path (2026-08-03):** Typhoon / Browser OCR now auto-read a **digital** PDF's exact
+embedded text layer instead of OCR-ing the pages (instant, lossless, free) — reuses `extractDigitalText`.
+Guarded by a text-quality check (`src/lib/textquality.ts`): an empty/garbled text layer (common with broken
+Thai font maps) auto-falls-back to the chosen OCR with a reason; the success notice always offers a
+one-click **Re-run with OCR** for subtle corruption the guard can't catch. AI engines unchanged.
 
 **Verified-By / Date auto-fill (2026-08-03):** a **Verified by…** top-bar field pre-fills the `.xlsx`
 sign-off columns (reviewer name + today's date on every row, still editable in Excel); the name persists

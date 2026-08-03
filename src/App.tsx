@@ -54,6 +54,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { insertAfterId, reorderByIds } from "./lib/rows";
+import { assessTextQuality } from "./lib/textquality";
 import {
   readLocal,
   writeLocal,
@@ -192,8 +193,11 @@ function HelpModal({ open, onClose }) {
             </div>
           </div>
           <div className="help-note">
-            Scanned PDF under Claude/Gemini? You'll also pick an OCR feeder
-            (Typhoon, Google Vision, Tesseract…) to read the pages first.
+            Digital PDF on Typhoon or Browser OCR? The tool automatically reads
+            its exact text layer instead of running OCR (instant, lossless) — with
+            a one-click “re-run with OCR” if the text looks off. Scanned PDF under
+            Claude/Gemini? You'll also pick an OCR feeder (Typhoon, Google Vision,
+            Tesseract…) to read the pages first.
           </div>
 
           <div className="help-sec-title">Editing the matrix</div>
@@ -434,6 +438,9 @@ function App() {
         const [selectedRow, setSelectedRow] = useState(null);
         const [dragging, setDragging] = useState(false);
         const [showHelp, setShowHelp] = useState(false);
+        // When the digital-PDF fast path used the text layer, holds the OCR
+        // engine label to offer as a one-click "re-run with OCR" fallback.
+        const [ocrFallback, setOcrFallback] = useState(null);
         const [showLibAdd, setShowLibAdd] = useState(false);
         const [newLib, setNewLib] = useState({
           label: "",
@@ -558,6 +565,7 @@ function App() {
           setError(null);
           setWarning(null);
           setInfo(null);
+          setOcrFallback(null);
           setPdfType(null);
           setLoading(true);
           setLoadMsg("Detecting PDF type...");
@@ -591,19 +599,75 @@ function App() {
           [handleFile],
         );
 
-        const doExtract = async () => {
+        const doExtract = async ({ forceOcr = false } = {}) => {
           if (!pdfFile) return;
           setLoading(true);
           setError(null);
           setWarning(null);
           setInfo(null);
+          setOcrFallback(null);
           const ctrl = new AbortController();
           abortRef.current = ctrl;
           const signal = ctrl.signal;
 
+          // Digital-PDF fast path: prefer the PDF's exact embedded text layer
+          // over OCR when it's digital and looks trustworthy (guarded). Returns
+          // true if it produced the matrix (caller should stop); false to fall
+          // through to the OCR the user picked. Cancellation propagates.
+          const tryDigitalFast = async (ocrLabel) => {
+            setLoadMsg("Reading embedded text…");
+            setLoadSub("Digital PDF — trying its exact text layer first");
+            setLoadPct(2);
+            let dText;
+            try {
+              dText = await extractDigitalText(
+                pdfFile,
+                (page, total) => {
+                  setLoadSub(`Reading page ${page} of ${total}`);
+                  setLoadPct(Math.round(((page - 1) / total) * 60) + 5);
+                },
+                signal,
+              );
+            } catch (e) {
+              if (e?.name === "AbortError" || signal.aborted) throw e;
+              return false; // text layer unreadable → let OCR run
+            }
+            const q = assessTextQuality(dText);
+            const parsed = q.usable ? structureWithoutAI(dText) : [];
+            if (!q.usable || parsed.length === 0) {
+              setInfo(
+                `Digital PDF, but its text layer looked unreliable (${q.reason || "no rows"}) — using ${ocrLabel} OCR instead.`,
+              );
+              return false;
+            }
+            setRows(
+              parsed.map((it) =>
+                mkRow({
+                  ref: it.ref,
+                  requirement: it.requirement,
+                  category: it.category || "General",
+                  status: "comply",
+                }),
+              ),
+            );
+            setLoadPct(100);
+            setInfo(
+              "Digital PDF — read its exact text layer instantly, skipping OCR (lossless, free). If the Thai looks garbled, re-run with OCR.",
+            );
+            setOcrFallback(ocrLabel);
+            setTimeout(() => {
+              setLoading(false);
+              setLoadPct(null);
+            }, 400);
+            return true;
+          };
+
           try {
             // ===== BROWSER-ONLY MODE: Tesseract.js OCR + heuristic structuring, ZERO API =====
             if (aiEngine === "browser") {
+              if (pdfType === "digital" && !forceOcr) {
+                if (await tryDigitalFast("Browser")) return;
+              }
               setLoadMsg("Browser OCR (Tesseract.js)...");
               setLoadSub(
                 "First run downloads the Thai language pack (~15MB, cached after)",
@@ -651,6 +715,9 @@ function App() {
 
             // ===== TYPHOON MODE: Typhoon OCR (Thai) + heuristic structuring, free tier =====
             if (aiEngine === "typhoon") {
+              if (pdfType === "digital" && !forceOcr) {
+                if (await tryDigitalFast("Typhoon")) return;
+              }
               setLoadMsg("Typhoon OCR (Thai)...");
               setLoadSub("Reading pages with Typhoon — via proxy");
               setLoadPct(2);
@@ -1362,7 +1429,7 @@ function App() {
                       )}
                       <button
                         className="btn btn-amber extract-btn"
-                        onClick={doExtract}
+                        onClick={() => doExtract()}
                         disabled={loading || !pdfType}
                       >
                         {loading ? "Processing…" : "⚡ Extract Requirements"}
@@ -2023,9 +2090,21 @@ function App() {
                   <div className="alert alert-info">
                     <span className="alert-icon">ℹ</span>
                     <div className="alert-body">{info}</div>
+                    {ocrFallback && !loading && (
+                      <button
+                        className="alert-action"
+                        onClick={() => doExtract({ forceOcr: true })}
+                        title="Ignore the text layer and OCR the pages instead"
+                      >
+                        Re-run with {ocrFallback} OCR
+                      </button>
+                    )}
                     <button
                       className="alert-dismiss"
-                      onClick={() => setInfo(null)}
+                      onClick={() => {
+                        setInfo(null);
+                        setOcrFallback(null);
+                      }}
                     >
                       ×
                     </button>

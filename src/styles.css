@@ -1105,6 +1105,24 @@
       .alert-dismiss:hover {
         opacity: 1;
       }
+      .alert-action {
+        flex-shrink: 0;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        background: transparent;
+        color: inherit;
+        border: 1px solid currentColor;
+        border-radius: var(--r-sm);
+        padding: 4px 10px;
+        cursor: pointer;
+        opacity: 0.85;
+        transition: opacity 0.15s;
+      }
+      .alert-action:hover {
+        opacity: 1;
+      }
 
       /* how-to-use button + modal */
       .help-btn {

@@ -14,6 +14,13 @@ There are no version tags yet, so released history below is grouped by date and 
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **Digital PDFs skip OCR automatically** — with **Typhoon** or **Browser OCR** selected, a *digital* PDF
+  is now read from its exact embedded text layer instead of being OCR-ed (instant, lossless, free — the same
+  path as the "Text PDF" engine). A text-quality guard (`src/lib/textquality.ts`) checks the layer first: if
+  it's empty or garbled — common with broken Thai font/ToUnicode maps — the tool **auto-falls-back to the
+  OCR you picked** and says why. The success notice always offers a one-click **"Re-run with OCR"** for the
+  subtle-corruption cases a heuristic can't catch. Scanned PDFs and the AI engines (Claude/Gemini) are
+  unaffected.
 - **Auto-filled "Verified By" / "Date" on export** — a new **Verified by…** field in the top bar
   pre-fills the sign-off columns of the `.xlsx` (every row gets the reviewer name + today's date), instead
   of leaving them blank for manual entry. Both stay editable in Excel. The reviewer name persists with the
