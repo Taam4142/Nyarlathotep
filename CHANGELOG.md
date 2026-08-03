@@ -14,6 +14,10 @@ There are no version tags yet, so released history below is grouped by date and 
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **"How to use" guide** — a **How to use** button in the top bar opens an in-app modal that walks through
+  the 5-step workflow, the extraction engines (when to use each), editing the matrix, and saving/exporting.
+  Closes on ✕, backdrop click, or Escape. No routing — it's a self-contained overlay (`HelpModal` in
+  `App.tsx`), styled from the existing design tokens (light/dark aware).
 - **ExcelJS export with a Thai-capable font** (`src/lib/xlsx.ts`) — the exported `.xlsx` now sets
   **"TH Sarabun New"** on every cell, so Thai renders on open with **no manual "change the column font"
   step**. The sheet also gets a title block, colour-coded compliance-status cells, a frozen header row, and

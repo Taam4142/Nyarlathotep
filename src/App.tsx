@@ -62,6 +62,189 @@ import {
   matrixFromJson,
 } from "./lib/storage";
 
+// Full-screen "How to use" guide, opened from the top bar. Closes on the ✕, a
+// backdrop click, or Escape. Pure content (no app state), so it lives at module
+// level like SortableRow.
+function HelpModal({ open, onClose }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="help-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="How to use Nyarlathotep"
+      onClick={onClose}
+    >
+      <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="help-head">
+          <div>
+            <div className="help-title">How to use Nyarlathotep</div>
+            <div className="help-sub">
+              Turn a Thai / English TOR PDF into an editable compliance matrix,
+              then export it as a signed-off Excel file.
+            </div>
+          </div>
+          <button className="help-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div className="help-body">
+          <div className="help-callout">
+            <span className="help-callout-ico" aria-hidden="true">
+              ⚖️
+            </span>
+            <div>
+              <strong>The one rule.</strong> The tool copies requirement text{" "}
+              <strong>verbatim</strong> — it never translates, paraphrases, or
+              invents. You review every row and set its compliance status. Treat
+              each extracted row as a draft to check against the original TOR.
+            </div>
+          </div>
+
+          <div className="help-sec-title">The 5 steps</div>
+          <ol className="help-steps">
+            <li>
+              <strong>Name your project</strong> in the top-left field — it becomes
+              the Excel title and the file name.
+            </li>
+            <li>
+              <strong>Pick an extraction engine</strong> from the top bar (guide
+              below). <em>Typhoon</em> is the free, Thai-first default.
+            </li>
+            <li>
+              <strong>Add your TOR PDF</strong> — drag it onto the box in the left
+              sidebar (or click to browse), then press <em>Extract</em>.
+            </li>
+            <li>
+              <strong>Review &amp; edit the matrix.</strong> Each row is one
+              requirement. Check the text against the source, set the{" "}
+              <em>Compliance Status</em>, and add <em>Remarks</em>.
+            </li>
+            <li>
+              <strong>Export</strong> with <em>↓ Export .xlsx</em>. Thai is set to
+              “TH Sarabun New” automatically — no font step needed.
+            </li>
+          </ol>
+
+          <div className="help-sec-title">Extraction engines</div>
+          <div className="help-engines">
+            <div className="help-eng">
+              <div className="help-eng-name">
+                ✦ Typhoon
+                <span className="help-tag help-tag-free">Free</span>
+              </div>
+              <div className="help-eng-desc">
+                Thai-tuned OCR — the recommended default. No key needed from you
+                (handled server-side). Rows are split automatically, so review the
+                boundaries.
+              </div>
+            </div>
+            <div className="help-eng">
+              <div className="help-eng-name">
+                🆓 Browser OCR
+                <span className="help-tag help-tag-free">Free · Offline</span>
+              </div>
+              <div className="help-eng-desc">
+                Runs in your browser — no key, works offline. Lower accuracy; a
+                handy fallback.
+              </div>
+            </div>
+            <div className="help-eng">
+              <div className="help-eng-name">
+                ✎ Text PDF
+                <span className="help-tag">No AI · exact</span>
+              </div>
+              <div className="help-eng-desc">
+                For <em>digital</em> PDFs (not scans): reads the embedded text
+                layer directly — instant, lossless, column-aware. No OCR, no AI.
+              </div>
+            </div>
+            <div className="help-eng">
+              <div className="help-eng-name">
+                ⚡ Claude
+                <span className="help-tag help-tag-paid">Paid API</span>
+              </div>
+              <div className="help-eng-desc">
+                Highest fidelity — Claude structures the clauses into rows. Best
+                for messy or complex TORs.
+              </div>
+            </div>
+            <div className="help-eng">
+              <div className="help-eng-name">
+                ✦ Gemini
+                <span className="help-tag">Your key</span>
+              </div>
+              <div className="help-eng-desc">
+                Good accuracy; you paste a Gemini key (kept in this tab only, never
+                saved).
+              </div>
+            </div>
+          </div>
+          <div className="help-note">
+            Scanned PDF under Claude/Gemini? You'll also pick an OCR feeder
+            (Typhoon, Google Vision, Tesseract…) to read the pages first.
+          </div>
+
+          <div className="help-sec-title">Editing the matrix</div>
+          <ul className="help-list">
+            <li>
+              <strong>Status &amp; remarks</strong> — set each row's compliance
+              status (Comply / Partial / Not Comply / N/A) and notes.
+            </li>
+            <li>
+              <strong>Add · insert · reorder · delete</strong> — “+ Row” adds at
+              the end; the “+” on a row inserts one below it; drag the grip in the
+              number column to reorder; the trash icon deletes.
+            </li>
+            <li>
+              <strong>Comply Library</strong> (left) — click a saved item to fill a
+              standard response into the selected row (or every row of that
+              status).
+            </li>
+            <li>
+              <strong>Filters &amp; columns</strong> — filter rows by status, and
+              toggle the Translation / Category columns on the toolbar.
+            </li>
+          </ul>
+
+          <div className="help-sec-title">Saving your work</div>
+          <ul className="help-list">
+            <li>
+              <strong>Autosave</strong> — your matrix is saved in this browser and
+              restored when you reload.
+            </li>
+            <li>
+              <strong>↓ Save .json / ↑ Load .json</strong> — keep a permanent copy,
+              or move a matrix between computers.
+            </li>
+            <li>
+              <strong>New</strong> — clear everything and start fresh (save first if
+              you want to keep it).
+            </li>
+          </ul>
+        </div>
+
+        <div className="help-foot">
+          <button className="btn btn-amber btn-sm" onClick={onClose}>
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // One matrix row, made sortable via @dnd-kit. The grip in the number cell is the
 // only drag activator (so editing cell text still works); dragging is disabled
 // when a status filter is active (reordering a subset can't map to hidden rows).
@@ -247,6 +430,7 @@ function App() {
         const [showCat, setShowCat] = useState(() => persisted?.showCat ?? true);
         const [selectedRow, setSelectedRow] = useState(null);
         const [dragging, setDragging] = useState(false);
+        const [showHelp, setShowHelp] = useState(false);
         const [showLibAdd, setShowLibAdd] = useState(false);
         const [newLib, setNewLib] = useState({
           label: "",
@@ -980,12 +1164,23 @@ function App() {
 
         return (
           <div className="app">
+            <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
             {/* TOPBAR */}
             <div className="topbar">
               <div className="brand">
                 <div className="brand-pulse" />
                 <span className="brand-name">Nyarlathotep</span>
               </div>
+              <button
+                className="btn btn-ghost btn-sm help-btn"
+                onClick={() => setShowHelp(true)}
+                title="How to use this tool"
+              >
+                <span className="help-q" aria-hidden="true">
+                  ?
+                </span>
+                How to use
+              </button>
               <div className="brand-sep" />
               <input
                 className="proj-input"
