@@ -14,6 +14,13 @@ There are no version tags yet, so released history below is grouped by date and 
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **Review-speed tools for large matrices** (ROADMAP F5) — a **search box** filters rows by ref /
+  requirement / translation / remarks text (combined with the status filter, with a live match count);
+  **bulk status-set** via per-row checkboxes + a "select all shown" header checkbox and an action bar
+  (*N selected · set Comply/Partial/Not Comply/N-A · Clear*); and **duplicate flagging** — rows whose
+  requirement text is identical (after normalization) get a "⧉ Duplicate" badge, with a count in the
+  toolbar. Pure logic in `src/lib/review.ts` (unit-tested). Drag-reorder stays disabled while searching
+  (same rule as the status filters).
 - **Digital PDFs skip OCR automatically** — with **Typhoon** or **Browser OCR** selected, a *digital* PDF
   is now read from its exact embedded text layer instead of being OCR-ed (instant, lossless, free — the same
   path as the "Text PDF" engine). A text-quality guard (`src/lib/textquality.ts`) checks the layer first: if

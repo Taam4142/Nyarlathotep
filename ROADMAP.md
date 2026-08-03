@@ -6,11 +6,16 @@
 
 ## ▶ Next up
 
-Open items, roughly in priority order: **AI table-prompt** for messy/borderless tables; **big-matrix
-editor tools** (row search/filter, bulk status-set, duplicate detection — F5); security tidy-ups
-(R7/R8/R12); drop `@ts-nocheck` from `App.tsx`.
+Open items, roughly in priority order: **AI table-prompt** for messy/borderless tables; security
+tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: undo/redo,
+keyboard cell nav.)_
 
 ## Shipped
+
+**Review-speed tools — F5 (2026-08-03):** text **search** (ref/requirement/translation/remarks, combined
+with the status filter, live match count), **bulk status-set** (per-row checkboxes + select-all + action
+bar), and **duplicate-requirement flagging** (badge + toolbar count). Pure logic in `src/lib/review.ts`
+(`matchesQuery` / `findDuplicateIds`, unit-tested). Attacks the biggest time sink — reviewing a large TOR.
 
 **Digital-PDF fast path (2026-08-03):** Typhoon / Browser OCR now auto-read a **digital** PDF's exact
 embedded text layer instead of OCR-ing the pages (instant, lossless, free) — reuses `extractDigitalText`.

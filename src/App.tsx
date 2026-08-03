@@ -55,6 +55,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { insertAfterId, reorderByIds } from "./lib/rows";
 import { assessTextQuality } from "./lib/textquality";
+import { matchesQuery, findDuplicateIds } from "./lib/review";
 import {
   readLocal,
   writeLocal,
@@ -217,6 +218,11 @@ function HelpModal({ open, onClose }) {
               status).
             </li>
             <li>
+              <strong>Find · bulk-set · de-dupe</strong> — search rows by text,
+              tick the checkboxes to set many rows' status at once, and watch for
+              the “⧉ Duplicate” flag on repeated requirements.
+            </li>
+            <li>
               <strong>Filters &amp; columns</strong> — filter rows by status, and
               toggle the Translation / Category columns on the toolbar.
             </li>
@@ -263,6 +269,9 @@ function SortableRow({
   del,
   insertAfter,
   dragEnabled,
+  selected,
+  onToggleSelect,
+  isDup,
 }) {
   const {
     attributes,
@@ -284,9 +293,20 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={selectedRow === row.id ? "sel-row" : ""}
+      className={`${selectedRow === row.id ? "sel-row" : ""}${selected ? " bulk-row" : ""}`}
       onClick={() => setSelectedRow(selectedRow === row.id ? null : row.id)}
     >
+      <td className="c-sel" onClick={(e) => e.stopPropagation()}>
+        <div className="td-p sel-cell">
+          <input
+            type="checkbox"
+            className="row-check"
+            checked={selected}
+            onChange={() => onToggleSelect(row.id)}
+            aria-label="Select row for bulk actions"
+          />
+        </div>
+      </td>
       <td className="c-no" onClick={(e) => e.stopPropagation()}>
         <div className="td-p no-txt">
           {dragEnabled && (
@@ -328,6 +348,11 @@ function SortableRow({
           {row._warn && (
             <div className="warn-flag">
               ⚠ May be translated — verify verbatim
+            </div>
+          )}
+          {isDup && (
+            <div className="dup-flag" title="Another row has identical requirement text">
+              ⧉ Duplicate requirement
             </div>
           )}
         </div>
@@ -433,6 +458,9 @@ function App() {
           () => persisted?.verifiedBy ?? "",
         );
         const [filter, setFilter] = useState("all");
+        const [query, setQuery] = useState("");
+        // Multi-row selection for bulk status-set (F5), by row id (filter-safe).
+        const [selectedIds, setSelectedIds] = useState(() => new Set());
         const [showTr, setShowTr] = useState(() => persisted?.showTr ?? false);
         const [showCat, setShowCat] = useState(() => persisted?.showCat ?? true);
         const [selectedRow, setSelectedRow] = useState(null);
@@ -532,6 +560,8 @@ function App() {
             setVerifiedBy(parsed.verifiedBy);
             if (parsed.lib) setLib(parsed.lib);
             setSelectedRow(null);
+            setSelectedIds(new Set());
+            setQuery("");
             setError(null);
             setInfo(
               `Loaded ${parsed.rows.length} row${parsed.rows.length === 1 ? "" : "s"} from ${file.name}.`,
@@ -552,6 +582,8 @@ function App() {
           setProject("");
           setVerifiedBy("");
           setSelectedRow(null);
+          setSelectedIds(new Set());
+          setQuery("");
           clearLocal();
         };
 
@@ -566,6 +598,8 @@ function App() {
           setWarning(null);
           setInfo(null);
           setOcrFallback(null);
+          setSelectedIds(new Set());
+          setQuery("");
           setPdfType(null);
           setLoading(true);
           setLoadMsg("Detecting PDF type...");
@@ -606,6 +640,7 @@ function App() {
           setWarning(null);
           setInfo(null);
           setOcrFallback(null);
+          setSelectedIds(new Set());
           const ctrl = new AbortController();
           abortRef.current = ctrl;
           const signal = ctrl.signal;
@@ -1230,11 +1265,44 @@ function App() {
           [rows],
         );
 
-        const filtered = useMemo(
-          () =>
-            filter === "all" ? rows : rows.filter((r) => r.status === filter),
-          [rows, filter],
+        const filtered = useMemo(() => {
+          let out =
+            filter === "all" ? rows : rows.filter((r) => r.status === filter);
+          if (query.trim()) out = out.filter((r) => matchesQuery(r, query));
+          return out;
+        }, [rows, filter, query]);
+
+        // Near-duplicate requirement rows (by normalized text), for flagging.
+        const dupIds = useMemo(() => findDuplicateIds(rows), [rows]);
+
+        // Bulk selection derived values + actions (F5).
+        const dragEnabled = filter === "all" && !query.trim();
+        const selectedCount = useMemo(
+          () => rows.reduce((n, r) => n + (selectedIds.has(r.id) ? 1 : 0), 0),
+          [rows, selectedIds],
         );
+        const allFilteredSelected =
+          filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
+        const toggleSelect = (id) =>
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+          });
+        const toggleSelectAllFiltered = () =>
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (allFilteredSelected) filtered.forEach((r) => next.delete(r.id));
+            else filtered.forEach((r) => next.add(r.id));
+            return next;
+          });
+        const clearSelection = () => setSelectedIds(new Set());
+        const bulkSetStatus = (status) => {
+          setRows((prev) =>
+            prev.map((r) => (selectedIds.has(r.id) ? { ...r, status } : r)),
+          );
+          clearSelection();
+        };
 
         return (
           <div className="app">
@@ -2138,6 +2206,18 @@ function App() {
                           <span className="stat-val">{stats[s]}</span>
                         </div>
                       ))}
+                      {dupIds.size > 0 && (
+                        <div
+                          className="stat dup-stat"
+                          title="Rows with identical requirement text"
+                        >
+                          <span className="dup-ico" aria-hidden="true">
+                            ⧉
+                          </span>
+                          <span className="stat-val">{dupIds.size}</span>
+                          <span className="stat-lbl">dup</span>
+                        </div>
+                      )}
                     </div>
                     <div className="toolbar-sep" />
                     <div className="filters">
@@ -2157,6 +2237,33 @@ function App() {
                         </button>
                       ))}
                     </div>
+                    <div className="tb-search">
+                      <span className="search-ico" aria-hidden="true">
+                        ⌕
+                      </span>
+                      <input
+                        className="search-in"
+                        placeholder="Search rows…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                      {query && (
+                        <button
+                          className="search-clear"
+                          onClick={() => setQuery("")}
+                          aria-label="Clear search"
+                          title="Clear search"
+                        >
+                          ×
+                        </button>
+                      )}
+                      {query.trim() && (
+                        <span className="search-count">
+                          {filtered.length} match
+                          {filtered.length === 1 ? "" : "es"}
+                        </span>
+                      )}
+                    </div>
                     <div className="toggles">
                       <label className="toggle-label">
                         <input
@@ -2175,6 +2282,33 @@ function App() {
                         Category col
                       </label>
                     </div>
+                  </div>
+                )}
+
+                {/* bulk-action bar (F5) — appears when rows are selected */}
+                {selectedCount > 0 && (
+                  <div className="bulk-bar">
+                    <span className="bulk-count">
+                      {selectedCount} selected
+                    </span>
+                    <span className="bulk-sep" />
+                    <span className="bulk-lbl">Set status:</span>
+                    {STATUS_OPTS.map((o) => (
+                      <button
+                        key={o.v}
+                        className={`f-btn f-${o.v} on`}
+                        onClick={() => bulkSetStatus(o.v)}
+                        title={`Set ${selectedCount} selected row${selectedCount === 1 ? "" : "s"} to ${o.l}`}
+                      >
+                        {o.l}
+                      </button>
+                    ))}
+                    <button
+                      className="btn btn-ghost btn-xs bulk-clear"
+                      onClick={clearSelection}
+                    >
+                      Clear
+                    </button>
                   </div>
                 )}
 
@@ -2226,6 +2360,16 @@ function App() {
                     <table>
                       <thead>
                         <tr>
+                          <th className="c-sel">
+                            <input
+                              type="checkbox"
+                              className="row-check"
+                              checked={allFilteredSelected}
+                              onChange={toggleSelectAllFiltered}
+                              title="Select all shown rows"
+                              aria-label="Select all shown rows"
+                            />
+                          </th>
                           <th className="c-no">#</th>
                           <th className="c-ref">Ref.</th>
                           <th className="c-req">
@@ -2262,7 +2406,10 @@ function App() {
                             upd={upd}
                             del={del}
                             insertAfter={insertAfter}
-                            dragEnabled={filter === "all"}
+                            dragEnabled={dragEnabled}
+                            selected={selectedIds.has(row.id)}
+                            onToggleSelect={toggleSelect}
+                            isDup={dupIds.has(row.id)}
                           />
                         ))}
                       </tbody>
