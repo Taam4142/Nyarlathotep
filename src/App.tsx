@@ -55,6 +55,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { insertAfterId, reorderByIds } from "./lib/rows";
+import {
+  readLocal,
+  writeLocal,
+  clearLocal,
+  matrixToJson,
+  matrixFromJson,
+} from "./lib/storage";
 
 // One matrix row, made sortable via @dnd-kit. The grip in the number cell is the
 // only drag activator (so editing cell text still works); dragging is disabled
@@ -221,8 +228,10 @@ function SortableRow({
 }
 
 function App() {
-        const [rows, setRows] = useState([]);
-        const [lib, setLib] = useState(DEFAULT_LIB);
+        // Restore the last session from this browser (F1 persistence).
+        const [persisted] = useState(() => readLocal());
+        const [rows, setRows] = useState(() => persisted?.rows ?? []);
+        const [lib, setLib] = useState(() => persisted?.lib ?? DEFAULT_LIB);
         const [loading, setLoading] = useState(false);
         const [loadMsg, setLoadMsg] = useState("");
         const [loadSub, setLoadSub] = useState("");
@@ -233,10 +242,10 @@ function App() {
         const [pdfFile, setPdfFile] = useState(null);
         const [pdfType, setPdfType] = useState(null);
         const [model, setModel] = useState(DEFAULT_CLAUDE_MODEL);
-        const [project, setProject] = useState("");
+        const [project, setProject] = useState(() => persisted?.project ?? "");
         const [filter, setFilter] = useState("all");
-        const [showTr, setShowTr] = useState(false);
-        const [showCat, setShowCat] = useState(true);
+        const [showTr, setShowTr] = useState(() => persisted?.showTr ?? false);
+        const [showCat, setShowCat] = useState(() => persisted?.showCat ?? true);
         const [selectedRow, setSelectedRow] = useState(null);
         const [dragging, setDragging] = useState(false);
         const [showLibAdd, setShowLibAdd] = useState(false);
@@ -286,6 +295,69 @@ function App() {
           const { active, over } = e;
           if (over && active.id !== over.id)
             setRows((p) => reorderByIds(p, active.id, over.id));
+        };
+
+        // Autosave the working matrix to this browser (debounced). F1 persistence.
+        useEffect(() => {
+          const t = setTimeout(
+            () => writeLocal({ project, rows, lib, showTr, showCat }),
+            400,
+          );
+          return () => clearTimeout(t);
+        }, [project, rows, lib, showTr, showCat]);
+
+        // Tell the user once when a previous session was restored from this browser.
+        useEffect(() => {
+          if (persisted?.rows?.length)
+            setInfo(
+              `Restored your last session (${persisted.rows.length} row${persisted.rows.length === 1 ? "" : "s"}) — autosaved in this browser. Use “New” to start fresh.`,
+            );
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []);
+
+        const jsonRef = useRef();
+        const saveJson = () => {
+          const blob = new Blob([matrixToJson(project, rows, lib)], {
+            type: "application/json",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          const name = (project || "matrix").replace(/[^\w.\-ก-๙]+/g, "_");
+          a.download = `${name}-${new Date().toISOString().slice(0, 10)}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        const loadJson = async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            const parsed = matrixFromJson(await file.text());
+            setRows(parsed.rows);
+            setProject(parsed.project);
+            if (parsed.lib) setLib(parsed.lib);
+            setSelectedRow(null);
+            setError(null);
+            setInfo(
+              `Loaded ${parsed.rows.length} row${parsed.rows.length === 1 ? "" : "s"} from ${file.name}.`,
+            );
+          } catch (err) {
+            setError(err.message || "Could not load that file.");
+          }
+        };
+        const clearAll = () => {
+          if (
+            rows.length &&
+            !window.confirm(
+              "Clear the current matrix? This can't be undone — use “Save .json” first if you want to keep it.",
+            )
+          )
+            return;
+          setRows([]);
+          setProject("");
+          setSelectedRow(null);
+          clearLocal();
         };
 
         const handleFile = useCallback(async (file) => {
@@ -1006,6 +1078,36 @@ function App() {
                   disabled={!rows.length}
                 >
                   ↓ Export .xlsx
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={saveJson}
+                  disabled={!rows.length}
+                  title="Download this matrix as a JSON file you can reopen later"
+                >
+                  ↓ Save .json
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => jsonRef.current?.click()}
+                  title="Load a matrix from a JSON file"
+                >
+                  ↑ Load .json
+                </button>
+                <input
+                  ref={jsonRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={loadJson}
+                  style={{ display: "none" }}
+                />
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={clearAll}
+                  disabled={!rows.length && !project}
+                  title="Clear the matrix and start a new one"
+                >
+                  New
                 </button>
               </div>
             </div>

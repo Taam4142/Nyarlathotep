@@ -117,9 +117,10 @@ export const DEFAULT_LIB: LibItem[] = [
   },
 ];
 
-let _rc = 1;
+// UUID row ids so loaded/imported sessions never collide with a reset counter
+// (needed once matrices persist and are loaded from JSON — F1).
 export const mkRow = (o: Partial<Row> = {}): Row => ({
-  id: _rc++,
+  id: crypto.randomUUID(),
   ref: "",
   requirement: "",
   translation: "",

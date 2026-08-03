@@ -3,7 +3,7 @@ export type Status = "comply" | "partial" | "notcomply" | "na";
 export type PdfType = "digital" | "scanned";
 
 export interface Row {
-  id: number;
+  id: string;
   ref: string;
   requirement: string;
   translation: string;
