@@ -42,8 +42,9 @@ Vision**.
   [`src/lib/`](src/lib) (`pdf.ts`, `ocr.ts`, `extract.ts`, `net.ts`, `models.ts`, `typhoon.ts`,
   `constants.ts`, `types.ts`); styles in
   [`src/styles.css`](src/styles.css). `npm run build` emits `dist/`.
-- **npm dependencies** (bundled, not CDN): `react`/`react-dom`, `pdfjs-dist`, `tesseract.js`, `xlsx`.
-  Fonts (Inter / Sarabun / JetBrains Mono) load from Google Fonts via `index.html`.
+- **npm dependencies** (bundled, not CDN): `react`/`react-dom`, `pdfjs-dist`, `tesseract.js`, `exceljs`
+  (Excel export — dynamic-imported so it code-splits out of the initial bundle), `@dnd-kit/*` (row
+  drag-reorder). Fonts (Inter / Sarabun / JetBrains Mono) load from Google Fonts via `index.html`.
 - **Serverless proxies (Cloudflare Pages Functions):** [`functions/api/claude.js`](functions/api/claude.js),
   [`functions/api/typhoon.js`](functions/api/typhoon.js), and [`functions/api/vision.js`](functions/api/vision.js)
   forward to the Anthropic / Typhoon / Google Vision APIs and inject the keys server-side, so those keys
@@ -67,7 +68,15 @@ Vision**.
    - `GOOGLE_VISION_API_KEY` *(optional — only for the Google Vision feeder)* — a Cloud Vision API key
      (Google Cloud account + card; free tier 1,000 pages/month).
 5. **Deploy.** Note the `*.pages.dev` URL. Functions under `functions/` are picked up automatically.
-6. Optional local dev of the Functions: `npx wrangler pages dev .`.
+6. **Continuous deployment is automatic.** Once the project is connected to Git, every push to `master`
+   triggers a fresh build + deploy — no manual step. Pushes to other branches produce **preview**
+   deployments at their own `*.pages.dev` subdomain. (To redeploy without a push — e.g. after changing an
+   env var — use **Deployments → latest → ⋯ → Retry deployment**.)
+7. Optional local dev of the Functions: `npx wrangler pages dev . --compatibility-date=2024-01-01` (or run
+   `npm run build` first and point wrangler at `dist`). Needed to exercise the `/api/*` proxies locally.
+8. Optional **custom domain**: **your Pages project → Custom domains → Set up a domain**. If the domain's
+   DNS is already on Cloudflare it's one click; otherwise add the shown CNAME. After it's live, **add the
+   new origin to `ALLOWED_ORIGINS`** (below) or the app will 403 its own API calls from that domain.
 
 > 🔒 **Secure the proxies before you share the URL.** The `/api/*` routes are public and spend your API
 > credits. At minimum set `ALLOWED_ORIGINS` and bind a `RATE_LIMIT` KV namespace — full click-by-click
@@ -107,8 +116,9 @@ Other scripts: `npm run build` (→ `dist/`), `npm run preview` (serve the build
 - **Large PDFs** — very long TORs (~100+ pages) can exceed model document limits.
 - **Browser OCR / heuristic rows** — Tesseract and the Typhoon standalone path split rows heuristically
   (review clause boundaries); for clean rows, use Typhoon as a feeder under Claude/Gemini.
-- **Excel Thai font** — SheetJS (free) can't set fonts; after export, set column C to *TH Sarabun New* or
-  *Cordia New* for correct Thai rendering.
+- **Excel Thai font** — the export sets *TH Sarabun New* on every cell automatically (via ExcelJS), so
+  Thai renders on open with no manual step. A font can't be *embedded* in a `.xlsx`, so if a reviewer's PC
+  doesn't have that font installed, Excel substitutes a similar one (still legible Thai).
 
 See [`RISK_REVIEW.md`](RISK_REVIEW.md) for known bugs/security items and [`ROADMAP.md`](ROADMAP.md) for
 what's planned.

@@ -294,7 +294,8 @@ User can add custom entries and remove defaults.
 
 ## Excel Export (.xlsx)
 
-Uses SheetJS (`xlsx` package, CDN from jsdelivr).
+Uses **ExcelJS** (`exceljs` npm package), dynamic-imported in [`src/lib/xlsx.ts`](src/lib/xlsx.ts) so it
+code-splits out of the initial bundle and loads only when the user clicks Export.
 
 ### Column map
 
@@ -312,8 +313,10 @@ I  → Date
 
 ### Thai font in Excel
 
-SheetJS doesn't set fonts natively in the free version.
-Add a note in the export or in onboarding: "After opening, select column C and set font to TH Sarabun New or Cordia New for correct Thai rendering."
+The exporter sets **TH Sarabun New** on every cell up front (ExcelJS supports per-cell styling), so Thai
+renders on open with **no manual font step**. A font can't be *embedded* in a `.xlsx`, so if the reviewer's
+machine lacks TH Sarabun New, Excel substitutes a similar installed font (Thai stays legible). The status
+cell is additionally bold + colour-coded from `STAT_COLORS`.
 
 ### Filename convention
 
@@ -408,4 +411,4 @@ Add a note in the export or in onboarding: "After opening, select column C and s
 2. **No persistent storage** — all data lives in React state. Refreshing the page clears the matrix. Future: add localStorage auto-save or Google Drive export.
 3. **Large PDFs** — Claude has a document size limit. TORs over ~100 pages may need to be split. Future: add page range selector.
 4. **Scanned PDF OCR** — Google Document AI requires the user to have a Google Cloud project with Document AI API enabled and a processor created. This is a one-time setup.
-5. **SheetJS Thai font** — Excel column C needs manual font change to TH Sarabun New after export for correct Thai rendering in older Excel versions.
+5. **Excel Thai font** — the export sets *TH Sarabun New* per cell automatically (ExcelJS), so no manual font change is needed. A `.xlsx` can't embed a font, so a machine without TH Sarabun New installed shows a substituted font (still legible Thai). _(Was a manual step under the old SheetJS export.)_
