@@ -14,6 +14,11 @@ There are no version tags yet, so released history below is grouped by date and 
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **Undo / redo** — a history stack (up to 60 steps) reverses edits, bulk status-set, add/insert/delete,
+  reorder, snip-attach, figure-removal, Load, and even **New/clear**. Use the **↶ / ↷** buttons in the top
+  bar or **Ctrl+Z / Ctrl+Y** (Ctrl+Shift+Z also redoes). Shortcuts are ignored while a text field is focused
+  so the field's own native undo still works; a run of edits to one cell collapses into a single undo step.
+  History is session-only (cleared on reload). Pure core in `src/lib/history.ts` (unit-tested).
 - **📷 Snip a figure from the PDF** — with a PDF loaded, a **Snip** button opens a viewer where you drag a
   box over any diagram, table, or picture; the crop is compressed to a JPEG and attached to a row (existing
   or new). The figure shows as a thumbnail (click to enlarge) and is **embedded into the `.xlsx` export**

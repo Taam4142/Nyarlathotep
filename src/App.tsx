@@ -58,6 +58,14 @@ import { assessTextQuality } from "./lib/textquality";
 import { matchesQuery, findDuplicateIds } from "./lib/review";
 import { displayRectToSource, normalizeDrag, cropToJpeg } from "./lib/snip";
 import {
+  emptyUndo,
+  record as recordHistory,
+  undo as undoHistory,
+  redo as redoHistory,
+  canUndo as histCanUndo,
+  canRedo as histCanRedo,
+} from "./lib/history";
+import {
   readLocal,
   writeLocal,
   clearLocal,
@@ -228,6 +236,12 @@ function HelpModal({ open, onClose }) {
               <em>Snip</em>, drag a box over any diagram / table / picture, and
               attach it to a row. The figure shows in the row and is embedded in
               the Excel export.
+            </li>
+            <li>
+              <strong>↶ Undo / ↷ Redo</strong> — the buttons (top bar) or{" "}
+              <em>Ctrl+Z</em> / <em>Ctrl+Y</em> reverse edits, bulk changes,
+              deletes, reorders, snips, and even “New”. History lasts until you
+              reload.
             </li>
             <li>
               <strong>Filters &amp; columns</strong> — filter rows by status, and
@@ -702,6 +716,7 @@ function App() {
         const [query, setQuery] = useState("");
         // Multi-row selection for bulk status-set (F5), by row id (filter-safe).
         const [selectedIds, setSelectedIds] = useState(() => new Set());
+        const [hist, setHist] = useState(() => emptyUndo()); // undo/redo (F5)
         const [showTr, setShowTr] = useState(() => persisted?.showTr ?? false);
         const [showCat, setShowCat] = useState(() => persisted?.showCat ?? true);
         const [selectedRow, setSelectedRow] = useState(null);
@@ -726,12 +741,68 @@ function App() {
         const tableRef = useRef();
         const abortRef = useRef(null);
 
-        const upd = (id, f, v) =>
+        // ── Undo/redo (F5) ─────────────────────────────────────────────────
+        // Snapshot = { rows, project, verifiedBy }. Discrete actions snapshot
+        // their pre-state via commit(); text edits coalesce per (row, field) so
+        // one edit is one undo. undoRef keeps the latest state for the keyboard
+        // handler + the undo/redo actions without re-subscribing on every change.
+        const undoRef = useRef({});
+        undoRef.current = { hist, rows, project, verifiedBy };
+        const lastEditKey = useRef(null);
+        const snapNow = () => ({ rows, project, verifiedBy });
+        const pushUndo = () => setHist((h) => recordHistory(h, snapNow()));
+        const commit = () => {
+          pushUndo();
+          lastEditKey.current = null;
+        };
+        const applySnap = (s) => {
+          setRows(s.rows);
+          setProject(s.project);
+          setVerifiedBy(s.verifiedBy);
+          setSelectedIds(new Set());
+          setSelectedRow(null);
+          lastEditKey.current = null;
+        };
+        const doUndo = () => {
+          const cur = undoRef.current;
+          const r = undoHistory(cur.hist, {
+            rows: cur.rows,
+            project: cur.project,
+            verifiedBy: cur.verifiedBy,
+          });
+          if (!r) return;
+          setHist(r.next);
+          applySnap(r.restore);
+        };
+        const doRedo = () => {
+          const cur = undoRef.current;
+          const r = redoHistory(cur.hist, {
+            rows: cur.rows,
+            project: cur.project,
+            verifiedBy: cur.verifiedBy,
+          });
+          if (!r) return;
+          setHist(r.next);
+          applySnap(r.restore);
+        };
+
+        const upd = (id, f, v) => {
+          // Coalesce a run of edits to the same cell into one undo entry.
+          const key = `${id}:${f}`;
+          if (lastEditKey.current !== key) {
+            pushUndo();
+            lastEditKey.current = key;
+          }
           setRows((r) =>
             r.map((row) => (row.id === id ? { ...row, [f]: v } : row)),
           );
-        const del = (id) => setRows((r) => r.filter((row) => row.id !== id));
+        };
+        const del = (id) => {
+          commit();
+          setRows((r) => r.filter((row) => row.id !== id));
+        };
         const addRow = () => {
+          commit();
           const r = mkRow({
             ref: `CL-${String(rows.length + 1).padStart(3, "0")}`,
           });
@@ -743,6 +814,7 @@ function App() {
         };
         // Attach a snipped figure to a row (or a new one). From SnipModal.
         const attachImage = (dataUrl, targetRowId) => {
+          commit();
           if (targetRowId === "new") {
             setRows((p) => [
               ...p,
@@ -764,12 +836,14 @@ function App() {
         };
         // Insert a blank row directly below `id`; it inherits the neighbor's
         // status so it stays visible even when a status filter is active.
-        const insertAfter = (id) =>
+        const insertAfter = (id) => {
+          commit();
           setRows((p) => {
             const i = p.findIndex((row) => row.id === id);
             const nr = mkRow({ status: i >= 0 ? p[i].status : "comply" });
             return insertAfterId(p, id, nr);
           });
+        };
         const sensors = useSensors(
           useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
           useSensor(KeyboardSensor, {
@@ -778,8 +852,10 @@ function App() {
         );
         const onDragEnd = (e) => {
           const { active, over } = e;
-          if (over && active.id !== over.id)
+          if (over && active.id !== over.id) {
+            commit();
             setRows((p) => reorderByIds(p, active.id, over.id));
+          }
         };
 
         // Autosave the working matrix to this browser (debounced). F1 persistence.
@@ -790,6 +866,27 @@ function App() {
           );
           return () => clearTimeout(t);
         }, [project, verifiedBy, rows, lib, showTr, showCat]);
+
+        // Keyboard undo/redo. Skipped while a text field is focused so the
+        // field's own native undo keeps working during typing.
+        useEffect(() => {
+          const onKey = (e) => {
+            if (!(e.ctrlKey || e.metaKey)) return;
+            const tag = (e.target?.tagName || "").toLowerCase();
+            if (tag === "input" || tag === "textarea" || tag === "select") return;
+            const k = (e.key || "").toLowerCase();
+            if (k === "z" && !e.shiftKey) {
+              e.preventDefault();
+              doUndo();
+            } else if (k === "y" || (k === "z" && e.shiftKey)) {
+              e.preventDefault();
+              doRedo();
+            }
+          };
+          window.addEventListener("keydown", onKey);
+          return () => window.removeEventListener("keydown", onKey);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []);
 
         // Tell the user once when a previous session was restored from this browser.
         useEffect(() => {
@@ -819,6 +916,7 @@ function App() {
           if (!file) return;
           try {
             const parsed = matrixFromJson(await file.text());
+            commit();
             setRows(parsed.rows);
             setProject(parsed.project);
             setVerifiedBy(parsed.verifiedBy);
@@ -838,10 +936,11 @@ function App() {
           if (
             rows.length &&
             !window.confirm(
-              "Clear the current matrix? This can't be undone — use “Save .json” first if you want to keep it.",
+              "Clear the current matrix? You can undo this (Ctrl+Z) until you reload — use “Save .json” to keep a permanent copy.",
             )
           )
             return;
+          commit();
           setRows([]);
           setProject("");
           setVerifiedBy("");
@@ -1562,6 +1661,7 @@ function App() {
           });
         const clearSelection = () => setSelectedIds(new Set());
         const bulkSetStatus = (status) => {
+          commit();
           setRows((prev) =>
             prev.map((r) => (selectedIds.has(r.id) ? { ...r, status } : r)),
           );
@@ -1622,6 +1722,24 @@ function App() {
                 onChange={(e) => setVerifiedBy(e.target.value)}
               />
               <div className="topbar-right">
+                <button
+                  className="btn btn-ghost btn-sm undo-btn"
+                  onClick={doUndo}
+                  disabled={!histCanUndo(hist)}
+                  title="Undo (Ctrl+Z)"
+                  aria-label="Undo"
+                >
+                  ↶
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm undo-btn"
+                  onClick={doRedo}
+                  disabled={!histCanRedo(hist)}
+                  title="Redo (Ctrl+Y)"
+                  aria-label="Redo"
+                >
+                  ↷
+                </button>
                 <select
                   className="model-sel"
                   value={aiEngine}

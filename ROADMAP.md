@@ -7,10 +7,15 @@
 ## ▶ Next up
 
 Open items, roughly in priority order: **AI table-prompt** for messy/borderless tables; security
-tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: undo/redo,
-keyboard cell nav.)_
+tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: keyboard cell
+nav, column reorder.)_
 
 ## Shipped
+
+**Undo / redo (2026-08-04):** a snapshot history (≤60 steps) reverses edits, bulk status-set, add/insert/
+delete, reorder, snip-attach, figure-remove, Load, and New/clear — via **↶/↷** buttons or **Ctrl+Z/Ctrl+Y**
+(skipped while a text field is focused; consecutive edits to one cell coalesce). Session-only. Pure core in
+`src/lib/history.ts` (unit-tested). Safety net for the destructive one-click review tools.
 
 **Snip a figure from the PDF (2026-08-04):** a **📷 Snip** tool renders the source pages, lets the user
 drag-crop any figure (works on vector diagrams too, since it crops the *rendered* page), and attaches the
