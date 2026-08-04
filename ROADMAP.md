@@ -12,6 +12,15 @@ keyboard cell nav.)_
 
 ## Shipped
 
+**Snip a figure from the PDF (2026-08-04):** a **📷 Snip** tool renders the source pages, lets the user
+drag-crop any figure (works on vector diagrams too, since it crops the *rendered* page), and attaches the
+compressed JPEG to a row — shown as a thumbnail (click to enlarge) and **embedded in the `.xlsx`** (new
+"Figure" column). Deterministic, no AI. `src/lib/snip.ts` (pure pixel-mapping, unit-tested) + `Row.image`.
+Figures persist in Save/Load `.json` + export; autosave degrades to text-only if images exceed the quota so
+text is never lost. _(Live in-modal page-render + drag verified by construction — the crop util, export
+embed, thumbnail, lightbox, and persistence all pass; pdf.js `render` can't run in a hidden preview pane.)_
+_Follow-ons:_ auto-list embedded raster images; AI figure-locator (suggestion only).
+
 **Review-speed tools — F5 (2026-08-03):** text **search** (ref/requirement/translation/remarks, combined
 with the status filter, live match count), **bulk status-set** (per-row checkboxes + select-all + action
 bar), and **duplicate-requirement flagging** (badge + toolbar count). Pure logic in `src/lib/review.ts`

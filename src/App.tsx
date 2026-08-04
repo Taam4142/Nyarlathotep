@@ -56,6 +56,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { insertAfterId, reorderByIds } from "./lib/rows";
 import { assessTextQuality } from "./lib/textquality";
 import { matchesQuery, findDuplicateIds } from "./lib/review";
+import { displayRectToSource, normalizeDrag, cropToJpeg } from "./lib/snip";
 import {
   readLocal,
   writeLocal,
@@ -223,6 +224,12 @@ function HelpModal({ open, onClose }) {
               the “⧉ Duplicate” flag on repeated requirements.
             </li>
             <li>
+              <strong>📷 Snip a figure</strong> — with a PDF loaded, click{" "}
+              <em>Snip</em>, drag a box over any diagram / table / picture, and
+              attach it to a row. The figure shows in the row and is embedded in
+              the Excel export.
+            </li>
+            <li>
               <strong>Filters &amp; columns</strong> — filter rows by status, and
               toggle the Translation / Category columns on the toolbar.
             </li>
@@ -255,6 +262,214 @@ function HelpModal({ open, onClose }) {
   );
 }
 
+// "Snip from PDF": render the source PDF's pages and let the user drag a box
+// over any figure (vector diagram, image-table, or photo) to crop it and attach
+// it to a matrix row. Deterministic pixels — nothing invented. Module-level.
+function SnipModal({ open, onClose, pdfFile, rows, selectedRow, onAttach }) {
+  const [doc, setDoc] = useState(null);
+  const [numPages, setNumPages] = useState(0);
+  const [pageNum, setPageNum] = useState(1);
+  const [pageImg, setPageImg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [sel, setSel] = useState(null);
+  const [target, setTarget] = useState("new");
+  const dragStart = useRef(null);
+  const imgRef = useRef(null);
+
+  // Load the PDF document when the modal opens.
+  useEffect(() => {
+    if (!open || !pdfFile) return;
+    let cancelled = false;
+    setDoc(null);
+    setPageImg(null);
+    setSel(null);
+    setPageNum(1);
+    setTarget(selectedRow || "new");
+    (async () => {
+      try {
+        const buf = await pdfFile.arrayBuffer();
+        const d = await pdfjsLib.getDocument({ data: buf }).promise;
+        if (cancelled) return;
+        setDoc(d);
+        setNumPages(d.numPages);
+      } catch {
+        /* ignore — modal shows a load error state */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, pdfFile, selectedRow]);
+
+  // Render the current page to an image whenever the page changes.
+  useEffect(() => {
+    if (!doc) return;
+    let cancelled = false;
+    setBusy(true);
+    setSel(null);
+    (async () => {
+      try {
+        const b64 = await rasterizePage(doc, pageNum, 2);
+        if (!cancelled) setPageImg(`data:image/png;base64,${b64}`);
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [doc, pageNum]);
+
+  // Escape to close.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const relPos = (e) => {
+    const r = imgRef.current.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(r.width, e.clientX - r.left)),
+      y: Math.max(0, Math.min(r.height, e.clientY - r.top)),
+    };
+  };
+  const onDown = (e) => {
+    if (!pageImg) return;
+    e.preventDefault();
+    const p = relPos(e);
+    dragStart.current = p;
+    setSel({ x: p.x, y: p.y, w: 0, h: 0 });
+  };
+  const onMove = (e) => {
+    if (!dragStart.current) return;
+    const p = relPos(e);
+    const s = dragStart.current;
+    setSel(normalizeDrag(s.x, s.y, p.x, p.y));
+  };
+  const onUp = () => {
+    dragStart.current = null;
+  };
+
+  const canAttach = sel && sel.w > 4 && sel.h > 4 && !busy;
+  const doAttach = async () => {
+    if (!canAttach) return;
+    const el = imgRef.current;
+    const srcRect = displayRectToSource(
+      sel,
+      { w: el.clientWidth, h: el.clientHeight },
+      { w: el.naturalWidth, h: el.naturalHeight },
+    );
+    const jpeg = await cropToJpeg(pageImg, srcRect, { maxDim: 1100, quality: 0.72 });
+    onAttach(jpeg, target);
+    onClose();
+  };
+
+  const rowLabel = (r, i) =>
+    `${i + 1}. ${r.ref ? r.ref + " — " : ""}${(r.requirement || "").slice(0, 40) || "(blank)"}`;
+
+  return (
+    <div
+      className="snip-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Snip a figure from the PDF"
+    >
+      <div className="snip-modal">
+        <div className="snip-head">
+          <div className="snip-title">📷 Snip a figure from the PDF</div>
+          <div className="snip-hint">
+            Drag a box over any diagram, table, or picture, then attach it to a
+            row.
+          </div>
+          <button className="help-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div className="snip-stage">
+          {busy && <div className="snip-loading">Rendering page…</div>}
+          {pageImg && (
+            <div
+              className="snip-canvas"
+              onMouseDown={onDown}
+              onMouseMove={onMove}
+              onMouseUp={onUp}
+              onMouseLeave={onUp}
+            >
+              <img
+                ref={imgRef}
+                src={pageImg}
+                className="snip-page"
+                alt={`PDF page ${pageNum}`}
+                draggable={false}
+              />
+              {sel && sel.w > 0 && (
+                <div
+                  className="snip-sel"
+                  style={{
+                    left: sel.x,
+                    top: sel.y,
+                    width: sel.w,
+                    height: sel.h,
+                  }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="snip-foot">
+          <div className="snip-pager">
+            <button
+              className="btn btn-ghost btn-xs"
+              onClick={() => setPageNum((n) => Math.max(1, n - 1))}
+              disabled={pageNum <= 1 || busy}
+            >
+              ‹ Prev
+            </button>
+            <span className="snip-pageno">
+              Page {pageNum} / {numPages || "…"}
+            </span>
+            <button
+              className="btn btn-ghost btn-xs"
+              onClick={() => setPageNum((n) => Math.min(numPages, n + 1))}
+              disabled={pageNum >= numPages || busy}
+            >
+              Next ›
+            </button>
+          </div>
+          <div className="snip-attach">
+            <label className="snip-attach-lbl">Attach to:</label>
+            <select
+              className="model-sel"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+            >
+              <option value="new">➕ New row</option>
+              {rows.map((r, i) => (
+                <option key={r.id} value={r.id}>
+                  {rowLabel(r, i)}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-amber btn-sm"
+              onClick={doAttach}
+              disabled={!canAttach}
+            >
+              Attach figure
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // One matrix row, made sortable via @dnd-kit. The grip in the number cell is the
 // only drag activator (so editing cell text still works); dragging is disabled
 // when a status filter is active (reordering a subset can't map to hidden rows).
@@ -272,6 +487,7 @@ function SortableRow({
   selected,
   onToggleSelect,
   isDup,
+  onZoomImage,
 }) {
   const {
     attributes,
@@ -353,6 +569,31 @@ function SortableRow({
           {isDup && (
             <div className="dup-flag" title="Another row has identical requirement text">
               ⧉ Duplicate requirement
+            </div>
+          )}
+          {row.image && (
+            <div className="row-fig">
+              <img
+                src={row.image}
+                className="row-fig-thumb"
+                alt="Attached figure"
+                title="Click to enlarge"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onZoomImage(row.image);
+                }}
+              />
+              <button
+                className="row-fig-rm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  upd(row.id, "image", undefined);
+                }}
+                title="Remove figure"
+                aria-label="Remove figure"
+              >
+                × figure
+              </button>
             </div>
           )}
         </div>
@@ -466,6 +707,8 @@ function App() {
         const [selectedRow, setSelectedRow] = useState(null);
         const [dragging, setDragging] = useState(false);
         const [showHelp, setShowHelp] = useState(false);
+        const [showSnip, setShowSnip] = useState(false);
+        const [lightbox, setLightbox] = useState(null); // data URL to enlarge
         // When the digital-PDF fast path used the text layer, holds the OCR
         // engine label to offer as a one-click "re-run with OCR" fallback.
         const [ocrFallback, setOcrFallback] = useState(null);
@@ -497,6 +740,27 @@ function App() {
             const ta = tableRef.current?.querySelectorAll("textarea");
             if (ta && ta.length) ta[ta.length - 2]?.focus();
           }, 60);
+        };
+        // Attach a snipped figure to a row (or a new one). From SnipModal.
+        const attachImage = (dataUrl, targetRowId) => {
+          if (targetRowId === "new") {
+            setRows((p) => [
+              ...p,
+              mkRow({ ref: `FIG-${p.length + 1}`, image: dataUrl }),
+            ]);
+            setInfo(
+              "Figure attached to a new row. It's kept in Save .json and the Excel export.",
+            );
+          } else {
+            setRows((p) =>
+              p.map((row) =>
+                row.id === targetRowId ? { ...row, image: dataUrl } : row,
+              ),
+            );
+            setInfo(
+              "Figure attached. It shows in the row and in the Excel export.",
+            );
+          }
         };
         // Insert a blank row directly below `id`; it inherits the neighbor's
         // status so it stays visible even when a status filter is active.
@@ -1307,6 +1571,26 @@ function App() {
         return (
           <div className="app">
             <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
+            <SnipModal
+              open={showSnip}
+              onClose={() => setShowSnip(false)}
+              pdfFile={pdfFile}
+              rows={rows}
+              selectedRow={selectedRow}
+              onAttach={attachImage}
+            />
+            {lightbox && (
+              <div className="lightbox" onClick={() => setLightbox(null)}>
+                <img className="lightbox-img" src={lightbox} alt="Figure" />
+                <button
+                  className="help-close lightbox-close"
+                  onClick={() => setLightbox(null)}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             {/* TOPBAR */}
             <div className="topbar">
               <div className="brand">
@@ -1385,6 +1669,18 @@ function App() {
                   disabled={loading}
                 >
                   + Row
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setShowSnip(true)}
+                  disabled={loading || !pdfFile}
+                  title={
+                    pdfFile
+                      ? "Crop a figure from the PDF and attach it to a row"
+                      : "Load a PDF first to snip figures from it"
+                  }
+                >
+                  📷 Snip
                 </button>
                 <button
                   className="btn btn-amber btn-sm"
@@ -2410,6 +2706,7 @@ function App() {
                             selected={selectedIds.has(row.id)}
                             onToggleSelect={toggleSelect}
                             isDup={dupIds.has(row.id)}
+                            onZoomImage={setLightbox}
                           />
                         ))}
                       </tbody>

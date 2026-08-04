@@ -11,6 +11,8 @@ export interface Row {
   status: Status;
   remarks: string;
   _warn: boolean;
+  /** Optional cropped figure (JPEG data URL) snipped from the source PDF. */
+  image?: string;
 }
 
 export interface LibItem {

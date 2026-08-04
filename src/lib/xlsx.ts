@@ -40,6 +40,7 @@ export function matrixToWorkbook(opts: ExportOpts): ExcelJS.Workbook {
   const { rows, project } = opts;
   const showTr = opts.showTr && rows.some((r) => r.translation);
   const showCat = opts.showCat;
+  const showFig = rows.some((r) => !!r.image);
   const verifiedBy = opts.verifiedBy?.trim() || "";
   const date = opts.date || today();
 
@@ -53,6 +54,7 @@ export function matrixToWorkbook(opts: ExportOpts): ExcelJS.Workbook {
   if (showTr) widths.push(55);
   if (showCat) widths.push(14);
   widths.push(18, 55, 16, 12);
+  if (showFig) widths.push(24);
   widths.forEach((w, i) => (ws.getColumn(i + 1).width = w));
   const ncol = widths.length;
   const statusCol = 3 + (showTr ? 1 : 0) + (showCat ? 1 : 0) + 1;
@@ -71,6 +73,7 @@ export function matrixToWorkbook(opts: ExportOpts): ExcelJS.Workbook {
   if (showTr) headerLabels.push("English Translation");
   if (showCat) headerLabels.push("Category");
   headerLabels.push("Compliance Status", "Remarks", "Verified By", "Date");
+  if (showFig) headerLabels.push("Figure");
   const header = ws.addRow(headerLabels);
   header.height = 22;
   header.eachCell((c) => {
@@ -101,14 +104,73 @@ export function matrixToWorkbook(opts: ExportOpts): ExcelJS.Workbook {
     };
     sc.alignment = { vertical: "top", horizontal: "center" };
     r.getCell(1).alignment = { vertical: "top", horizontal: "center" };
+    // Taller row so the anchored figure (added later) has space to show.
+    if (row.image) r.height = 86;
   });
 
   return wb;
 }
 
+// ── Figure embedding (async: needs to decode each image for its aspect ratio) ──
+
+function imageDims(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight });
+    im.onerror = () => resolve({ w: 150, h: 100 });
+    im.src = dataUrl;
+  });
+}
+
+/** Fit (w,h) into a maxW×maxH box, preserving aspect ratio. */
+function fitBox(
+  dims: { w: number; h: number },
+  maxW: number,
+  maxH: number,
+): { w: number; h: number } {
+  const scale = Math.min(maxW / dims.w, maxH / dims.h, 1);
+  return { w: Math.round(dims.w * scale), h: Math.round(dims.h * scale) };
+}
+
+/** Anchor each row's snipped figure into the "Figure" column. */
+async function embedFigures(
+  wb: ExcelJS.Workbook,
+  rows: Row[],
+): Promise<void> {
+  if (!rows.some((r) => r.image)) return;
+  const ws = wb.worksheets[0];
+
+  let headerNum = 0;
+  let figCol = 0;
+  ws.eachRow((row, n) => {
+    if (row.getCell(1).value === "Item No.") {
+      headerNum = n;
+      row.eachCell((c, col) => {
+        if (c.value === "Figure") figCol = col;
+      });
+    }
+  });
+  if (!headerNum || !figCol) return;
+
+  for (let i = 0; i < rows.length; i++) {
+    const src = rows[i].image;
+    if (!src) continue;
+    const excelRow = headerNum + 1 + i; // 1-based
+    const box = fitBox(await imageDims(src), 150, 100);
+    const extension = src.startsWith("data:image/png") ? "png" : "jpeg";
+    const imgId = wb.addImage({ base64: src.split(",")[1] || src, extension });
+    ws.addImage(imgId, {
+      tl: { col: figCol - 1 + 0.08, row: excelRow - 1 + 0.08 },
+      ext: { width: box.w, height: box.h },
+      editAs: "oneCell",
+    });
+  }
+}
+
 /** Build the workbook and trigger a browser download. */
 export async function downloadMatrix(opts: ExportOpts): Promise<void> {
   const wb = matrixToWorkbook(opts);
+  await embedFigures(wb, opts.rows);
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

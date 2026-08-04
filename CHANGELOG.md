@@ -14,6 +14,13 @@ There are no version tags yet, so released history below is grouped by date and 
   are unchanged (separate, engineer-triggered renames).
 
 ### Added
+- **📷 Snip a figure from the PDF** — with a PDF loaded, a **Snip** button opens a viewer where you drag a
+  box over any diagram, table, or picture; the crop is compressed to a JPEG and attached to a row (existing
+  or new). The figure shows as a thumbnail (click to enlarge) and is **embedded into the `.xlsx` export**
+  (a new "Figure" column). Works on **every** figure type — including vector-drawn diagrams — because it
+  crops the *rendered* page, not just embedded images. Deterministic (no AI). Pixel-mapping math is pure and
+  unit-tested (`src/lib/snip.ts`). Figures travel in Save/Load `.json` and the export; the browser autosave
+  keeps text safe by dropping only the (large) images if they'd exceed the storage quota.
 - **Review-speed tools for large matrices** (ROADMAP F5) — a **search box** filters rows by ref /
   requirement / translation / remarks text (combined with the status filter, with a live match count);
   **bulk status-set** via per-row checkboxes + a "select all shown" header checkbox and an action bar

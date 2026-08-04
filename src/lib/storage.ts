@@ -38,6 +38,10 @@ export function normalizeRow(r: any): Row {
     status,
     remarks: String(r?.remarks ?? ""),
     _warn: !!r?._warn,
+    image:
+      typeof r?.image === "string" && r.image.startsWith("data:")
+        ? r.image
+        : undefined,
   });
 }
 
@@ -82,16 +86,28 @@ export function readLocal(): Partial<Snapshot> | null {
 export function writeLocal(
   s: Omit<Snapshot, "version" | "savedAt" | "verifiedBy"> & { verifiedBy?: string },
 ): void {
+  const snap: Snapshot = {
+    version: SCHEMA_VERSION,
+    savedAt: new Date().toISOString(),
+    verifiedBy: "",
+    ...s,
+  };
   try {
-    const snap: Snapshot = {
-      version: SCHEMA_VERSION,
-      savedAt: new Date().toISOString(),
-      verifiedBy: "",
-      ...s,
-    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
+    return;
   } catch {
-    /* quota exceeded / storage disabled → skip silently */
+    // Most likely the quota — snipped figures (base64) are large. Retry
+    // WITHOUT the images so text/edits still persist (figures live on in the
+    // session, in Save .json, and in the export).
+  }
+  try {
+    const lite: Snapshot = {
+      ...snap,
+      rows: snap.rows.map((r) => (r.image ? { ...r, image: undefined } : r)),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(lite));
+  } catch {
+    /* storage disabled → skip silently */
   }
 }
 
