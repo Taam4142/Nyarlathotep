@@ -15,6 +15,10 @@ inputs · **Low** = quality / edge case.
 > the logic now lives in `src/lib/{pdf,extract,ocr,net,models}.ts` and `functions/api/_guard.js`.
 >
 > **Still open:** R7 (Gemini key in query string), R8 (prompt-injection framing), R12 (Tesseract memory).
+>
+> ♿ **Accessibility risks live in [`A11Y_PLAN.md`](A11Y_PLAN.md) §5**, not here — that pass has its own
+> audit and register (dominant risk: the a11y work lands in `App.tsx`/`styles.css`, while the 84 unit tests
+> only cover `src/lib/*`, so UI regressions would ship silently).
 
 | ID  | Risk | Sev | Why it matters | How to fix |
 | --- | ---- | --- | -------------- | ---------- |

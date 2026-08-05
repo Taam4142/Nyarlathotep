@@ -141,4 +141,5 @@ what's planned.
 | `OCR_RESEARCH.md`            | Survey of OCR options + the lineup decision.                   |
 | `ROADMAP.md`                 | Phased development plan + deferred items.                      |
 | `RISK_REVIEW.md`             | Known bugs, security, and robustness risks (with fixes).       |
+| `A11Y_PLAN.md`               | Accessibility audit, phased plan, and a11y risk register.      |
 | `CHANGELOG.md`               | Version history.                                               |

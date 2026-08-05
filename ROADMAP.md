@@ -6,7 +6,14 @@
 
 ## ▶ Next up
 
-Open items, roughly in priority order: **AI table-prompt** for messy/borderless tables; security
+**Accessibility pass — planned, not started.** Full audit, phasing, and risk register live in
+[`A11Y_PLAN.md`](A11Y_PLAN.md) (written against the `v0.4.0` baseline). Headline findings: no visible focus
+on the status/category dropdowns and the requirement editor; secondary text below AA contrast; no
+`aria-live` anywhere; placeholder-only labels; `lang="th"` on an English UI; the Snip tool is mouse-only.
+Phased P1→P5 by ascending behaviour risk, **strictly additive — no feature or behaviour changes**.
+Awaiting answers to the three open questions in §7 of that doc.
+
+Then, open items roughly in priority order: **AI table-prompt** for messy/borderless tables; security
 tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: keyboard cell
 nav, column reorder.)_
 
