@@ -1,9 +1,19 @@
 # Changelog
 
 All notable changes to Nyarlathotep (formerly Yog-Sothoth, formerly TOR-Extract). Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
-There are no version tags yet, so released history below is grouped by date and git commit.
+Tagged releases start at `v0.1.0`; older history below is grouped by date and git commit.
 
 ## [Unreleased]
+
+## [0.4.0] — 2026-08-04
+
+_Stable checkpoint before the accessibility work begins._
+
+> **Housekeeping:** this section is the changelog's long-running `[Unreleased]` bucket, finally versioned.
+> It therefore aggregates everything since **v0.1.0** — including the items already published as the
+> **v0.2.0** pre-release (Typhoon/Vision engines, Vercel → Cloudflare, the Yog-Sothoth rename) and the
+> `0.3.0` Vite migration, which was bumped in `package.json` but never cut as a release. Entries below are
+> newest-first, so the genuinely new-in-0.4.0 work is at the top of each subsection.
 
 ### Changed
 - **Dependencies:** dropped `xlsx` (SheetJS) in favour of `exceljs` for the spreadsheet export. This
