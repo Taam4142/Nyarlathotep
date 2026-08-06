@@ -457,8 +457,11 @@ function SnipModal({ open, onClose, pdfFile, rows, selectedRow, onAttach }) {
             </button>
           </div>
           <div className="snip-attach">
-            <label className="snip-attach-lbl">Attach to:</label>
+            <label className="snip-attach-lbl" htmlFor="snip-target-select">
+              Attach to:
+            </label>
             <select
+              id="snip-target-select"
               className="model-sel"
               value={target}
               onChange={(e) => setTarget(e.target.value)}
@@ -563,6 +566,7 @@ function SortableRow({
             value={row.ref}
             onChange={(e) => upd(row.id, "ref", e.target.value)}
             placeholder="CL-001"
+            aria-label="Reference"
           />
         </div>
       </td>
@@ -574,6 +578,7 @@ function SortableRow({
             onChange={(e) => upd(row.id, "requirement", e.target.value)}
             placeholder="Verbatim requirement text (Thai/English)…"
             rows={2}
+            aria-label="Requirement text, verbatim"
           />
           {row._warn && (
             <div className="warn-flag">
@@ -621,6 +626,7 @@ function SortableRow({
               onChange={(e) => upd(row.id, "translation", e.target.value)}
               placeholder="English translation…"
               rows={2}
+              aria-label="English translation"
             />
           </div>
         </td>
@@ -632,6 +638,7 @@ function SortableRow({
               className="cat-sel"
               value={row.category}
               onChange={(e) => upd(row.id, "category", e.target.value)}
+              aria-label="Category"
             >
               {VALID_CATS.map((c) => (
                 <option key={c} value={c}>
@@ -648,6 +655,7 @@ function SortableRow({
             className={`sts-sel sts-${row.status}`}
             value={row.status}
             onChange={(e) => upd(row.id, "status", e.target.value)}
+            aria-label="Compliance status"
           >
             {STATUS_OPTS.map((o) => (
               <option key={o.v} value={o.v}>
@@ -666,6 +674,7 @@ function SortableRow({
             onChange={(e) => upd(row.id, "remarks", e.target.value)}
             placeholder="Standard response or notes…"
             rows={2}
+            aria-label="Remarks"
           />
         </div>
       </td>
@@ -887,6 +896,14 @@ function App() {
           return () => window.removeEventListener("keydown", onKey);
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
+
+        // Escape closes the figure lightbox (matches HelpModal/SnipModal).
+        useEffect(() => {
+          if (!lightbox) return;
+          const onKey = (e) => e.key === "Escape" && setLightbox(null);
+          window.addEventListener("keydown", onKey);
+          return () => window.removeEventListener("keydown", onKey);
+        }, [lightbox]);
 
         // Tell the user once when a previous session was restored from this browser.
         useEffect(() => {
@@ -1680,7 +1697,13 @@ function App() {
               onAttach={attachImage}
             />
             {lightbox && (
-              <div className="lightbox" onClick={() => setLightbox(null)}>
+              <div
+                className="lightbox"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Enlarged figure"
+                onClick={() => setLightbox(null)}
+              >
                 <img className="lightbox-img" src={lightbox} alt="Figure" />
                 <button
                   className="help-close lightbox-close"
@@ -1713,6 +1736,7 @@ function App() {
                 placeholder="Project name…"
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
+                aria-label="Project name"
               />
               <input
                 className="proj-input verifier-input"
@@ -1720,6 +1744,7 @@ function App() {
                 title="Reviewer name — pre-filled into the “Verified By” column of the Excel export (with today's date)"
                 value={verifiedBy}
                 onChange={(e) => setVerifiedBy(e.target.value)}
+                aria-label="Verified by"
               />
               <div className="topbar-right">
                 <button
@@ -1748,6 +1773,7 @@ function App() {
                     setTestStatus(null);
                     setTestMsg("");
                   }}
+                  aria-label="Extraction engine"
                 >
                   <option value="typhoon">✦ Typhoon — Thai · Free</option>
                   <option value="browser">🆓 Browser OCR — No Key</option>
@@ -1760,6 +1786,7 @@ function App() {
                     className="model-sel"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
+                    aria-label="Claude model"
                   >
                     {CLAUDE_MODELS.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -1773,6 +1800,7 @@ function App() {
                     className="model-sel"
                     value={geminiModel}
                     onChange={(e) => setGeminiModel(e.target.value)}
+                    aria-label="Gemini model"
                   >
                     {GEMINI_MODELS.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -2107,6 +2135,7 @@ function App() {
                           setTestStatus(null);
                           setTestMsg("");
                         }}
+                        aria-label="Gemini API key"
                       />
                       <button
                         className="btn btn-ghost btn-xs"
@@ -2477,8 +2506,11 @@ function App() {
                     </button>
                   ) : (
                     <div className="lib-add-form">
-                      <label className="lib-add-label">Label</label>
+                      <label className="lib-add-label" htmlFor="lib-add-label-input">
+                        Label
+                      </label>
                       <input
+                        id="lib-add-label-input"
                         className="lib-add-input"
                         placeholder="e.g. Comply — IIoT Gateway"
                         value={newLib.label}
@@ -2486,8 +2518,11 @@ function App() {
                           setNewLib((p) => ({ ...p, label: e.target.value }))
                         }
                       />
-                      <label className="lib-add-label">Response text</label>
+                      <label className="lib-add-label" htmlFor="lib-add-text-input">
+                        Response text
+                      </label>
                       <textarea
+                        id="lib-add-text-input"
                         className="lib-add-input"
                         placeholder="Standard compliance response…"
                         value={newLib.text}
@@ -2501,8 +2536,11 @@ function App() {
                           fontFamily: "'Sarabun',sans-serif",
                         }}
                       />
-                      <label className="lib-add-label">Applies to status</label>
+                      <label className="lib-add-label" htmlFor="lib-add-status-select">
+                        Applies to status
+                      </label>
                       <select
+                        id="lib-add-status-select"
                         className="lib-add-sel"
                         value={newLib.status}
                         onChange={(e) =>
@@ -2545,7 +2583,7 @@ function App() {
 
                 {/* alerts */}
                 {error && (
-                  <div className="alert alert-err">
+                  <div className="alert alert-err" role="alert">
                     <span className="alert-icon">⚠</span>
                     <div className="alert-body">{error}</div>
                     <button
@@ -2557,7 +2595,7 @@ function App() {
                   </div>
                 )}
                 {warning && (
-                  <div className="alert alert-warn">
+                  <div className="alert alert-warn" role="status" aria-live="polite">
                     <span className="alert-icon">⚠</span>
                     <div className="alert-body">{warning}</div>
                     <button
@@ -2569,7 +2607,7 @@ function App() {
                   </div>
                 )}
                 {info && (
-                  <div className="alert alert-info">
+                  <div className="alert alert-info" role="status" aria-live="polite">
                     <span className="alert-icon">ℹ</span>
                     <div className="alert-body">{info}</div>
                     {ocrFallback && !loading && (
@@ -2660,6 +2698,7 @@ function App() {
                         placeholder="Search rows…"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
+                        aria-label="Search rows"
                       />
                       {query && (
                         <button
@@ -2729,7 +2768,7 @@ function App() {
                 {/* table */}
                 <div className="table-area" ref={tableRef}>
                   {loading && (
-                    <div className="overlay">
+                    <div className="overlay" role="status" aria-live="polite">
                       <div className="spinner" />
                       <div className="ov-msg">{loadMsg}</div>
                       {loadSub && <div className="ov-sub">{loadSub}</div>}
@@ -2774,7 +2813,7 @@ function App() {
                     <table>
                       <thead>
                         <tr>
-                          <th className="c-sel">
+                          <th className="c-sel" scope="col">
                             <input
                               type="checkbox"
                               className="row-check"
@@ -2784,9 +2823,9 @@ function App() {
                               aria-label="Select all shown rows"
                             />
                           </th>
-                          <th className="c-no">#</th>
-                          <th className="c-ref">Ref.</th>
-                          <th className="c-req">
+                          <th className="c-no" scope="col">#</th>
+                          <th className="c-ref" scope="col">Ref.</th>
+                          <th className="c-req" scope="col">
                             Requirement / Specification
                             <span
                               style={{
@@ -2799,12 +2838,12 @@ function App() {
                             </span>
                           </th>
                           {showTr && (
-                            <th className="c-tr">English Translation</th>
+                            <th className="c-tr" scope="col">English Translation</th>
                           )}
-                          {showCat && <th className="c-cat">Category</th>}
-                          <th className="c-sts">Status</th>
-                          <th className="c-rem">Remarks</th>
-                          <th className="c-del" />
+                          {showCat && <th className="c-cat" scope="col">Category</th>}
+                          <th className="c-sts" scope="col">Status</th>
+                          <th className="c-rem" scope="col">Remarks</th>
+                          <th className="c-del" scope="col" />
                         </tr>
                       </thead>
                       <tbody>
