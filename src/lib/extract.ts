@@ -253,7 +253,12 @@ export async function extractWithGemini(
   signal?: AbortSignal,
 ): Promise<ExtractedItem[]> {
   const prompt = buildGeminiPrompt(withTranslation, pdfType === "scanned");
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+  // Key goes in the x-goog-api-key header, not the URL (RISK_REVIEW R7) — a
+  // key in a query string can land in server/proxy access logs and browser
+  // history. Verified against the live API: a request with a dummy key in
+  // this header (no ?key=) gets a real API_KEY_INVALID response, confirming
+  // the endpoint reads it from here.
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
 
   let parts: any;
   if (pdfType === "digital") {
@@ -278,7 +283,10 @@ export async function extractWithGemini(
 
   const res = await fetchWithRetry(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": geminiKey,
+    },
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {

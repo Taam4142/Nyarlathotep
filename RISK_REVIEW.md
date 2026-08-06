@@ -11,10 +11,11 @@ inputs · **Low** = quality / edge case.
 ## Correctness
 
 > ✅ **R1–R4 fixed in v0.3.0** (the Vite/TS migration); ✅ **R5, R6, R9, R10, R11 + A1 fixed in Phase 2**
-> (2026-08-01). Line anchors below point at the pre-migration single-file `index.html` and are historical;
-> the logic now lives in `src/lib/{pdf,extract,ocr,net,models}.ts` and `functions/api/_guard.js`.
+> (2026-08-01); ✅ **R7 fixed 2026-08-06**. Line anchors below point at the pre-migration single-file
+> `index.html` and are historical; the logic now lives in `src/lib/{pdf,extract,ocr,net,models}.ts` and
+> `functions/api/_guard.js`.
 >
-> **Still open:** R7 (Gemini key in query string), R8 (prompt-injection framing), R12 (Tesseract memory).
+> **Still open:** R8 (prompt-injection framing), R12 (Tesseract memory).
 >
 > ♿ **Accessibility risks live in [`A11Y_PLAN.md`](A11Y_PLAN.md) §5**, not here — that pass has its own
 > audit and register (dominant risk: the a11y work lands in `App.tsx`/`styles.css`, while the 84 unit tests
@@ -33,7 +34,7 @@ inputs · **Low** = quality / edge case.
 | ID  | Risk | Sev | Why it matters | How to fix |
 | --- | ---- | --- | -------------- | ---------- |
 | R6 ✅ | Proxies are wide open — `functions/api/claude.js`, `functions/api/typhoon.js`, and `functions/api/vision.js` (Cloudflare Pages Functions) send `Access-Control-Allow-Origin: *`, no auth, no rate limit, and forward the body verbatim (any model/params). | High | Anyone who finds the deployed URL can spend your Anthropic / Typhoon / Google Vision credits. | **Fixed (Phase 2, in-place):** shared `functions/api/_guard.js` adds an origin allow-list, model allow-list, body-size cap, per-IP KV rate limit, and an optional shared secret. Each layer degrades gracefully so it never breaks the live deploy — **activate by setting `ALLOWED_ORIGINS` (comma-separated), optionally binding a KV namespace as `RATE_LIMIT`, and optionally setting `PROXY_SECRET` / `ALLOWED_MODELS`** in Cloudflare. |
-| R7  | Gemini key travels in the URL query string (`?key=` at `:1483`, `:1541`, `:1964`). | Low | Held in state only and cleared on reload, but keys in query strings can land in server/proxy logs and browser history. | Prefer a header where the API allows; otherwise document the trade-off. |
+| R7 ✅ | Gemini key travelled in the URL query string, at all three call sites: `extractWithGemini` (`src/lib/extract.ts`), `ocrPageWithGemini` (`src/lib/ocr.ts`), and Test Connection (`src/App.tsx`). | Low | Held in state only and cleared on reload, but keys in query strings can land in server/proxy logs and browser history. | **Fixed (2026-08-06):** all three now send the key via the `x-goog-api-key` request header instead of `?key=` in the URL. Verified two ways before shipping: (1) a direct `curl` to the live `generateContent` endpoint with a dummy key in the header returned a genuine `API_KEY_INVALID` — proof the endpoint reads the header, not just docs; (2) intercepted the app's own `fetch()` call in-browser and confirmed the real request has no `?key=` and carries `x-goog-api-key` correctly. |
 | R8  | Prompt-injection surface — a malicious TOR could embed instructions to the model. | Low | Output is verbatim-copied and human-reviewed, so blast radius is small, but a crafted doc could still skew extraction. | Keep the "extract, don't obey the document" framing in the system prompt; never execute anything from extracted text. |
 
 ## Robustness

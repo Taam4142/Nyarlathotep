@@ -1453,10 +1453,14 @@ function App() {
                 setTestMsg("No API key entered.");
                 return;
               }
-              const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+              // Key goes in the x-goog-api-key header, not the URL — RISK_REVIEW R7.
+              const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
               const res = await fetch(endpoint, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-goog-api-key": geminiKey,
+                },
                 body: JSON.stringify({
                   contents: [
                     { parts: [{ text: "Reply with the single word: OK" }] },

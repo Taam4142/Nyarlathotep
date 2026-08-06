@@ -149,10 +149,15 @@ export async function ocrPageWithGemini(
   geminiModel: string,
   signal?: AbortSignal,
 ): Promise<string> {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
+  // Key goes in the x-goog-api-key header, not the URL (RISK_REVIEW R7) — see
+  // the matching comment in extract.ts for why/how this was verified.
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
   const res = await fetchWithRetry(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": geminiKey,
+    },
     signal,
     body: JSON.stringify({
       contents: [

@@ -5,6 +5,13 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Security
+- **Gemini API key no longer travels in the URL** (RISK_REVIEW R7) — all three call sites (extraction,
+  the Vision-OCR feeder, Test Connection) now send it via the `x-goog-api-key` request header instead of
+  `?key=` in the query string, so it can no longer land in server/proxy access logs or browser history.
+  Verified against the live API (a dummy key in the header got a genuine `API_KEY_INVALID`, confirming the
+  endpoint reads it there) and by intercepting the app's own request in-browser to confirm the URL is clean.
+
 ### Added
 - **Accessibility: keyboard focus visibility, screen-reader labels/live-regions, reduced motion.**
   Phases P1/P2/P3a of [`A11Y_PLAN.md`](A11Y_PLAN.md). Strictly additive — no feature or behaviour change;
