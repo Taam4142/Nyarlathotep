@@ -2,22 +2,31 @@
 
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
-> Last updated 2026-08-03.
+> Last updated 2026-08-05.
 
 ## ▶ Next up
 
-**Accessibility pass — planned, not started.** Full audit, phasing, and risk register live in
-[`A11Y_PLAN.md`](A11Y_PLAN.md) (written against the `v0.4.0` baseline). Headline findings: no visible focus
-on the status/category dropdowns and the requirement editor; secondary text below AA contrast; no
-`aria-live` anywhere; placeholder-only labels; `lang="th"` on an English UI; the Snip tool is mouse-only.
-Phased P1→P5 by ascending behaviour risk, **strictly additive — no feature or behaviour changes**.
-Awaiting answers to the three open questions in §7 of that doc.
+**Accessibility pass — P1/P2/P3a shipped, P3b needs sign-off, P4 skipped.** Full audit, phasing, and risk
+register live in [`A11Y_PLAN.md`](A11Y_PLAN.md) (baseline `v0.4.0`). Still open: **Q1** (add a UI smoke
+test?) and **Q2** (approve the `--txt3` contrast bump, §4 P3b — the one remaining visible change?). Every
+phase so far is strictly additive and independently revertible; see that doc's §4 for the per-phase
+implementation log.
 
 Then, open items roughly in priority order: **AI table-prompt** for messy/borderless tables; security
 tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: keyboard cell
 nav, column reorder.)_
 
 ## Shipped
+
+**Accessibility P1 + P2 + P3a (2026-08-05):** see [`A11Y_PLAN.md`](A11Y_PLAN.md) §4 for the full log.
+**P1** (invisible): `lang="en"`, `scope="col"` on all `<th>`, real accessible names on every previously
+placeholder-only control, `aria-live` on the progress/alert banners, dialog semantics + Escape on the
+figure lightbox. **P2**: a single `:focus-visible` rule restores keyboard focus visibility on every control
+that had none (the compliance-status and category dropdowns had **zero** indication before this).
+**P3a**: `prefers-reduced-motion` support. Zero feature/behaviour change — verified via the full typecheck/
+test/build/regression suite plus real click and keyboard events in-browser (not just DOM inspection).
+**P3b** (a visible contrast change) and **P4** (Snip keyboard access, which adds interaction) are
+deliberately held for explicit sign-off / a real need.
 
 **Undo / redo (2026-08-04):** a snapshot history (≤60 steps) reverses edits, bulk status-set, add/insert/
 delete, reorder, snip-attach, figure-remove, Load, and New/clear — via **↶/↷** buttons or **Ctrl+Z/Ctrl+Y**

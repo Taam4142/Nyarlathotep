@@ -5,6 +5,26 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Added
+- **Accessibility: keyboard focus visibility, screen-reader labels/live-regions, reduced motion.**
+  Phases P1/P2/P3a of [`A11Y_PLAN.md`](A11Y_PLAN.md). Strictly additive — no feature or behaviour change;
+  see that doc's §4 for the full verification log.
+  - **Focus is now visible everywhere**, including the compliance-status and category dropdowns and the
+    requirement/remarks editors, which previously had **no** focus indicator at all. One `:focus-visible`
+    CSS rule; unchanged for mouse-clicked buttons, a small additive ring on mouse-clicked text fields
+    (browsers apply `:focus-visible` to text inputs on click, not just keyboard — a real, if minor,
+    visual delta, called out rather than glossed over).
+  - **Every control now has a real accessible name** (project name, verified-by, search, the engine/model
+    dropdowns, the Gemini key field, and each row's Ref/Requirement/Translation/Category/Status/Remarks) —
+    placeholders stay exactly as they were.
+  - **Live regions**: the extraction progress overlay and the info/warning/error banners now announce to
+    screen readers (`role="status"`/`aria-live="polite"`, `role="alert"` on errors).
+  - The figure lightbox gained `role="dialog"` + `aria-modal` + Escape-to-close, matching the existing
+    modals; all table headers got `scope="col"`; the document's `lang` is now `en` (was `th`, though the
+    UI is English — Thai is field content).
+  - `prefers-reduced-motion` now stops/slows the brand pulse, progress bar, spinner, and modal fade for
+    users who've set that OS preference; unchanged for everyone else.
+
 ## [0.4.0] — 2026-08-04
 
 _Stable checkpoint before the accessibility work begins._

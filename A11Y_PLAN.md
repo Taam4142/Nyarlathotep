@@ -1,8 +1,10 @@
 # A11Y_PLAN.md — accessibility plan for Nyarlathotep
 
-> **Status: PLAN ONLY — no code has been changed.** Written 2026-08-05, against the tagged baseline
+> **Status: P1, P2, P3a implemented and verified · P3b held (sign-off gate) · P4/P5 not started.**
+> Written 2026-08-05 against the tagged baseline
 > [`v0.4.0`](https://github.com/Taam4142/Nyarlathotep/releases/tag/v0.4.0) (`80e5ae9`).
-> Prompted by a review of [`fecarrico/A11Y.md`](https://github.com/fecarrico/A11Y.md).
+> Prompted by a review of [`fecarrico/A11Y.md`](https://github.com/fecarrico/A11Y.md). See §4 for the
+> per-phase implementation log (what shipped, what was verified, and one corrected claim).
 
 ---
 
@@ -17,9 +19,12 @@ works.** Every phase below is designed against that. Concretely, "no behaviour c
 | Export output (`.xlsx` bytes, columns, figures) | Persistence format (`localStorage`, `.json`) |
 | The visual design a sighted mouse user sees¹ | Existing keyboard behaviour (Ctrl+Z/Y, Escape, drag) |
 
-¹ With **two sanctioned exceptions**, both flagged for sign-off before they ship: the focus ring (visible
-only while keyboard-focused, via `:focus-visible` — a mouse user never sees it) and the secondary-text
-contrast bump (§3-B, genuinely visible — **needs your approval**).
+¹ **Two sanctioned exceptions**, both called out for sign-off: the focus ring (§4 P2 — verified: **no**
+change on a mouse-clicked button; a small, additive, on-brand change on a mouse-clicked **text field**,
+corrected from the original "mouse users see nothing different" claim once real-click testing showed
+browsers apply `:focus-visible` to text inputs on click too — this is standard cross-browser behaviour, not
+something introduced by this rule) and the secondary-text contrast bump (§4 P3b, genuinely visible —
+**still needs your approval, not yet done**).
 
 **Everything is additive.** No refactors, no renames, no logic rewrites. Each phase is one commit,
 independently revertible, diffable against `v0.4.0`.
@@ -149,50 +154,91 @@ Ten `<th>` elements, none with `scope="col"`. Cheap, invisible fix.
 Ordered by **ascending behaviour risk**, so the safest, highest-value work ships first and the one item
 that adds interaction comes last. One phase = one commit = one revert.
 
-### P0 — Safety net *(no product code)*
-- ✅ **Done:** `v0.4.0` tagged + released as the rollback point.
-- Write `A11Y_CHECKLIST.md`: the manual regression script (below) to run after **every** phase.
-- Decide (open question, §7): add a minimal UI smoke test, or rely on the manual checklist?
+### P0 — Safety net *(no product code)* ✅ Done
+- `v0.4.0` tagged + released as the rollback point.
+- (The separate `A11Y_CHECKLIST.md` file was skipped — the manual script ran directly from §6 of this
+  doc instead, which served the same purpose without an extra file.)
 
-### P1 — Invisible fixes *(zero visual change, zero interaction change)*
-Findings **E, I, D, C, G(lightbox semantics)**. Nothing here alters a single pixel for a sighted mouse user.
-- `lang="en"` + `lang="th"` on Thai content fields.
-- `scope="col"` on the 10 `<th>`.
-- Real labels: visually-hidden `<label htmlFor>` or `aria-label` on every unlabelled control; keep the
-  placeholders exactly as they are (they stay as hints).
-- `role="status"` / `aria-live="polite"` on progress + info/warning banners; `role="alert"` on errors.
-- Lightbox: `role="dialog"` + `aria-modal` + Escape (matching the two existing modals).
+### P1 — Invisible fixes *(zero visual change, zero interaction change)* ✅ Done, 2026-08-05
+Findings **E (partial — see note), I, D, C, G(lightbox semantics)**. Nothing here alters a single pixel for
+a sighted mouse user — confirmed (§6).
+- `lang="en"` on `<html>`. **Scope change from the original finding:** the "tag Thai content fields
+  `lang=\"th\"`" half was dropped after checking the actual data (`DEFAULT_LIB` in `constants.ts`) — those
+  fields are genuinely mixed Thai/English by design (the placeholder literally says "Thai/English"), so a
+  static per-field guess would mislabel English content about as often as it would help Thai. Not tagging
+  is more honest than tagging wrong.
+- `scope="col"` on all 9 `<th>` (the finding said 10; the live count is 9).
+- `aria-label` (or `htmlFor`/`id` where a visible label already existed — Snip's "Attach to", the library
+  add-form's three labels) on every previously-unlabelled control. Placeholders untouched.
+- `role="status" aria-live="polite"` on the progress overlay and the info/warning banners; `role="alert"`
+  on the error banner. **Scoped down from the finding:** the search match-count and the bulk-bar "N
+  selected" were deliberately left as plain (non-live) text — both update on every keystroke/click, and
+  making them live would spam a screen reader on every character typed (this is risk **R4** applied
+  proactively, not deferred).
+- Lightbox: `role="dialog"` + `aria-modal` + Escape, matching `HelpModal`/`SnipModal`.
 
-**Risk: very low. Value: high** (this is most of what a screen-reader user needs).
+**Verified:** typecheck/84 tests/build green; `lang`, all 9 `scope="col"`, and every `aria-label` confirmed
+present via DOM query; the accessibility tree (`read_page`) independently shows "Project name", "Verified
+by", "Reference", "Requirement text, verbatim", "Search rows" etc. as real control names; the info banner's
+`role="status"`/`aria-live="polite"` confirmed live; lightbox `role`/`aria-modal` confirmed, Escape-close
+confirmed via a real key event. Full regression pass (edit → undo → bulk-set → export) behaves identically
+to `v0.4.0` — byte-identical `.xlsx` MIME/structure, no console errors. Committed `<see CHANGELOG>`.
 
-### P2 — Focus visibility *(finding A)*
-One shared focus token, applied via **`:focus-visible`** so it appears for keyboard users and **never for
-mouse users** — the visual design is untouched in normal use. Implemented with `outline` + `outline-offset`
-(out of flow ⇒ **cannot shift layout**), never border/padding changes.
-- Replace the ten dead `outline: none` sites; unify with the good `.proj-input` pattern.
-- Give buttons an explicit ring so it's consistent and passes 3:1 on `.btn-amber` and dark mode.
+### P2 — Focus visibility *(finding A)* ✅ Done, 2026-08-05
+One rule, appended once — not ten edits — because `:focus-visible` and the existing `outline:none` class
+selectors share specificity (0,1,0), so source order alone lets one later rule override all ten sites:
+```css
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+```
+`outline` is drawn outside layout flow, so it cannot shift or resize anything.
 
-**Risk: low. Value: highest single item for keyboard users.**
+**Verified — and one claim corrected from what I proposed:** real clicks/keystrokes were sent (not
+`.focus()`, which isn't a trusted event `:focus-visible` can rely on). **Buttons: exactly as promised** —
+a real mouse click shows no ring (`matches(':focus-visible') === false`), identical to `v0.4.0`. **Text
+inputs/selects/textareas: not quite what I originally said.** All modern browsers (this is cross-browser
+spec behaviour, not something this rule introduces) apply `:focus-visible` to text-entry-like elements on
+mouse click too, not just keyboard — confirmed empirically (clicking the project-name field: outline
+`solid`, `matches(':focus-visible') === true`). Net effect: the nine previously-broken controls (which had
+**no** click indicator either) now get one — a fix, not a regression; but `.proj-input`/`.verifier-input`,
+which already had their own `:focus` box-shadow ring, now show that ring **plus** this new outline, layered,
+on a plain mouse click — a small, additive visual change I did not predict. It reads as a (subtle,
+on-brand) improvement rather than a defect, but it's a real delta from "zero change," stated here rather
+than left implicit. Confirmed via real keyboard Tab: `.sts-sel` — the control the audit called out as
+having *zero* focus indication — now shows `outline: solid 1.6px rgb(99, 102, 241)` (dark-mode `--accent`)
+on real Tab-driven focus. Full regression pass re-run after this change: unaffected.
 
-### P3 — Motion & contrast *(findings F, B)*
-- `@media (prefers-reduced-motion: reduce)`: stop the infinite pulse/progress animation, reduce the
-  spinner, drop the modal fade. **Zero change for anyone who hasn't opted in at OS level.**
-- **`--txt3` contrast bump — SIGN-OFF GATE.** Visible to everyone. Proposal: darken the token minimally to
-  clear 4.5:1 in both themes, changed **at the token** (not per-component) so it stays one coherent design
-  decision. Present before/after; ship only on approval. *Can be deferred indefinitely without blocking
-  anything else.*
+### P3a — Reduced motion *(finding F)* ✅ Done, 2026-08-05
+```css
+@media (prefers-reduced-motion: reduce) {
+  .brand-pulse { animation: none; }
+  .progress-fill { animation: none; }
+  .spinner { animation-duration: 1.6s; }  /* slowed, not stopped — it's a genuine progress indicator */
+  .help-overlay { animation: none; }
+}
+```
+**Verified:** confirmed the default (no-preference) case is byte-identical to `v0.4.0` —
+`matchMedia('(prefers-reduced-motion: reduce)').matches === false` in this environment, and
+`.brand-pulse` still runs `pulse 2.4s` unchanged. **Not verified:** actually toggling the OS-level
+reduced-motion preference — this sandboxed browser has no control to emulate that media feature, so the
+`reduce` branch itself was verified by code review (correct selectors, confirmed against the real class
+names in `styles.css`), not by observing the effect live. Worth a real look on your end if you have the OS
+setting available.
 
-**Risk: low (motion) / design-visible (contrast).**
+### P3b — `--txt3` contrast bump *(finding B)* ⏸ Held — sign-off gate, not started
+Visible to everyone, so not implemented without an explicit yes. Proposal unchanged: darken the token
+(`--txt3`) minimally to clear 4.5:1 in both themes, changed at the token so it's one coherent, easily
+revertible decision. Can be deferred indefinitely without blocking anything else.
 
-### P4 — Keyboard parity for Snip *(finding H)* — **separate review**
+### P4 — Keyboard parity for Snip *(finding H)* — ⏭ **skipped for now, per the engineer's steer**
 Additive alternative input; the mouse drag is untouched. Sketch: focus the page image → arrow keys move the
 crop origin, Shift+arrows resize, Enter attaches, Escape cancels; on-screen hint text. Plus modal focus
 trap + focus restore (finding G).
 
 **Risk: highest (new interaction, and new key handlers can collide with Ctrl+Z/Y and dnd-kit — see R3).**
-Held until P1–P3 are proven. **Needs explicit go-ahead** given §0.
+Not started; revisit only if someone actually needs keyboard-only figure capture. **Needs explicit
+go-ahead** given §0 — this is the one phase that adds a feature rather than a label/style.
 
-### P5 — Tooling *(optional)*
+### P5 — Tooling *(optional, not started)*
 ESLint + `eslint-plugin-jsx-a11y` + an axe pass. Ongoing guardrail so regressions get caught automatically.
 Bigger than it sounds (§3-J) — propose only if the earlier phases prove worth defending.
 
@@ -207,7 +253,7 @@ Bigger than it sounds (§3-J) — propose only if the earlier phases prove worth
 | **R3** | New key handlers collide with the **Ctrl+Z/Y undo** handler or **dnd-kit's KeyboardSensor** (drag-reorder). | Med | High | Scope every handler by `e.target`; re-verify undo/redo + drag after each phase (both are already-verified flows). |
 | **R4** | `aria-live` spam — per-page OCR updates announce dozens of times; screen reader becomes unusable. | Med | Med | `polite` only; announce milestones (start / done / error), not every page tick. |
 | **R5** | `--txt3` change ripples across the whole UI (used in ~10 components). | High | Low | It's a *design* change, not a bug fix → explicit sign-off gate; change the token, not components; ship alone so it's trivially revertible. |
-| **R6** | `lang` change alters Thai font fallback/rendering. | Low | Med | `--font-thai` is set explicitly on those fields; visually verify Thai in both themes before/after. |
+| **R6** | `lang` change alters Thai font fallback/rendering. | Low | Med | *(Moot for what shipped — the per-field `lang="th"` tagging was dropped in P1 after checking the actual data; only the document default changed to `en`, which doesn't touch `--font-thai` at all.)* |
 | **R7** | Focus trap breaks the existing Escape / backdrop-click / "Got it" close paths. | Med | Med | Additive only; re-run the three close paths already verified for `HelpModal`. |
 | **R8** | **Scope creep:** P4 adds a feature, violating §0. | Med | High | P4 is fenced, separately approved, separately committed; mouse path byte-for-byte untouched. |
 | **R9** | Claiming accessibility that wasn't verified (no real screen reader here). | Med | High | §6 honesty rule: state exactly what was and wasn't tested. Never assert NVDA/JAWS/VoiceOver results. |
@@ -241,11 +287,13 @@ Accessibility work that is *also* plain usability for this tool:
 - **A focus/contrast token** matures the design system — future components inherit correctness.
 
 **Open questions for the engineer**
-- **Q1:** Add a minimal UI smoke test (e.g. Testing Library: render, assert key controls, one interaction)?
-  It's the only real answer to R1 — but it's new tooling. *My lean: yes, small, after P1.*
-- **Q2:** Is the `--txt3` contrast bump (§3-B) acceptable as a visible design change?
-- **Q3:** Is P4 (Snip keyboard parity) wanted at all, given §0? It's the only true lockout, but also the
-  only phase that adds interaction.
+- **Q1 — still open:** Add a minimal UI smoke test (e.g. Testing Library: render, assert key controls, one
+  interaction)? It's the only real answer to R1 — but it's new tooling. *My lean: yes, small.* R1 held for
+  P1/P2/P3a the same way it will for every future phase: manual regression + browser verification each time.
+- **Q2 — still open:** Is the `--txt3` contrast bump (§4 P3b) acceptable as a visible design change? Not
+  implemented pending this answer.
+- **Q3 — answered, 2026-08-05:** P4 (Snip keyboard parity) is skipped for now. Revisit if a real need
+  surfaces.
 
 ---
 
