@@ -48,7 +48,10 @@
         --bdr3: #d7dbe4;
         --txt: #1c2030;
         --txt2: #5a6376;
-        --txt3: #98a1b3;
+        /* Accessibility P3b: darkened from #98a1b3 (2.60:1 on --sur1, fails
+           AA) to clear WCAG AA's 4.5:1 for normal text — same hue, derived
+           and verified at claude.ai/code/artifact/5fa56804-72b5-4a3f-9b1e-421ce6117f00 (4.51:1). */
+        --txt3: #6a7790;
 
         /* Legacy aliases so existing var(--amber*) refs resolve to the accent */
         --amber: var(--accent);
@@ -107,7 +110,10 @@
           --bdr3: rgba(255, 255, 255, 0.14);
           --txt: #e7e9f0;
           --txt2: #a3adc0;
-          --txt3: #6b7484;
+          /* Accessibility P3b: lightened from #6b7484 (3.70:1 on --sur1,
+             fails AA) to clear 4.5:1 — same hue, derived and verified at
+             claude.ai/code/artifact/5fa56804-72b5-4a3f-9b1e-421ce6117f00 (4.56:1). */
+          --txt3: #7a8393;
 
           --comply: #4ade80;
           --comply-bg: rgba(34, 197, 94, 0.14);
