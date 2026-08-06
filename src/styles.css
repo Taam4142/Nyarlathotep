@@ -1599,3 +1599,35 @@
         justify-content: flex-end;
         flex-shrink: 0;
       }
+
+      /* ── Accessibility P2: visible keyboard focus (A11Y_PLAN.md) ──
+         :focus-visible only matches keyboard/programmatic focus, never a mouse
+         click, so this rule changes nothing for a mouse user — it only restores
+         what the ten `outline: none` declarations above removed for keyboard
+         users. It's a single rule (not ten edits) because :focus-visible has the
+         same specificity as those class selectors, and — appended last — wins
+         the cascade on source order alone, so every one of them is overridden
+         without touching their own rules. `outline` is drawn outside layout
+         flow, so it cannot shift or resize anything. */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* ── Accessibility P3a: respect reduced-motion (A11Y_PLAN.md) ──
+         Only applies when the user has set this OS/browser preference; everyone
+         else sees the existing animations unchanged. */
+      @media (prefers-reduced-motion: reduce) {
+        .brand-pulse {
+          animation: none;
+        }
+        .progress-fill {
+          animation: none;
+        }
+        .spinner {
+          animation-duration: 1.6s;
+        }
+        .help-overlay {
+          animation: none;
+        }
+      }
