@@ -2,16 +2,98 @@
 
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
-> Last updated 2026-08-05.
+> Testing procedure + fixtures: [`TESTING.md`](TESTING.md). Accessibility: [`A11Y_PLAN.md`](A11Y_PLAN.md).
+> Last updated 2026-08-07.
 
-## ▶ Next up
+---
 
-Open items roughly in priority order: **AI table-prompt** for messy/borderless tables; security tidy-ups
-(R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: keyboard cell nav,
-column reorder.)_ The accessibility pass ([`A11Y_PLAN.md`](A11Y_PLAN.md)) is complete for its current
-scope — P4 (Snip keyboard access) stays parked unless a real need surfaces.
+## ▶ Next up — the remaining plan
+
+Ordered by **ascending risk and dependency**, so cheap protective work lands first and the two big items
+come last, informed by evidence. Each item is independently revertible; nothing here is a prerequisite for
+using the tool as it stands.
+
+| # | Item | Effort | Risk | Fully verifiable by me? | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | **CI** — GitHub Actions | S | Very low | Yes | **Planned, awaiting go-ahead** |
+| 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | Not started |
+| 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | Not started |
+| 4 | *(engineer)* Run [`TESTING.md`](TESTING.md) on real PDFs | — | — | **No — needs you** | Fixtures delivered |
+| 5 | **Drop `@ts-nocheck`** from `App.tsx` | **L** | **High** | Yes | Not started |
+| 6 | **AI table-prompt** for messy tables | L | Med | Gated on #4 | Not started |
+| 7 | **P5** (ESLint + jsx-a11y + axe) · **npm audit** decision | M | Low | Yes | Optional |
+
+### 1. CI — GitHub Actions *(next, needs go-ahead)*
+There is currently **no CI at all** (no `.github/workflows`). The 90 tests only run when someone remembers
+to run them locally. Plan: one workflow, triggered on push to `master` + pull requests —
+`checkout → Node 22 (matches local v22.18.0, npm cache) → npm ci → typecheck → test → build`. Plus a status
+badge in the README. ~1–2 min per run, free for public repos.
+
+> ⚠️ **Important expectation:** this will **not** gate deploys. Cloudflare Pages builds on push
+> independently of GitHub Actions, so a red CI still deploys. What you get is a red ✗ on the commit and an
+> email — a *notification*, not a gate. Making it a true gate needs branch protection + a PR workflow,
+> which was **deliberately rejected**: the engineer is the sole committer pushing straight to `master`, so
+> the ceremony would cost more than it saves.
+
+**Why first:** it's cheap, and everything after it — especially the high-risk `@ts-nocheck` work — inherits
+the safety net automatically instead of depending on manual discipline.
+
+### 2. R12 — Tesseract memory *(see RISK_REVIEW R12)*
+Two independent sub-parts; the second carries a real trade-off:
+- **(a) Worker teardown** — `_tessWorker` is cached and never terminated. Low risk. *Design constraint:*
+  terminate on idle/unmount, **not** after each page — re-creating it re-downloads the ~15 MB Thai language
+  pack, which would be a UX regression, not a fix.
+- **(b) Rasterize scale fallback** — `rasterizePage(pdf, p, 3)` at scale 3 can OOM the tab on very large
+  pages. **Trade-off:** scale 3 was chosen deliberately for Thai OCR accuracy, so a preemptive downgrade
+  would silently make Thai OCR *worse*. Preferred approach: **retry at a lower scale on failure**, rather
+  than downgrading up front.
+
+### 3. R8 — prompt-injection framing *(see RISK_REVIEW R8)*
+**The only remaining item that can change what the tool outputs**, so it gets handled carefully. The two
+prompt builders are what enforce the verbatim law, and untrusted OCR text is currently interpolated raw
+into the prompt (`extract.ts` — the Claude and Gemini prompt bodies). Plan: keep every existing verbatim
+rule **byte-identical**, *add* explicit "this is data, not instructions" framing and delimit the untrusted
+document text, then add the first-ever unit tests on `buildSystemPrompt` / `buildGeminiPrompt` asserting
+both the new framing **and** the survival of the old rules.
+
+### 5. Drop `@ts-nocheck` — the biggest remaining risk
+`App.tsx` is **2,907 lines with no type annotations**. Removing `@ts-nocheck` will surface a large number of
+implicit-any errors, and some may be latent real bugs whose fixes change behaviour. Plan: incremental, in
+sections, one commit per section, with CI + the 6 smoke tests as the net. Do **after** CI (#1).
+
+### 6. AI table-prompt — deliberately gated
+The deterministic column detector (`src/lib/tables.ts`) only handles clean, aligned tables. An AI-assisted
+path for messy/borderless/merged tables is the obvious next capability — **but its value is unproven until
+real-PDF testing (#4) shows the deterministic path actually falls short.** Building it before that evidence
+risks solving a problem that doesn't exist in practice. Must stay extract-only + human-reviewed per
+[`CLAUDE.md`](CLAUDE.md).
+
+### 7. Optional
+- **P5** — ESLint + `eslint-plugin-jsx-a11y` + axe. Note this means **introducing ESLint from scratch**
+  (the project has no config and no `lint` script), so it's larger than "add a plugin."
+- **npm audit** — 2 moderate advisories, both **pre-existing, dev-only, transitive**: `esbuild` (via
+  vitest's own toolchain) and `uuid` (via `exceljs`). Neither ships to the browser. Fixing either needs a
+  **breaking major bump** (vitest 4.x / exceljs 3.x) — an engineer decision, not a silent change.
+- **F5 leftovers** — keyboard cell nav, column reorder.
+
+_The accessibility pass ([`A11Y_PLAN.md`](A11Y_PLAN.md)) is complete for its scope; P4 (Snip keyboard
+access) stays parked unless a real need surfaces._
+
+---
 
 ## Shipped
+
+**Test fixtures + procedure (2026-08-07):** [`TESTING.md`](TESTING.md) — a step-by-step verification
+checklist covering the whole feature surface, plus two generated sample PDFs (`tools/fixtures/`) that
+exercise digital text, Thai + ASCII + Thai-numeral clause refs, a multi-column table, a vector diagram, an
+embedded image, and a no-text-layer scanned page. Written so the engineer's real-PDF pass is a
+follow-the-steps job rather than a recall exercise.
+
+**R7 — Gemini key out of the URL (2026-08-06):** the key now travels in the `x-goog-api-key` header at all
+three call sites instead of `?key=` in the query string, so it can't land in server/proxy access logs or
+browser history. Verified against the **live** API (a dummy key in the header returned a genuine
+`API_KEY_INVALID`, proving the endpoint reads it there) and by intercepting the app's own request
+in-browser — not by trusting documentation, which was actually inconsistent on this point.
 
 **Accessibility pass — P0 through P3b (2026-08-05):** full audit, phasing, and risk register in
 [`A11Y_PLAN.md`](A11Y_PLAN.md) (baseline `v0.4.0`); §4 has the complete per-phase implementation log,

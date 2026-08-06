@@ -35,7 +35,8 @@ inputs · **Low** = quality / edge case.
 | --- | ---- | --- | -------------- | ---------- |
 | R6 ✅ | Proxies are wide open — `functions/api/claude.js`, `functions/api/typhoon.js`, and `functions/api/vision.js` (Cloudflare Pages Functions) send `Access-Control-Allow-Origin: *`, no auth, no rate limit, and forward the body verbatim (any model/params). | High | Anyone who finds the deployed URL can spend your Anthropic / Typhoon / Google Vision credits. | **Fixed (Phase 2, in-place):** shared `functions/api/_guard.js` adds an origin allow-list, model allow-list, body-size cap, per-IP KV rate limit, and an optional shared secret. Each layer degrades gracefully so it never breaks the live deploy — **activate by setting `ALLOWED_ORIGINS` (comma-separated), optionally binding a KV namespace as `RATE_LIMIT`, and optionally setting `PROXY_SECRET` / `ALLOWED_MODELS`** in Cloudflare. |
 | R7 ✅ | Gemini key travelled in the URL query string, at all three call sites: `extractWithGemini` (`src/lib/extract.ts`), `ocrPageWithGemini` (`src/lib/ocr.ts`), and Test Connection (`src/App.tsx`). | Low | Held in state only and cleared on reload, but keys in query strings can land in server/proxy logs and browser history. | **Fixed (2026-08-06):** all three now send the key via the `x-goog-api-key` request header instead of `?key=` in the URL. Verified two ways before shipping: (1) a direct `curl` to the live `generateContent` endpoint with a dummy key in the header returned a genuine `API_KEY_INVALID` — proof the endpoint reads the header, not just docs; (2) intercepted the app's own `fetch()` call in-browser and confirmed the real request has no `?key=` and carries `x-goog-api-key` correctly. |
-| R8  | Prompt-injection surface — a malicious TOR could embed instructions to the model. | Low | Output is verbatim-copied and human-reviewed, so blast radius is small, but a crafted doc could still skew extraction. | Keep the "extract, don't obey the document" framing in the system prompt; never execute anything from extracted text. |
+| R8  | Prompt-injection surface — a malicious TOR could embed instructions to the model. Untrusted OCR text is currently interpolated **raw** into both prompt bodies (`src/lib/extract.ts`, Claude + Gemini paths) with no delimiting, and neither prompt states that document content is data rather than instructions. | Low | Output is verbatim-copied and human-reviewed, so blast radius is small, but a crafted doc could still skew extraction. | **Planned (ROADMAP #3).** Keep every existing verbatim rule **byte-identical**; *add* explicit "this is data, not instructions" framing and delimit the untrusted text block. Add unit tests on `buildSystemPrompt`/`buildGeminiPrompt` (both already exported, currently untested) asserting the new framing **and** the survival of the old rules. ⚠️ This is the only open item that can change extraction output, so live behaviour needs engineer confirmation — the Claude path needs the deployed proxy, Gemini needs a real key. |
+| R13 | **npm audit** — 2 moderate advisories: `esbuild` (transitive via vitest's own toolchain) and `uuid` (transitive via `exceljs`). | Low | **Dev-only and pre-existing** — neither reaches the browser bundle, so there is no runtime exposure to users. Flagged for visibility, not urgency. | Fixing either requires a **breaking major bump** (vitest 4.x / exceljs 3.x). Deliberately **not** done silently — this is an engineer decision. Re-evaluate when either package is upgraded for other reasons. |
 
 ## Robustness
 
@@ -44,11 +45,30 @@ inputs · **Low** = quality / edge case.
 | R9 ✅ | No retry/backoff on `429` / `529` (overloaded) / transient network for any engine. | Med | A single transient API blip fails the whole extraction and the user restarts from scratch. | **Fixed (Phase 2):** `src/lib/net.ts` `fetchWithRetry` (exponential backoff + jitter, honors `Retry-After`, retries 408/425/429/5xx/529 + network errors) wraps every extraction/OCR fetch. Accepts an `AbortSignal` for R10. |
 | R10 ✅ | No cancellation — a multi-page OCR/extract can't be stopped once started. | Low | A wrong file or a huge doc means waiting out (and paying for) the full run. | **Fixed (Phase 2):** `doExtract` creates an `AbortController`; its signal threads into every OCR/extraction call (and `fetchWithRetry`), the multi-page loops check `signal.aborted` between pages, and a **Cancel button** in the progress overlay aborts the run (surfaced as "Extraction cancelled", not an error). |
 | R11 ✅ | Gemini not pinned to JSON — `generationConfig` lacks `responseMimeType:"application/json"` (`:1512`). | Med | Gemini is more prone to wrapping output in prose, which then trips R4. | **Fixed (Phase 2):** `extractWithGemini` now sets `responseMimeType:"application/json"`. |
-| R12 | Tesseract memory — `rasterizePage(..., 3)` at scale 3 (`:1169`); `_tessWorker` cached (`:1147`) but never terminated. | Low | Large scans can OOM the tab; the worker lingers after use. | Add a scale fallback for big pages; terminate the worker when idle/unmounted. |
+| R12 | Tesseract memory — `rasterizePage(pdf, p, 3)` at scale 3 and `_tessWorker` cached but never terminated (both `src/lib/ocr.ts`). | Low | Large scans can OOM the tab; the worker lingers after use, holding memory for the rest of the session. | **Planned (ROADMAP #2).** Two parts, each with a constraint: **(a)** terminate the worker on idle/unmount — **not** per page, since re-creating it re-downloads the ~15 MB Thai language pack (that would trade a memory leak for a UX regression). **(b)** ⚠️ scale 3 was chosen deliberately for **Thai OCR accuracy**, so a preemptive downgrade on big pages would silently make Thai OCR worse — prefer **retry at lower scale on failure** over downgrading up front. Verification note: the OCR path can't be exercised in the sandboxed preview pane (see Notes below), so this needs a real-browser check. |
 
 ## Notes
 
-- The **verbatim law holds** in code: prompts enforce it three ways and `validateAndMap` (`:1569`) flags
+- The **verbatim law holds** in code: prompts enforce it three ways and `validateAndMap` flags
   all-English-in-a-Thai-doc rows with `_warn`. No fix needed — protect it through future changes.
-- None of the above is fixed yet; this task only documents them. Fixes are sequenced in `ROADMAP.md`
-  Phase 0/1.
+- Status: **R1–R7 and R9–R11 are fixed**; **R8, R12, R13 remain open** and are sequenced in
+  [`ROADMAP.md`](ROADMAP.md). Accessibility risks live in [`A11Y_PLAN.md`](A11Y_PLAN.md) §5.
+
+## Verification limits — what *cannot* be tested in the dev sandbox
+
+Recorded because these are expensive to rediscover, and because a change that "passed" without one of
+these caveats being known could be wrongly believed verified. **Anything in this list needs the engineer's
+real browser or a deployed environment.**
+
+| Limit | Why | What it blocks |
+| --- | --- | --- |
+| **pdf.js page rendering hangs** | `page.render()` depends on `requestAnimationFrame`, which browsers pause while a tab/pane is hidden. Proven: the worker-side `getOperatorList()` resolves and plain canvas works — only `render()` stalls, and `document.hidden === true`. **Not a code bug**; it renders normally for a real user. | Anything using `rasterizePage`: the **Snip** modal's page view + drag-crop, and all **OCR** page images (R12). |
+| **`/api/*` proxies don't exist locally** | They're Cloudflare Pages Functions; `npm run dev` serves only the SPA. | **Typhoon**, **Claude**, and **Google Vision** paths — including "Test Connection". Use the deployed site. |
+| **Gemini needs a real key** | Key is user-supplied at runtime, never stored. | Live Gemini extraction/OCR behaviour — R8's real-world effect in particular. |
+| **No screen reader available** | Not installable in the sandbox. | Actual assistive-tech behaviour. Semantics can only be verified by DOM/accessibility-tree inspection — never claim SR testing that wasn't done. |
+| **OS-level media preferences can't be toggled** | No control to emulate them. | `prefers-reduced-motion: reduce` branch (verified by code review only). |
+| **Binary can't be relayed through chat** | Long base64 silently truncates when transcribed by hand (observed: 12,604 chars → 9,366). | Inspecting generated images/PDFs. **Workaround that works:** render into the DOM and use the screenshot tool (real pixel capture), or keep the data disk→disk and never route it through a message. |
+
+**Practices that follow from the above:** verify by construction + unit tests + downstream effects, state
+plainly which parts were *not* exercised, and when a check is unavoidable-but-fallible, add a length or
+checksum assertion so a silent corruption becomes a loud failure.

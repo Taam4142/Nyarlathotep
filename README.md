@@ -129,8 +129,10 @@ what's planned.
 | ---------------------------- | -------------------------------------------------------------- |
 | `index.html`                 | Vite entry (mounts `src/main.tsx`).                            |
 | `src/App.tsx`                | Root UI component (state + render).                            |
-| `src/lib/`                   | Typed, unit-tested logic: pdf, ocr, extract, net (retry), models, typhoon, constants, types. |
+| `src/lib/`                   | Typed, unit-tested logic: pdf, ocr, extract, net (retry), models, typhoon, tables, review, history, snip, storage, xlsx, textquality, constants, types. |
+| `src/App.test.tsx`           | UI smoke tests (Testing Library + jsdom).                      |
 | `src/styles.css`             | Design tokens + all component styles.                          |
+| `tools/fixtures/`            | Generators + the two sample TOR PDFs used by `TESTING.md` (isolated `package.json` — dev-only, never bundled). |
 | `functions/api/claude.js`    | Cloudflare Pages Function — proxy to the Anthropic API.         |
 | `functions/api/typhoon.js`   | Cloudflare Pages Function — proxy to the Typhoon OCR API.       |
 | `functions/api/vision.js`    | Cloudflare Pages Function — proxy to the Google Vision API.     |
@@ -140,6 +142,7 @@ what's planned.
 | `CLAUDE.md`                  | Prompt engineering + AI behaviour rules.                       |
 | `OCR_RESEARCH.md`            | Survey of OCR options + the lineup decision.                   |
 | `ROADMAP.md`                 | Phased development plan + deferred items.                      |
-| `RISK_REVIEW.md`             | Known bugs, security, and robustness risks (with fixes).       |
+| `RISK_REVIEW.md`             | Known bugs, security, robustness risks — and the **verification limits** (what can't be tested in a sandbox). |
+| `TESTING.md`                 | How this project is verified: automated suite, sample PDFs, manual walkthrough, definition of done. |
 | `A11Y_PLAN.md`               | Accessibility audit, phased plan, and a11y risk register.      |
 | `CHANGELOG.md`               | Version history.                                               |

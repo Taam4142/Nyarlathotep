@@ -1,0 +1,14 @@
+{
+  "name": "nyarlathotep-fixtures",
+  "private": true,
+  "type": "module",
+  "description": "Standalone generators for the sample TOR PDFs used by TESTING.md. Intentionally SEPARATE from the app's package.json so these dev-only, Windows-font-dependent deps never enter the app's dependency tree or bundle.",
+  "scripts": {
+    "build": "node make-digital.mjs && node make-scanned.mjs"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.0.3",
+    "@pdf-lib/fontkit": "^1.1.1",
+    "pdf-lib": "^1.17.1"
+  }
+}
