@@ -1,5 +1,7 @@
 # Nyarlathotep
 
+[![CI](https://github.com/Taam4142/Nyarlathotep/actions/workflows/ci.yml/badge.svg)](https://github.com/Taam4142/Nyarlathotep/actions/workflows/ci.yml)
+
 > A **TOR Compliance Matrix** tool (formerly *TOR-Extract*).
 
 Turn a Thai/English **Terms of Reference (TOR)** PDF into an editable **compliance matrix**, then export

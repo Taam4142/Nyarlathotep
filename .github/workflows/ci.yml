@@ -1,0 +1,30 @@
+name: CI
+
+# Notification, not a gate: Cloudflare Pages builds on push independently of
+# this workflow, so a red check here does not stop a deploy. This exists to
+# catch a broken push automatically instead of relying on remembering to run
+# the checks locally — see TESTING.md and ROADMAP.md #1 for the reasoning
+# (branch protection / required checks were deliberately not set up, since
+# the engineer is the sole committer pushing straight to master).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
