@@ -1,10 +1,11 @@
 # A11Y_PLAN.md — accessibility plan for Nyarlathotep
 
-> **Status: P1, P2, P3a implemented and verified · P3b held (sign-off gate) · P4/P5 not started.**
+> **Status: P0–P3b done · P4 skipped (revisit only on real need) · P5 optional/not started.**
 > Written 2026-08-05 against the tagged baseline
 > [`v0.4.0`](https://github.com/Taam4142/Nyarlathotep/releases/tag/v0.4.0) (`80e5ae9`).
 > Prompted by a review of [`fecarrico/A11Y.md`](https://github.com/fecarrico/A11Y.md). See §4 for the
-> per-phase implementation log (what shipped, what was verified, and one corrected claim).
+> per-phase implementation log (what shipped, what was verified, and one corrected claim) and §7 for the
+> three open questions — all now answered.
 
 ---
 
@@ -224,10 +225,23 @@ reduced-motion preference — this sandboxed browser has no control to emulate t
 names in `styles.css`), not by observing the effect live. Worth a real look on your end if you have the OS
 setting available.
 
-### P3b — `--txt3` contrast bump *(finding B)* ⏸ Held — sign-off gate, not started
-Visible to everyone, so not implemented without an explicit yes. Proposal unchanged: darken the token
-(`--txt3`) minimally to clear 4.5:1 in both themes, changed at the token so it's one coherent, easily
-revertible decision. Can be deferred indefinitely without blocking anything else.
+### P3b — `--txt3` contrast bump *(finding B)* ✅ Done, 2026-08-05 — approved
+Before touching code, built a live comparison — a published Artifact showing the real UI strings (section
+labels, stat labels, help-note copy, page counters) at actual size, current vs. proposed, both themes, with
+the WCAG contrast ratio computed **in the page itself** (not typed in by hand) — so the approval was made
+by looking at the actual result, not hex codes in chat. **Caught a real bug before publishing it:** the
+first version of the colour-derivation script had the darken/lighten direction inverted, which would have
+proposed white-on-white (light theme) and black-on-black (dark theme). Found by independently re-running
+the identical algorithm in Node and sanity-checking the output — not by the engineer noticing after the
+fact. Fixed, re-verified, then published.
+
+Applied at the token only (`--txt3` in both the light `:root` block and the dark `@media` block in
+`styles.css`) — light `#98a1b3` (2.60:1, fails AA) → `#6a7790` (4.51:1, passes); dark `#6b7484` (3.70:1,
+fails) → `#7a8393` (4.56:1, passes). Same hue, lightness-only adjustment, derived programmatically rather
+than hand-picked. All ~27 usages of the token update automatically; no per-component changes.
+
+**Verified:** typecheck/90 tests/build green; `getComputedStyle` confirmed the new hex in-browser; full
+regression pass (export) unaffected; no console errors.
 
 ### P4 — Keyboard parity for Snip *(finding H)* — ⏭ **skipped for now, per the engineer's steer**
 Additive alternative input; the mouse drag is untouched. Sketch: focus the page image → arrow keys move the
@@ -248,7 +262,7 @@ Bigger than it sounds (§3-J) — propose only if the earlier phases prove worth
 
 | ID | Risk | L | I | Mitigation |
 | --- | --- | --- | --- | --- |
-| **R1** | **Regression on an untested surface.** All work is in `App.tsx`/`styles.css`; the 84 tests cover only `src/lib/*`. A break ships silently. | High | High | Manual checklist after *every* phase; one phase per commit; diff against `v0.4.0`; consider a UI smoke test (§7 Q1). **The dominant risk.** |
+| **R1** | **Regression on an untested surface.** All work is in `App.tsx`/`styles.css`; the 84 tests cover only `src/lib/*`. A break ships silently. | ~~High~~ Med | High | Manual checklist after *every* phase; one phase per commit; diff against `v0.4.0`. **Mitigated (not eliminated) 2026-08-05:** `src/App.test.tsx` — 6 smoke tests via Testing Library (§7 Q1) now run in CI-equivalent `npm run test`. It's a smoke suite, not full coverage, so manual verification is still the primary check for anything it doesn't touch. |
 | **R2** | Focus ring shifts layout or gets clipped (sticky `thead`, `overflow` containers, dense table). | Med | Med | `outline` + `outline-offset` only (out of flow); never border/padding. Verify in table, modals, sticky header, both themes. |
 | **R3** | New key handlers collide with the **Ctrl+Z/Y undo** handler or **dnd-kit's KeyboardSensor** (drag-reorder). | Med | High | Scope every handler by `e.target`; re-verify undo/redo + drag after each phase (both are already-verified flows). |
 | **R4** | `aria-live` spam — per-page OCR updates announce dozens of times; screen reader becomes unusable. | Med | Med | `polite` only; announce milestones (start / done / error), not every page tick. |
@@ -286,14 +300,20 @@ Accessibility work that is *also* plain usability for this tool:
 - **Reduced motion** also cuts needless repaint/CPU during long OCR runs.
 - **A focus/contrast token** matures the design system — future components inherit correctness.
 
-**Open questions for the engineer**
-- **Q1 — still open:** Add a minimal UI smoke test (e.g. Testing Library: render, assert key controls, one
-  interaction)? It's the only real answer to R1 — but it's new tooling. *My lean: yes, small.* R1 held for
-  P1/P2/P3a the same way it will for every future phase: manual regression + browser verification each time.
-- **Q2 — still open:** Is the `--txt3` contrast bump (§4 P3b) acceptable as a visible design change? Not
-  implemented pending this answer.
-- **Q3 — answered, 2026-08-05:** P4 (Snip keyboard parity) is skipped for now. Revisit if a real need
-  surfaces.
+**Open questions for the engineer — all three now answered**
+- **Q1 — answered yes, done 2026-08-05:** added `@testing-library/react` + `@testing-library/jest-dom` +
+  `@testing-library/user-event` + `jsdom` (dev-only) and `src/App.test.tsx` — 6 smoke tests (renders;
+  key controls have accessible names; add row; edit a cell; bulk status-set; undo; search). The pure
+  `src/lib/*` tests keep their existing "node" environment untouched; the new file opts into jsdom
+  per-file via a `@vitest-environment jsdom` comment. R1 (the "UI is untested" risk) is now meaningfully
+  reduced, though this is a smoke suite, not full coverage — most future UI work still needs a manual
+  browser pass too.
+- **Q2 — answered yes, done 2026-08-05:** see P3b above.
+- **Q3 — answered no (skip), 2026-08-05:** P4 (Snip keyboard parity) is skipped for now. Revisit if a real
+  need surfaces.
+
+**Every phase in this plan is now either done or deliberately skipped** (P0–P3b done, P4 skipped, P5 still
+optional/not started). See §9 for how to roll any of it back.
 
 ---
 

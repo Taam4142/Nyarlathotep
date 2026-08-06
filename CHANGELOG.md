@@ -24,6 +24,13 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
     UI is English — Thai is field content).
   - `prefers-reduced-motion` now stops/slows the brand pulse, progress bar, spinner, and modal fade for
     users who've set that OS preference; unchanged for everyone else.
+  - **Secondary text darkened to pass AA contrast** (P3b, approved after viewing a live comparison —
+    ratios computed in-page, not estimated): `--txt3` light `#98a1b3`→`#6a7790` (2.60:1→4.51:1), dark
+    `#6b7484`→`#7a8393` (3.70:1→4.56:1). One token, ~27 call sites update automatically — labels, stat
+    labels, the search match-count, the Snip page counter, row numbers, hint text, placeholders.
+- **UI smoke tests** — `src/App.test.tsx` (Testing Library + jsdom, 6 tests): renders; key controls have
+  accessible names; add row; edit a cell; bulk status-set; undo; search. The first automated coverage of
+  `App.tsx`, which previously had none (the existing 84 tests cover only `src/lib/*`). 90 tests total.
 
 ## [0.4.0] — 2026-08-04
 

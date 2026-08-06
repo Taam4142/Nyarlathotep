@@ -6,27 +6,27 @@
 
 ## ▶ Next up
 
-**Accessibility pass — P1/P2/P3a shipped, P3b needs sign-off, P4 skipped.** Full audit, phasing, and risk
-register live in [`A11Y_PLAN.md`](A11Y_PLAN.md) (baseline `v0.4.0`). Still open: **Q1** (add a UI smoke
-test?) and **Q2** (approve the `--txt3` contrast bump, §4 P3b — the one remaining visible change?). Every
-phase so far is strictly additive and independently revertible; see that doc's §4 for the per-phase
-implementation log.
-
-Then, open items roughly in priority order: **AI table-prompt** for messy/borderless tables; security
-tidy-ups (R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: keyboard cell
-nav, column reorder.)_
+Open items roughly in priority order: **AI table-prompt** for messy/borderless tables; security tidy-ups
+(R7/R8/R12); drop `@ts-nocheck` from `App.tsx`. _(More F5 niceties possible later: keyboard cell nav,
+column reorder.)_ The accessibility pass ([`A11Y_PLAN.md`](A11Y_PLAN.md)) is complete for its current
+scope — P4 (Snip keyboard access) stays parked unless a real need surfaces.
 
 ## Shipped
 
-**Accessibility P1 + P2 + P3a (2026-08-05):** see [`A11Y_PLAN.md`](A11Y_PLAN.md) §4 for the full log.
-**P1** (invisible): `lang="en"`, `scope="col"` on all `<th>`, real accessible names on every previously
-placeholder-only control, `aria-live` on the progress/alert banners, dialog semantics + Escape on the
-figure lightbox. **P2**: a single `:focus-visible` rule restores keyboard focus visibility on every control
-that had none (the compliance-status and category dropdowns had **zero** indication before this).
-**P3a**: `prefers-reduced-motion` support. Zero feature/behaviour change — verified via the full typecheck/
-test/build/regression suite plus real click and keyboard events in-browser (not just DOM inspection).
-**P3b** (a visible contrast change) and **P4** (Snip keyboard access, which adds interaction) are
-deliberately held for explicit sign-off / a real need.
+**Accessibility pass — P0 through P3b (2026-08-05):** full audit, phasing, and risk register in
+[`A11Y_PLAN.md`](A11Y_PLAN.md) (baseline `v0.4.0`); §4 has the complete per-phase implementation log,
+including two bugs caught and fixed during verification (not shipped, not found later) — a focus-visible
+claim corrected after real-click testing, and an inverted darken/lighten direction caught before publishing
+the contrast-comparison artifact. **P1** (invisible): `lang="en"`, `scope="col"` on all `<th>`, real
+accessible names on every previously placeholder-only control, live regions on the progress/alert banners,
+dialog semantics + Escape on the figure lightbox. **P2**: one `:focus-visible` rule restores keyboard focus
+visibility on every control that had none (the compliance-status and category dropdowns had **zero**
+indication before this). **P3a**: `prefers-reduced-motion` support. **P3b**: darkened `--txt3` to clear
+WCAG AA contrast in both themes — approved after viewing a live before/after comparison (published as an
+Artifact, ratios computed in-page) rather than judging hex codes in chat. **Also added**: a minimal UI
+smoke-test suite (`src/App.test.tsx`, Testing Library + jsdom, 6 tests) — the first automated coverage of
+`App.tsx`, which until now had none. 90 tests total. P4 (Snip keyboard access) deliberately skipped — the
+only phase that would add interaction rather than fix a label/style.
 
 **Undo / redo (2026-08-04):** a snapshot history (≤60 steps) reverses edits, bulk status-set, add/insert/
 delete, reorder, snip-attach, figure-remove, Load, and New/clear — via **↶/↷** buttons or **Ctrl+Z/Ctrl+Y**
