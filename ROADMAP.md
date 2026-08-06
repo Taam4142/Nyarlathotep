@@ -3,7 +3,7 @@
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
 > Testing procedure + fixtures: [`TESTING.md`](TESTING.md). Accessibility: [`A11Y_PLAN.md`](A11Y_PLAN.md).
-> Last updated 2026-08-07.
+> Last updated 2026-08-06.
 
 ---
 
@@ -15,7 +15,7 @@ using the tool as it stands.
 
 | # | Item | Effort | Risk | Fully verifiable by me? | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | **CI** — GitHub Actions | S | Very low | Yes | **Planned, awaiting go-ahead** |
+| 1 | **CI** — GitHub Actions | S | Very low | Yes | ✅ **Done — 2026-08-06** |
 | 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | Not started |
 | 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | Not started |
 | 4 | *(engineer)* Run [`TESTING.md`](TESTING.md) on real PDFs | — | — | **No — needs you** | Fixtures delivered |
@@ -23,13 +23,15 @@ using the tool as it stands.
 | 6 | **AI table-prompt** for messy tables | L | Med | Gated on #4 | Not started |
 | 7 | **P5** (ESLint + jsx-a11y + axe) · **npm audit** decision | M | Low | Yes | Optional |
 
-### 1. CI — GitHub Actions *(next, needs go-ahead)*
-There is currently **no CI at all** (no `.github/workflows`). The 90 tests only run when someone remembers
-to run them locally. Plan: one workflow, triggered on push to `master` + pull requests —
-`checkout → Node 22 (matches local v22.18.0, npm cache) → npm ci → typecheck → test → build`. Plus a status
-badge in the README. ~1–2 min per run, free for public repos.
+### 1. CI — GitHub Actions ✅ Done
+[`​.github/workflows/ci.yml`](.github/workflows/ci.yml): triggered on push to `master` + pull requests —
+`checkout → Node 22 (matches local v22.18.0, npm cache) → npm ci → typecheck → test → build`. Status badge
+at the top of the README. **Verified, not just pushed:** watched the first real run (`gh run watch`) to
+completion — every step green, 36s total. (One informational annotation, not a failure: GitHub flags
+`actions/checkout@v4`/`actions/setup-node@v4` as internally targeting a Node version their runners are
+deprecating; both actions auto-run on a newer one regardless, unrelated to our Node 22 build target.)
 
-> ⚠️ **Important expectation:** this will **not** gate deploys. Cloudflare Pages builds on push
+> ⚠️ **Important expectation:** this is **not** a deploy gate. Cloudflare Pages builds on push
 > independently of GitHub Actions, so a red CI still deploys. What you get is a red ✗ on the commit and an
 > email — a *notification*, not a gate. Making it a true gate needs branch protection + a PR workflow,
 > which was **deliberately rejected**: the engineer is the sole committer pushing straight to `master`, so
@@ -83,7 +85,12 @@ access) stays parked unless a real need surfaces._
 
 ## Shipped
 
-**Test fixtures + procedure (2026-08-07):** [`TESTING.md`](TESTING.md) — a step-by-step verification
+**CI — GitHub Actions (2026-08-06):** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs
+typecheck + the 90 tests + build on every push to `master` and on pull requests. Status badge in the
+README. Confirmed with a real watched run, not just a push — see §1 above for the result and the "not a
+deploy gate" caveat.
+
+**Test fixtures + procedure (2026-08-06):** [`TESTING.md`](TESTING.md) — a step-by-step verification
 checklist covering the whole feature surface, plus two generated sample PDFs (`tools/fixtures/`) that
 exercise digital text, Thai + ASCII + Thai-numeral clause refs, a multi-column table, a vector diagram, an
 embedded image, and a no-text-layer scanned page. Written so the engineer's real-PDF pass is a

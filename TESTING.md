@@ -3,7 +3,7 @@
 > How this project is verified: the automated suite, the sample PDFs, the manual walkthrough, and — most
 > importantly — **what cannot be verified automatically and therefore needs a human**.
 > Risk context: [`RISK_REVIEW.md`](RISK_REVIEW.md) · Plan: [`ROADMAP.md`](ROADMAP.md).
-> Last updated 2026-08-07.
+> Last updated 2026-08-06.
 
 ---
 
