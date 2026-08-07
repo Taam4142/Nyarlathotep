@@ -34,3 +34,77 @@ export const TYPHOON_MODEL = "typhoon-ocr";
 export function claudeModelShort(id: string): string {
   return CLAUDE_MODELS.find((m) => m.id === id)?.short ?? id;
 }
+
+export interface EngineOption {
+  id: string;
+  /** Shown as the option/button text — must work with no hover (mobile, keyboard). */
+  label: string;
+  /** Fuller sentence shown as a `title` hover tooltip. Bonus layer only — never
+   * the only place essential info lives (tooltips are unreliable: hover-only,
+   * inconsistent across browsers/screen readers). */
+  tooltip: string;
+}
+
+/** Top-bar extraction-engine picker (the `aiEngine` state in App.tsx).
+ * Tooltip wording is a deliberate paraphrase of the sidebar panel / Help
+ * modal copy for each engine — kept consistent with those, not a new set of
+ * claims. */
+export const EXTRACTION_ENGINES: EngineOption[] = [
+  {
+    id: "typhoon",
+    label: "✦ Typhoon — Thai · Free",
+    tooltip: "Best free Thai OCR — no key needed from you, handled server-side.",
+  },
+  {
+    id: "browser",
+    label: "🆓 Browser OCR — No Key",
+    tooltip: "Runs entirely in your browser — free, offline. Lower accuracy than the AI engines.",
+  },
+  {
+    id: "digitaltext",
+    label: "✎ Text PDF — No AI · exact",
+    tooltip: "Digital PDFs only. Reads the embedded text instantly — no AI, no OCR, exact.",
+  },
+  {
+    id: "claude",
+    label: "⚡ Claude — Paid API",
+    tooltip: "Highest-fidelity structuring for messy or complex TORs. Paid API, billed to your Anthropic account.",
+  },
+  {
+    id: "gemini",
+    label: "✦ Gemini — Your key",
+    tooltip: "Good accuracy. Paste your own key — kept in this tab only, never saved.",
+  },
+];
+
+/** Scanned-PDF OCR feeder picker under Claude/Gemini (the `ocrEngine` state).
+ * Note: ids intentionally differ from EXTRACTION_ENGINES' ("tesseract" here
+ * vs "browser" there) — matches the existing `ocrEngine` state values, not
+ * renamed as part of this change. */
+export const OCR_FEEDERS: EngineOption[] = [
+  {
+    id: "typhoon",
+    label: "Typhoon (Thai)",
+    tooltip: "Best Thai OCR. Free tier via the server-side proxy.",
+  },
+  {
+    id: "vision",
+    label: "Google Vision",
+    tooltip: "Good Thai. Free tier 1,000 pages/month — needs a Google Cloud key in Cloudflare env.",
+  },
+  {
+    id: "tesseract",
+    label: "Browser Free",
+    tooltip: "Free, runs in your browser. No OCR cost, but lower accuracy.",
+  },
+  {
+    id: "claude",
+    label: "Claude Vision",
+    tooltip: "Reads page images via Claude Vision through your proxy. Billed to your Anthropic API.",
+  },
+  {
+    id: "gemini",
+    label: "Gemini Vision",
+    tooltip: "Reads page images directly via Gemini. Needs your key above; free tier covers most workloads.",
+  },
+];

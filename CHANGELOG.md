@@ -5,6 +5,15 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Added
+- **Tooltips + clearer labels on the engine pickers** — the top-bar extraction-engine dropdown and the
+  scanned-PDF OCR-feeder buttons (under Claude/Gemini) now show a one-line "why pick this" summary on
+  hover, and the Claude/Gemini options in the top-bar dropdown gained a short suffix (`— Paid API` /
+  `— Your key`) so the cost/key distinction is visible without hovering at all — tooltips are a bonus
+  layer, not the only place the information lives. Sourced from one new registry
+  (`EXTRACTION_ENGINES`/`OCR_FEEDERS` in `src/lib/models.ts`) so the label/tooltip text can't drift out of
+  sync with itself across the two pickers.
+
 ### Security
 - **Gemini API key no longer travels in the URL** (RISK_REVIEW R7) — all three call sites (extraction,
   the Vision-OCR feeder, Test Connection) now send it via the `x-goog-api-key` request header instead of

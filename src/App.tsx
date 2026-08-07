@@ -28,6 +28,8 @@ import {
   DEFAULT_GEMINI_MODEL,
   TYPHOON_MODEL,
   claudeModelShort,
+  EXTRACTION_ENGINES,
+  OCR_FEEDERS,
 } from "./lib/models";
 import { fetchWithRetry } from "./lib/net";
 import {
@@ -1778,12 +1780,15 @@ function App() {
                     setTestMsg("");
                   }}
                   aria-label="Extraction engine"
+                  title={
+                    EXTRACTION_ENGINES.find((e) => e.id === aiEngine)?.tooltip
+                  }
                 >
-                  <option value="typhoon">✦ Typhoon — Thai · Free</option>
-                  <option value="browser">🆓 Browser OCR — No Key</option>
-                  <option value="digitaltext">✎ Text PDF — No AI · exact</option>
-                  <option value="claude">⚡ Claude</option>
-                  <option value="gemini">✦ Gemini</option>
+                  {EXTRACTION_ENGINES.map((e) => (
+                    <option key={e.id} value={e.id} title={e.tooltip}>
+                      {e.label}
+                    </option>
+                  ))}
                 </select>
                 {aiEngine === "claude" && (
                   <select
@@ -2278,16 +2283,11 @@ function App() {
                         flexWrap: "wrap",
                       }}
                     >
-                      {[
-                        ["typhoon", "Typhoon (Thai)"],
-                        ["vision", "Google Vision"],
-                        ["tesseract", "Browser Free"],
-                        ["claude", "Claude Vision"],
-                        ["gemini", "Gemini Vision"],
-                      ].map(([v, l]) => (
+                      {OCR_FEEDERS.map(({ id: v, label: l, tooltip }) => (
                         <button
                           key={v}
                           onClick={() => setOcrEngine(v)}
+                          title={tooltip}
                           style={{
                             flex: "1 1 45%",
                             fontFamily: "inherit",
