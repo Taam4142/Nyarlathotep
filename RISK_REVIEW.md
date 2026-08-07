@@ -15,7 +15,7 @@ inputs · **Low** = quality / edge case.
 > `index.html` and are historical; the logic now lives in `src/lib/{pdf,extract,ocr,net,models}.ts` and
 > `functions/api/_guard.js`.
 >
-> **Still open:** R8 (prompt-injection framing), R12 (Tesseract memory).
+> **Still open:** R8 (prompt-injection framing) — the last one.
 >
 > ♿ **Accessibility risks live in [`A11Y_PLAN.md`](A11Y_PLAN.md) §5**, not here — that pass has its own
 > audit and register (dominant risk: the a11y work lands in `App.tsx`/`styles.css`, while the 84 unit tests
@@ -45,13 +45,13 @@ inputs · **Low** = quality / edge case.
 | R9 ✅ | No retry/backoff on `429` / `529` (overloaded) / transient network for any engine. | Med | A single transient API blip fails the whole extraction and the user restarts from scratch. | **Fixed (Phase 2):** `src/lib/net.ts` `fetchWithRetry` (exponential backoff + jitter, honors `Retry-After`, retries 408/425/429/5xx/529 + network errors) wraps every extraction/OCR fetch. Accepts an `AbortSignal` for R10. |
 | R10 ✅ | No cancellation — a multi-page OCR/extract can't be stopped once started. | Low | A wrong file or a huge doc means waiting out (and paying for) the full run. | **Fixed (Phase 2):** `doExtract` creates an `AbortController`; its signal threads into every OCR/extraction call (and `fetchWithRetry`), the multi-page loops check `signal.aborted` between pages, and a **Cancel button** in the progress overlay aborts the run (surfaced as "Extraction cancelled", not an error). |
 | R11 ✅ | Gemini not pinned to JSON — `generationConfig` lacks `responseMimeType:"application/json"` (`:1512`). | Med | Gemini is more prone to wrapping output in prose, which then trips R4. | **Fixed (Phase 2):** `extractWithGemini` now sets `responseMimeType:"application/json"`. |
-| R12 | Tesseract memory — `rasterizePage(pdf, p, 3)` at scale 3 and `_tessWorker` cached but never terminated (both `src/lib/ocr.ts`). | Low | Large scans can OOM the tab; the worker lingers after use, holding memory for the rest of the session. | **Planned (ROADMAP #2).** Two parts, each with a constraint: **(a)** terminate the worker on idle/unmount — **not** per page, since re-creating it re-downloads the ~15 MB Thai language pack (that would trade a memory leak for a UX regression). **(b)** ⚠️ scale 3 was chosen deliberately for **Thai OCR accuracy**, so a preemptive downgrade on big pages would silently make Thai OCR worse — prefer **retry at lower scale on failure** over downgrading up front. Verification note: the OCR path can't be exercised in the sandboxed preview pane (see Notes below), so this needs a real-browser check. |
+| R12 ✅ | Tesseract memory — `rasterizePage(pdf, p, 3)` at scale 3 and `_tessWorker` cached but never terminated (both `src/lib/ocr.ts`). | Low | Large scans can OOM the tab; the worker lingers after use, holding memory for the rest of the session. | **Fixed (2026-08-06):** **(a)** `ocrPDFTesseract` now terminates the worker in a `finally` block — runs on success, thrown error, *and* cancellation alike, and never leaves `_tessWorker` pointing at a dead worker (the nulling happens synchronously before the `await terminate()`, so there's no window where a concurrent call could observe a stale reference). Confirmed the language-pack files are cached separately from the worker object by tesseract.js itself (`cachePath`/`cacheMethod`, its own README documents the "create once → recognize → terminate once" pattern) — so this does **not** reintroduce a ~15 MB re-download, it just means the next run re-initializes instead of holding memory indefinitely. **(b)** `rasterizePage` (`src/lib/pdf.ts`) now falls back through a descending scale ladder (`scaleFallbackLadder`, pure + unit-tested) on render failure — `3 → 2 → 1.5 → 1` — rather than downgrading Thai OCR accuracy preemptively, exactly as planned. |
 
 ## Notes
 
 - The **verbatim law holds** in code: prompts enforce it three ways and `validateAndMap` flags
   all-English-in-a-Thai-doc rows with `_warn`. No fix needed — protect it through future changes.
-- Status: **R1–R7 and R9–R11 are fixed**; **R8, R12, R13 remain open** and are sequenced in
+- Status: **R1–R7, R9–R12 are fixed**; **R8, R13 remain open** and are sequenced in
   [`ROADMAP.md`](ROADMAP.md). Accessibility risks live in [`A11Y_PLAN.md`](A11Y_PLAN.md) §5.
 
 ## Verification limits — what *cannot* be tested in the dev sandbox
@@ -62,7 +62,7 @@ real browser or a deployed environment.**
 
 | Limit | Why | What it blocks |
 | --- | --- | --- |
-| **pdf.js page rendering hangs** | `page.render()` depends on `requestAnimationFrame`, which browsers pause while a tab/pane is hidden. Proven: the worker-side `getOperatorList()` resolves and plain canvas works — only `render()` stalls, and `document.hidden === true`. **Not a code bug**; it renders normally for a real user. | Anything using `rasterizePage`: the **Snip** modal's page view + drag-crop, and all **OCR** page images (R12). |
+| **pdf.js page rendering hangs** | `page.render()` depends on `requestAnimationFrame`, which browsers pause while a tab/pane is hidden. Proven: the worker-side `getOperatorList()` resolves and plain canvas works — only `render()` stalls, and `document.hidden === true`. **Not a code bug**; it renders normally for a real user. | A **genuine end-to-end** rasterize call: the **Snip** modal's page view + drag-crop, and all **OCR** page images. Does **not** block testing logic that only needs to *call* `rasterizePage` against a controlled fake `page.render` — that's how R12's scale-fallback retry loop was verified (real function, faked-just-the-render-call). |
 | **`/api/*` proxies don't exist locally** | They're Cloudflare Pages Functions; `npm run dev` serves only the SPA. | **Typhoon**, **Claude**, and **Google Vision** paths — including "Test Connection". Use the deployed site. |
 | **Gemini needs a real key** | Key is user-supplied at runtime, never stored. | Live Gemini extraction/OCR behaviour — R8's real-world effect in particular. |
 | **No screen reader available** | Not installable in the sandbox. | Actual assistive-tech behaviour. Semantics can only be verified by DOM/accessibility-tree inspection — never claim SR testing that wasn't done. |

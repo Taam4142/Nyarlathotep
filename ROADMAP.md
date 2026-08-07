@@ -16,7 +16,7 @@ using the tool as it stands.
 | # | Item | Effort | Risk | Fully verifiable by me? | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | **CI** — GitHub Actions | S | Very low | Yes | ✅ **Done — 2026-08-06** |
-| 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | Not started |
+| 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | ✅ **Done — 2026-08-06** |
 | 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | Not started |
 | 4 | *(engineer)* Run [`TESTING.md`](TESTING.md) on real PDFs | — | — | **No — needs you** | Fixtures delivered |
 | 5 | **Drop `@ts-nocheck`** from `App.tsx` | **L** | **High** | Yes | Not started |
@@ -40,15 +40,27 @@ deprecating; both actions auto-run on a newer one regardless, unrelated to our N
 **Why first:** it's cheap, and everything after it — especially the high-risk `@ts-nocheck` work — inherits
 the safety net automatically instead of depending on manual discipline.
 
-### 2. R12 — Tesseract memory *(see RISK_REVIEW R12)*
-Two independent sub-parts; the second carries a real trade-off:
-- **(a) Worker teardown** — `_tessWorker` is cached and never terminated. Low risk. *Design constraint:*
-  terminate on idle/unmount, **not** after each page — re-creating it re-downloads the ~15 MB Thai language
-  pack, which would be a UX regression, not a fix.
-- **(b) Rasterize scale fallback** — `rasterizePage(pdf, p, 3)` at scale 3 can OOM the tab on very large
-  pages. **Trade-off:** scale 3 was chosen deliberately for Thai OCR accuracy, so a preemptive downgrade
-  would silently make Thai OCR *worse*. Preferred approach: **retry at a lower scale on failure**, rather
-  than downgrading up front.
+### 2. R12 — Tesseract memory ✅ Done *(see RISK_REVIEW R12)*
+Shipped as planned, with one improvement found while implementing:
+- **(a) Worker teardown** — `ocrPDFTesseract` now terminates the worker in a `finally` (success, error, and
+  cancellation alike). **Better than the original plan:** checked `tesseract.js`'s own README before
+  writing this, and it documents "create once → recognize → terminate once" as the *intended* pattern, and
+  confirms the Thai/English language-pack files are cached separately (`cacheMethod`, not tied to the
+  worker object) — so terminating after every run does **not** force a ~15 MB re-download as originally
+  worried; the next run just re-initializes from cache. Freed the memory promptly instead of the more
+  conservative "idle/unmount" policy first considered.
+- **(b) Rasterize scale fallback** — `rasterizePage` now retries through a descending ladder
+  (`3 → 2 → 1.5 → 1`) on render failure, implemented as the planned "retry on failure," not a preemptive
+  downgrade — Thai OCR accuracy is unaffected on pages that render fine at scale 3.
+
+**How this got verified despite the sandbox's `page.render()` limitation:** the pure ladder-selection logic
+(`scaleFallbackLadder`) is unit-tested directly (5 cases). The retry *loop* itself was exercised for real —
+the actual `rasterizePage` function, imported live — against a controlled fake `page` whose `render()`
+fails at scale ≥3 and succeeds below it: confirmed it tries `[3, 2]` and returns a valid result, and
+separately that a **total** failure tries all four rungs and propagates the *last* attempt's error rather
+than masking it. The worker-teardown logic was checked by direct code reading (the reference-clearing line
+runs synchronously before any `await`, so there's no window for a stale reference — not something that
+needs a live test to be certain of) plus a live abort-path run that exercised real worker creation.
 
 ### 3. R8 — prompt-injection framing *(see RISK_REVIEW R8)*
 **The only remaining item that can change what the tool outputs**, so it gets handled carefully. The two
@@ -84,6 +96,12 @@ access) stays parked unless a real need surfaces._
 ---
 
 ## Shipped
+
+**R12 — Tesseract memory (2026-08-06):** `ocrPDFTesseract` terminates its worker in a `finally` (success,
+error, cancellation alike); `rasterizePage` retries a render failure through a `3 → 2 → 1.5 → 1` scale
+ladder instead of downgrading Thai OCR accuracy up front. See §2 above for what was found while
+implementing (termination doesn't force a language-pack re-download, contrary to the original plan's
+worry) and exactly how it was verified around the sandbox's rendering limitation.
 
 **CI — GitHub Actions (2026-08-06):** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs
 typecheck + the 90 tests + build on every push to `master` and on pull requests. Status badge in the

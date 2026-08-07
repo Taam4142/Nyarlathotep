@@ -33,20 +33,53 @@ export async function detectPDFType(file: File): Promise<PdfType> {
   return total > 50 ? "digital" : "scanned";
 }
 
-/** Rasterize one PDF page to a base64 PNG (no data: prefix). */
+// Descending canonical scales rasterizePage falls back through on render
+// failure — a very large page (e.g. an embedded architectural/engineering
+// drawing) can exceed canvas memory limits at high scale, crashing the whole
+// extraction (RISK_REVIEW R12). 1 is the floor: lower starts hurting OCR
+// accuracy enough that surfacing the error is more useful than a blurrier page.
+const SCALE_LADDER = [3, 2, 1.5, 1];
+
+/**
+ * The sequence of scales rasterizePage will attempt for a given starting
+ * scale — the scale itself first, then canonical rungs below it, never above
+ * (fallback only ever reduces memory pressure, never increases it). Pure and
+ * exported so the ladder logic is unit-tested without needing a canvas/DOM.
+ */
+export function scaleFallbackLadder(scale: number): number[] {
+  return [scale, ...SCALE_LADDER.filter((s) => s < scale)];
+}
+
+/**
+ * Rasterize one PDF page to a base64 PNG (no data: prefix). Retries at
+ * progressively lower scale if rendering fails (R12) — every attempt gets a
+ * fresh canvas, so there's no state leakage between rungs. Broad catch is
+ * deliberate: pdf.js/canvas don't document a stable error shape for OOM, so
+ * narrowing by error type would risk silently skipping the fallback on the
+ * exact failure it exists for. If the failure isn't scale-related, every rung
+ * fails too and the original error still propagates — nothing is masked.
+ */
 export async function rasterizePage(
   pdf: any,
   pageNum: number,
   scale = 2,
 ): Promise<string> {
   const page = await pdf.getPage(pageNum);
-  const vp = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = vp.width;
-  canvas.height = vp.height;
-  const ctx = canvas.getContext("2d")!;
-  await page.render({ canvasContext: ctx, viewport: vp }).promise;
-  return canvas.toDataURL("image/png").split(",")[1];
+  let lastErr: unknown;
+  for (const s of scaleFallbackLadder(scale)) {
+    try {
+      const vp = page.getViewport({ scale: s });
+      const canvas = document.createElement("canvas");
+      canvas.width = vp.width;
+      canvas.height = vp.height;
+      const ctx = canvas.getContext("2d")!;
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      return canvas.toDataURL("image/png").split(",")[1];
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
 }
 
 /**

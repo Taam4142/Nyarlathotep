@@ -12,6 +12,16 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
   Verified against the live API (a dummy key in the header got a genuine `API_KEY_INVALID`, confirming the
   endpoint reads it there) and by intercepting the app's own request in-browser to confirm the URL is clean.
 
+### Fixed
+- **Tesseract (Browser OCR) no longer leaks memory for the rest of the session** (RISK_REVIEW R12) — the
+  worker is now terminated after every run instead of being created once and held forever; the Thai/English
+  language pack stays cached separately, so this doesn't bring back the old "re-download every time"
+  problem, it just stops the worker's memory from lingering. Also: rasterizing a PDF page for OCR now
+  retries at a lower render scale if the initial (higher-accuracy) scale fails, instead of the whole
+  extraction crashing on an unusually large page.
+- **CI**: added a GitHub Actions workflow (typecheck + tests + build on every push/PR) — nothing was
+  automatically checking pushes before this.
+
 ### Added
 - **Accessibility: keyboard focus visibility, screen-reader labels/live-regions, reduced motion.**
   Phases P1/P2/P3a of [`A11Y_PLAN.md`](A11Y_PLAN.md). Strictly additive — no feature or behaviour change;

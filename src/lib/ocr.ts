@@ -25,6 +25,24 @@ async function getTessWorker(onLog?: (m: any) => void) {
   return _tessWorker;
 }
 
+// Frees the worker's WASM memory after a run (RISK_REVIEW R12 — it used to be
+// created once and never terminated, lingering for the rest of the session).
+// The Thai/English language-pack files stay cached separately by tesseract.js
+// (IndexedDB, its own cacheMethod — confirmed in the library's README), so
+// the next run re-initializes quickly rather than re-downloading ~15 MB.
+// Swallows its own failure so a bad termination can never mask the real
+// outcome (success or error) propagating through the caller's try/finally.
+async function terminateTessWorker(): Promise<void> {
+  if (!_tessWorker) return;
+  const w = _tessWorker;
+  _tessWorker = null;
+  try {
+    await w.terminate();
+  } catch {
+    /* best-effort cleanup only */
+  }
+}
+
 export async function ocrPDFTesseract(
   file: File,
   onProgress?: OcrProgress,
@@ -37,18 +55,23 @@ export async function ocrPDFTesseract(
     if (m.status === "recognizing text" && onProgress)
       onProgress(null, null, Math.round(m.progress * 100));
   });
-  const texts: string[] = [];
-  for (let p = 1; p <= total; p++) {
-    // Worker OCR can't be aborted mid-page, but stop before the next one.
-    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-    onProgress && onProgress(p, total, 0);
-    const b64 = await rasterizePage(pdf, p, 3); // higher scale = better Thai accuracy
-    const {
-      data: { text },
-    } = await worker.recognize("data:image/png;base64," + b64);
-    texts.push(text);
+  try {
+    const texts: string[] = [];
+    for (let p = 1; p <= total; p++) {
+      // Worker OCR can't be aborted mid-page, but stop before the next one.
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      onProgress && onProgress(p, total, 0);
+      const b64 = await rasterizePage(pdf, p, 3); // higher scale = better Thai accuracy
+      const {
+        data: { text },
+      } = await worker.recognize("data:image/png;base64," + b64);
+      texts.push(text);
+    }
+    return texts.join(PAGE_BREAK);
+  } finally {
+    // Runs on success, thrown error, and AbortError alike.
+    await terminateTessWorker();
   }
-  return texts.join(PAGE_BREAK);
 }
 
 // Typhoon OCR — Thai-specialized VLM via the /api/typhoon proxy (free tier).
