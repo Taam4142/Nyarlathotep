@@ -315,6 +315,21 @@ Accessibility work that is *also* plain usability for this tool:
 **Every phase in this plan is now either done or deliberately skipped** (P0–P3b done, P4 skipped, P5 still
 optional/not started). See §9 for how to roll any of it back.
 
+**Post-plan addendum (2026-08-07) — engine-picker tooltips, not pursued:** the R7-adjacent tooltip feature
+(top-bar extraction-engine `<select>` + the 5 OCR-feeder buttons, `title` attributes from
+`EXTRACTION_ENGINES`/`OCR_FEEDERS` in `models.ts`) was checked against the real accessibility tree
+(`read_page` + DOM inspection on the running dev server). Confirmed: the `<select>`'s accessible *name*
+comes from its `aria-label="Extraction engine"`; each `<option>`'s name is its visible text, never its
+`title`; the 5 buttons' names are their visible label text, never their `title`. In every case `title` is
+at most a *description* — a secondary channel most screen readers don't announce by default, and for
+`<option>` specifically, browsers don't expose `title` as anything read at all (native listbox rendering).
+Considered adding `aria-describedby` (well-supported, unlike relying on `title`) to the select + 5 buttons
+to close this gap, and decided **not to**: the one distinction that actually mattered (paid vs. free/keyed
+engines) is already duplicated into visible label suffixes (`— Paid API` / `— Your key`), which *is*
+reliably read; `aria-describedby` would only add supplementary color text, can't be applied to `<option>`
+at all (so the fix would be partial/inconsistent), and there's no confirmed screen-reader user hitting this
+on an internal tool. Revisit if that changes.
+
 ---
 
 ## 8. Explicitly out of scope

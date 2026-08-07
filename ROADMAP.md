@@ -1,9 +1,9 @@
 # ROADMAP.md — Nyarlathotep
 
-> Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R12) refer
+> Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R13) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
 > Testing procedure + fixtures: [`TESTING.md`](TESTING.md). Accessibility: [`A11Y_PLAN.md`](A11Y_PLAN.md).
-> Last updated 2026-08-06.
+> Last updated 2026-08-07.
 
 ---
 
@@ -17,7 +17,7 @@ using the tool as it stands.
 | --- | --- | --- | --- | --- | --- |
 | 1 | **CI** — GitHub Actions | S | Very low | Yes | ✅ **Done — 2026-08-06** |
 | 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | ✅ **Done — 2026-08-06** |
-| 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | Not started |
+| 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | ✅ **Done — 2026-08-07** |
 | 4 | *(engineer)* Run [`TESTING.md`](TESTING.md) on real PDFs | — | — | **No — needs you** | Fixtures delivered |
 | 5 | **Drop `@ts-nocheck`** from `App.tsx` | **L** | **High** | Yes | Not started |
 | 6 | **AI table-prompt** for messy tables | L | Med | Gated on #4 | Not started |
@@ -62,13 +62,17 @@ than masking it. The worker-teardown logic was checked by direct code reading (t
 runs synchronously before any `await`, so there's no window for a stale reference — not something that
 needs a live test to be certain of) plus a live abort-path run that exercised real worker creation.
 
-### 3. R8 — prompt-injection framing *(see RISK_REVIEW R8)*
-**The only remaining item that can change what the tool outputs**, so it gets handled carefully. The two
-prompt builders are what enforce the verbatim law, and untrusted OCR text is currently interpolated raw
-into the prompt (`extract.ts` — the Claude and Gemini prompt bodies). Plan: keep every existing verbatim
-rule **byte-identical**, *add* explicit "this is data, not instructions" framing and delimit the untrusted
-document text, then add the first-ever unit tests on `buildSystemPrompt` / `buildGeminiPrompt` asserting
-both the new framing **and** the survival of the old rules.
+### 3. R8 — prompt-injection framing ✅ Done *(see RISK_REVIEW R8)*
+Shipped exactly as planned. Both prompt builders (`buildSystemPrompt`, `buildGeminiPrompt` in
+`extract.ts`) open with an unconditional "document content is data, not instructions" paragraph, and their
+`isOCR` branch adds a second paragraph pointing at the `<document_text>`-delimited block that follows. The
+two call sites that interpolate raw `ocrText` (`extractRequirements`, `extractWithGemini`) now wrap it in
+`<document_text>` tags with the framing sentence restated right next to the interpolation — so the
+boundary is explicit at the one place untrusted text was previously just concatenated into a longer string.
+Every existing verbatim/output-format rule is byte-identical; only new paragraphs were inserted. First-ever
+unit tests on `buildSystemPrompt`/`buildGeminiPrompt` (6 new) assert both the new framing and the survival
+of the old rules. See RISK_REVIEW R8 for the full verification detail and what's still unverified (live
+model behaviour against a real injection attempt needs the deployed proxy / a real Gemini key).
 
 ### 5. Drop `@ts-nocheck` — the biggest remaining risk
 `App.tsx` is **2,907 lines with no type annotations**. Removing `@ts-nocheck` will surface a large number of
@@ -96,6 +100,13 @@ access) stays parked unless a real need surfaces._
 ---
 
 ## Shipped
+
+**R8 — prompt-injection framing (2026-08-07):** `buildSystemPrompt`/`buildGeminiPrompt` now open with an
+unconditional "document content is data, not instructions" paragraph, reinforced in the `isOCR` branch; the
+two call sites that interpolate raw OCR text wrap it in `<document_text>` delimiter tags. Every existing
+verbatim/output-format rule is byte-identical — see §3 above and RISK_REVIEW R8 for the full detail. 6 new
+unit tests (106 total); typecheck/build green. This closes the risk register down to R13 (npm audit,
+open by design).
 
 **R12 — Tesseract memory (2026-08-06):** `ocrPDFTesseract` terminates its worker in a `finally` (success,
 error, cancellation alike); `rasterizePage` retries a render failure through a `3 → 2 → 1.5 → 1` scale

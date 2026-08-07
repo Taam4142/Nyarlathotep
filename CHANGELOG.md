@@ -15,6 +15,19 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
   sync with itself across the two pickers.
 
 ### Security
+- **Prompt-injection framing around untrusted document text** (RISK_REVIEW R8) — both extraction prompts
+  (`buildSystemPrompt` for Claude, `buildGeminiPrompt` for Gemini, in `src/lib/extract.ts`) now state
+  up front that document content — including OCR'd text — is data to extract from, never instructions to
+  follow, and instruct the model to copy any instruction-like text verbatim as a requirement rather than
+  obey it. The scanned-PDF path additionally wraps the untrusted OCR text in `<document_text>` delimiter
+  tags at the point it's interpolated into the request, so the boundary between "prompt" and "document"
+  is explicit rather than one long unmarked string. Every existing verbatim/output-format rule is
+  unchanged — new paragraphs were inserted, nothing old was reworded or removed, and 6 new unit tests
+  assert both the new framing and the survival of the old rules. Digital-PDF extraction (the other path)
+  already sent the file as a native `document`/`inline_data` block rather than raw interpolated text, so
+  it wasn't part of this specific gap, but gets the same general framing paragraph for free since that's
+  unconditional in both prompt builders. Blast radius was already small (output is verbatim-copied and
+  human-reviewed before use) — this closes the gap rather than responding to an incident.
 - **Gemini API key no longer travels in the URL** (RISK_REVIEW R7) — all three call sites (extraction,
   the Vision-OCR feeder, Test Connection) now send it via the `x-goog-api-key` request header instead of
   `?key=` in the query string, so it can no longer land in server/proxy access logs or browser history.
