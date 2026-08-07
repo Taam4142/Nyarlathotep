@@ -19,7 +19,7 @@ using the tool as it stands.
 | 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | ✅ **Done — 2026-08-06** |
 | 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | ✅ **Done — 2026-08-07** |
 | 4 | *(engineer)* Run [`TESTING.md`](TESTING.md) on real PDFs | — | — | **No — needs you** | Fixtures delivered |
-| 5 | **Drop `@ts-nocheck`** from `App.tsx` | **L** | **High** | Yes | Not started |
+| 5 | **Drop `@ts-nocheck`** from `App.tsx` | ~~L~~ **S** | ~~High~~ **Low** | Yes | ✅ **Done — 2026-08-07** |
 | 6 | **AI table-prompt** for messy tables | L | Med | Gated on #4 | Not started |
 | 7 | **P5** (ESLint + jsx-a11y + axe) · **npm audit** decision | M | Low | Yes | Optional |
 
@@ -37,8 +37,8 @@ deprecating; both actions auto-run on a newer one regardless, unrelated to our N
 > which was **deliberately rejected**: the engineer is the sole committer pushing straight to `master`, so
 > the ceremony would cost more than it saves.
 
-**Why first:** it's cheap, and everything after it — especially the high-risk `@ts-nocheck` work — inherits
-the safety net automatically instead of depending on manual discipline.
+**Why first:** it's cheap, and everything after it inherits the safety net automatically instead of
+depending on manual discipline. (The `@ts-nocheck` work turned out cheap too, once measured — see #5.)
 
 ### 2. R12 — Tesseract memory ✅ Done *(see RISK_REVIEW R12)*
 Shipped as planned, with one improvement found while implementing:
@@ -74,10 +74,46 @@ unit tests on `buildSystemPrompt`/`buildGeminiPrompt` (6 new) assert both the ne
 of the old rules. See RISK_REVIEW R8 for the full verification detail and what's still unverified (live
 model behaviour against a real injection attempt needs the deployed proxy / a real Gemini key).
 
-### 5. Drop `@ts-nocheck` — the biggest remaining risk
-`App.tsx` is **2,907 lines with no type annotations**. Removing `@ts-nocheck` will surface a large number of
-implicit-any errors, and some may be latent real bugs whose fixes change behaviour. Plan: incremental, in
-sections, one commit per section, with CI + the 6 smoke tests as the net. Do **after** CI (#1).
+### 5. Drop `@ts-nocheck` ✅ Done — smaller than estimated
+The estimate above (**L**arge effort, **High** risk, phased multi-commit plan) was written *before*
+anyone had actually tried it. Measured instead of assumed: temporarily disabled the pragma and ran
+`tsc --noEmit` for real — **13 errors total**, not "a large number." That's because this project's
+`tsconfig.json` keeps `strict: false` / `noImplicitAny: false` (a deliberate existing choice, untouched
+here), so removing `@ts-nocheck` only enables the checks that survive *even under a loose config* —
+mainly ref/state-shape mistakes — not full implicit-any coverage across every handler. Given the real
+number, one careful commit replaced the planned multi-phase rollout.
+
+All 13 errors were one of three real (small) problems, all now fixed in `App.tsx`:
+- **Three refs created with `useRef()`** (`fileRef`, `tableRef`, `jsonRef`) had no type argument or
+  initial value, so `.current` resolved to the literal type `undefined` — now `useRef<HTMLInputElement>(null)`
+  / `useRef<HTMLDivElement>(null)`. Found and fixed a genuine latent bug in passing: the file-upload zone's
+  `onClick` called `fileRef.current.click()` with **no optional chaining**, unlike the equivalent `jsonRef`
+  call right next to it — would have thrown if that handler ever fired before the ref attached. Now
+  `?.click()`, consistent with `jsonRef`.
+- **`undoRef = useRef({})`** — the undo/redo snapshot ref started from an untyped empty object, so
+  `.hist`/`.rows`/`.project`/`.verifiedBy` didn't exist on its type even though they're assigned two lines
+  later. Fixed by initializing from the real (already-typed) state values instead of `{}`.
+- **Two plain-object `useState` calls lost their literal types on `status`** (`SortableRow`'s inline drag
+  style — `position` widened to `string`, not the CSS `Position` union — and the library-add form's
+  `newLib.status` widened to `string`, not `Status`). Fixed with an explicit `CSSProperties` annotation on
+  the style object, and an explicit `{ status: Status }` type + one `as Status` cast at the single `<select
+  onChange>` site that sets it from a raw DOM event — accurate, not a suppression, since that select's
+  `<option>` values are hardcoded to exactly the four `Status` literals.
+
+**Verified:** typecheck clean (0 errors) with `@ts-nocheck` fully removed; all 106 tests pass (including
+the `App.test.tsx` smoke suite, which exercises undo and row-editing — the exact paths `undoRef` and the
+new row markup touch); build green. Also checked live in the browser, since two of the fixes changed real
+runtime code, not just types: the library-add form end-to-end (set label/text/status via real DOM events,
+saved, confirmed the new item rendered in the actual library list with the right status color, confirming
+the `as Status` cast carries the right value through) and the file-upload / Load-.json buttons (confirmed
+`?.click()` doesn't throw). No console errors at any point. Test data cleaned up afterward.
+
+**What this did *not* do**, worth being explicit about: it did not turn on `strict`/`noImplicitAny`. Doing
+that would be the *actually* large, high-risk undertaking the original estimate was picturing — likely
+100+ new errors across ~35 `useState` calls and every event handler in a 2,900-line file, needing the
+phased/multi-commit treatment. That's a distinct, larger, not-yet-scoped decision — see "Optional" below —
+not a partially-done version of this item. This item, as literally named ("drop `@ts-nocheck`"), is fully
+done.
 
 ### 6. AI table-prompt — deliberately gated
 The deterministic column detector (`src/lib/tables.ts`) only handles clean, aligned tables. An AI-assisted
@@ -89,6 +125,12 @@ risks solving a problem that doesn't exist in practice. Must stay extract-only +
 ### 7. Optional
 - **P5** — ESLint + `eslint-plugin-jsx-a11y` + axe. Note this means **introducing ESLint from scratch**
   (the project has no config and no `lint` script), so it's larger than "add a plugin."
+- **Turn on `strict`/`noImplicitAny`** in `tsconfig.json` — the genuinely large, high-risk undertaking #5's
+  original estimate was picturing (see #5's closing note). `App.tsx` no longer carries `@ts-nocheck`, but
+  the config itself is still loose, so this is a live option, not a blocked one — just not attempted, since
+  its cost (likely 100+ new errors, phased multi-commit work) hasn't been weighed against its benefit
+  (catching whole classes of future bugs) with the engineer. Would need the same "measure first" approach
+  that made #5 tractable: a dry-run error count before committing to a plan.
 - **npm audit** — 2 moderate advisories, both **pre-existing, dev-only, transitive**: `esbuild` (via
   vitest's own toolchain) and `uuid` (via `exceljs`). Neither ships to the browser. Fixing either needs a
   **breaking major bump** (vitest 4.x / exceljs 3.x) — an engineer decision, not a silent change.
@@ -100,6 +142,19 @@ access) stays parked unless a real need surfaces._
 ---
 
 ## Shipped
+
+**Drop `@ts-nocheck` from `App.tsx` (2026-08-07):** measured before planning — a dry-run `tsc --noEmit`
+with the pragma disabled found **13 errors**, not the "large number" the original estimate assumed, because
+the project's `tsconfig.json` keeps `strict`/`noImplicitAny` off (untouched here). All 13 were one of three
+patterns: three zero-argument `useRef()` calls with no type/initial-value (fixed with proper
+`useRef<T>(null)` typing — and one real latent bug found in passing, a missing `?.` on `fileRef.current`
+that the sibling `jsonRef` call already had), an untyped undo/redo snapshot ref (`useRef({})` → initialized
+from real state instead), and two places a plain-object `useState` widened a literal `status`/`position`
+field to `string` (fixed with explicit types + one accurate `as Status` cast at a `<select>` bounded to
+exactly those four values). Verified: typecheck 0 errors, 106/106 tests, build green, plus a live
+in-browser pass (library-add end-to-end including the cast, file/JSON-load buttons) since two of the fixes
+touched real runtime code, not just type annotations. Turning on `strict`/`noImplicitAny` itself — the
+actually-large undertaking — remains a distinct, separately-scoped future option; see §7.
 
 **R8 — prompt-injection framing (2026-08-07):** `buildSystemPrompt`/`buildGeminiPrompt` now open with an
 unconditional "document content is data, not instructions" paragraph, reinforced in the `isOCR` branch; the

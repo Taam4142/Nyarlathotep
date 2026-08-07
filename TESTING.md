@@ -23,8 +23,11 @@ npm run build       # vite build → dist/
 | `src/App.tsx` — the UI | 6 smoke tests (`src/App.test.tsx`) | Testing Library + jsdom. **Smoke only**: renders, control labels, add row, edit cell, bulk status-set, undo, search. It is *not* full coverage — most UI behaviour still needs the manual pass in §3. |
 | Everything else | — | Extraction against live APIs, OCR, PDF rendering, Excel output fidelity: **manual**. |
 
-> `App.tsx` is 2,900+ lines carrying `@ts-nocheck`, so the type checker isn't helping there either. This
-> is the single biggest reason to be careful with UI changes — see [`ROADMAP.md`](ROADMAP.md) #5.
+> `App.tsx` is 2,900+ lines and, as of 2026-08-07, type-checked (`@ts-nocheck` dropped — see
+> [`ROADMAP.md`](ROADMAP.md) #5). That catches structural mistakes (wrong ref/state shapes), but the
+> project's tsconfig keeps `strict`/`noImplicitAny` off, so most event handlers and function params still
+> aren't required to be annotated — the type checker is a partial net here, not a full one. The 6 smoke
+> tests are still the main protection for actual UI *behaviour*; be careful with UI changes regardless.
 
 ### Gotcha: `App.test.tsx` and the auto-focus race
 `addRow()` in `App.tsx` schedules a `setTimeout(…, 60)` that focuses the new row's textarea. Under load

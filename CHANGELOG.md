@@ -5,6 +5,19 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Changed
+- **`App.tsx` is now type-checked** — the file-wide `@ts-nocheck` pragma is gone (ROADMAP #5). Measured
+  first: a dry-run `tsc --noEmit` with the pragma disabled found 13 errors, not the "large effort" the
+  roadmap had estimated sight-unseen, because the project's `strict`/`noImplicitAny` compiler flags stay
+  off by existing design — so this newly catches structural mistakes (wrong ref/state shapes), not every
+  untyped handler. All 13 fixed: three refs (`fileRef`/`tableRef`/`jsonRef`) properly typed with
+  `useRef<T>(null)` instead of bare `useRef()` (and a real latent bug caught in passing — a missing `?.`
+  on one of them), the undo/redo snapshot ref initialized from real state instead of `{}`, and two
+  `status`/`position` fields that had widened from their literal types re-typed precisely (one accurate
+  `as Status` cast at the single `<select>` bound to exactly those four values). No behavior change —
+  verified via the full suite plus a live in-browser pass of the two paths that touched real runtime code
+  (library-add end-to-end, file/JSON-load buttons). Full detail in `ROADMAP.md` #5.
+
 ### Added
 - **Tooltips + clearer labels on the engine pickers** — the top-bar extraction-engine dropdown and the
   scanned-PDF OCR-feeder buttons (under Claude/Gemini) now show a one-line "why pick this" summary on

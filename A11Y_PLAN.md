@@ -143,7 +143,9 @@ Ten `<th>` elements, none with `scope="col"`. Cheap, invisible fix.
 - **There is no ESLint in this project at all** — no config, no `lint` script (`scripts`: dev, build,
   preview, typecheck, test). So "add `eslint-plugin-jsx-a11y`" actually means *introducing ESLint from
   scratch*. Larger than it sounds → optional, last.
-- `App.tsx` carries `@ts-nocheck` — no type safety on the very file this work touches.
+- `App.tsx` carries `@ts-nocheck` — no type safety on the very file this work touches. *(Since resolved,
+  2026-08-07 — see [`ROADMAP.md`](ROADMAP.md) #5. The project's `strict`/`noImplicitAny` are still off, so
+  this catches structural mistakes, not every untyped handler — a partial net, better than none.)*
 - **The 84 passing tests cover only `src/lib/*` pure logic. There are zero UI tests.** All accessibility
   work lands in `App.tsx` + `styles.css` — precisely the untested surface. **This is the single biggest
   process risk** and it shapes the whole plan (§4 P0, §5 R1).

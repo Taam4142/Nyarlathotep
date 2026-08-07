@@ -1,8 +1,12 @@
-// @ts-nocheck
 // Carried over from the single-file app during the Vite + TypeScript migration.
-// This UI component is pending gradual typing; the extracted logic in src/lib/* is
-// fully typed and unit-tested. Behavior is unchanged from the pre-migration app.
+// @ts-nocheck dropped 2026-08-07 (RISK_REVIEW / ROADMAP #5) — see CHANGELOG for the
+// small set of real fixes that surfaced. Still loosely typed by design: tsconfig
+// keeps `strict`/`noImplicitAny` off, so this checks structural mistakes (refs,
+// state shape) rather than requiring every handler/prop to be annotated. Behavior
+// is unchanged from the pre-migration app.
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import type { CSSProperties } from "react";
+import type { Status } from "./lib/types";
 import {
   pdfjsLib,
   detectPDFType,
@@ -517,7 +521,7 @@ function SortableRow({
     transition,
     isDragging,
   } = useSortable({ id: row.id, disabled: !dragEnabled });
-  const style = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
@@ -739,7 +743,11 @@ function App() {
         // engine label to offer as a one-click "re-run with OCR" fallback.
         const [ocrFallback, setOcrFallback] = useState(null);
         const [showLibAdd, setShowLibAdd] = useState(false);
-        const [newLib, setNewLib] = useState({
+        const [newLib, setNewLib] = useState<{
+          label: string;
+          text: string;
+          status: Status;
+        }>({
           label: "",
           text: "",
           status: "comply",
@@ -748,8 +756,8 @@ function App() {
         const [aiEngine, setAiEngine] = useState("typhoon");
         const [geminiKey, setGeminiKey] = useState("");
         const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
-        const fileRef = useRef();
-        const tableRef = useRef();
+        const fileRef = useRef<HTMLInputElement>(null);
+        const tableRef = useRef<HTMLDivElement>(null);
         const abortRef = useRef(null);
 
         // ── Undo/redo (F5) ─────────────────────────────────────────────────
@@ -757,7 +765,9 @@ function App() {
         // their pre-state via commit(); text edits coalesce per (row, field) so
         // one edit is one undo. undoRef keeps the latest state for the keyboard
         // handler + the undo/redo actions without re-subscribing on every change.
-        const undoRef = useRef({});
+        // Initialized from the real (already-typed) state values, not `{}`, so
+        // `.hist`/`.rows`/`.project`/`.verifiedBy` are known properties below.
+        const undoRef = useRef({ hist, rows, project, verifiedBy });
         undoRef.current = { hist, rows, project, verifiedBy };
         const lastEditKey = useRef(null);
         const snapNow = () => ({ rows, project, verifiedBy });
@@ -916,7 +926,7 @@ function App() {
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
-        const jsonRef = useRef();
+        const jsonRef = useRef<HTMLInputElement>(null);
         const saveJson = () => {
           const blob = new Blob([matrixToJson(project, rows, lib, verifiedBy)], {
             type: "application/json",
@@ -1886,7 +1896,7 @@ function App() {
                   {!pdfFile ? (
                     <div
                       className={`upload-zone${dragging ? " drag" : ""}`}
-                      onClick={() => fileRef.current.click()}
+                      onClick={() => fileRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
                         setDragging(true);
@@ -2548,7 +2558,10 @@ function App() {
                         className="lib-add-sel"
                         value={newLib.status}
                         onChange={(e) =>
-                          setNewLib((p) => ({ ...p, status: e.target.value }))
+                          setNewLib((p) => ({
+                            ...p,
+                            status: e.target.value as Status,
+                          }))
                         }
                       >
                         <option value="comply">Comply</option>
