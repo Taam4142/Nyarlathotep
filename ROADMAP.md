@@ -264,8 +264,10 @@ persisted. Verified end-to-end.
   progress overlay.
 - **R6** — proxies hardened **in place** (`functions/api/_guard.js`): origin allow-list, model allow-list,
   body-size cap, per-IP KV rate limit, optional shared secret. Chose in-place hardening over a login/backend
-  (keeps the tool public, no access-model change). **Engineer action to activate:** set `ALLOWED_ORIGINS`
-  (and optionally bind a `RATE_LIMIT` KV namespace / set `PROXY_SECRET` / `ALLOWED_MODELS`) in Cloudflare.
+  (keeps the tool public, no access-model change). ~~**Engineer action to activate: set `ALLOWED_ORIGINS`.**~~
+  **Done — confirmed live 2026-08-07** by CORS preflight against the deployed site; see
+  [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md) §0. The optional extra layers remain unset and unverified:
+  bind a `RATE_LIMIT` KV namespace, set `PROXY_SECRET` / `ALLOWED_MODELS` in Cloudflare.
 - _Deferred to a later pass:_ R7, R8, R12; and the bigger backend/persistence work is Phase 3.
 
 **v0.3.0 — modernization Phase 1:**

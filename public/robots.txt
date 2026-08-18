@@ -1,0 +1,15 @@
+# Nyarlathotep — TOR compliance-matrix tool.
+#
+# Crawling is allowed. The served page is an empty application shell: every
+# document, matrix row and API key stays client-side (localStorage / in-tab
+# only), so indexing exposes nothing. Allowing it also keeps Lighthouse's
+# "Page is indexable" check passing.
+#
+# To de-list the tool instead, replace the rule below with "Disallow: /" —
+# note that trades away the SEO "indexable" audit, and is not a security
+# control (the URL stays publicly reachable either way).
+#
+# This file exists because /robots.txt previously fell through to the SPA
+# fallback and returned index.html, which Lighthouse flagged as invalid.
+User-agent: *
+Disallow:

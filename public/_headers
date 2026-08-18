@@ -1,0 +1,54 @@
+# Cloudflare Pages response headers.
+# Closes the four High-severity gaps found in the 2026-08-07 Lighthouse audit
+# (no CSP, no HSTS, no COOP, no frame-control). See LIGHTHOUSE_AUDIT.md.
+
+/*
+  # Clickjacking. The tool is never framed; deny outright.
+  X-Frame-Options: DENY
+
+  # HTTPS only, 1 year. No `preload` on purpose — a preload-list entry is
+  # effectively irreversible and is the domain owner's call, not a default.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+  # Process-isolate the browsing context (blocks cross-origin window handles).
+  Cross-Origin-Opener-Policy: same-origin
+
+  # Already sent by Pages; restated so the whole policy reads in one place.
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Drop unused high-risk browser features.
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+  # Content-Security-Policy — every source below is required by something real:
+  #   script-src  'self'            app bundle + Vite-bundled pdf.js worker
+  #               blob:             tesseract.js spawns its worker as a blob URL
+  #                                 (workerBlobURL:true is its v6 default)
+  #               'wasm-unsafe-eval' tesseract-core is WebAssembly
+  #               cdn.jsdelivr.net  tesseract.js worker.min.js (importScripts)
+  #   connect-src cdn.jsdelivr.net  tesseract core + tha/eng language data
+  #               generativelanguage.googleapis.com   Gemini, called direct
+  #               'self'            the /api/{claude,typhoon,vision} proxies
+  #   style-src   'unsafe-inline'   React inline style={{...}} + the Google Fonts
+  #                                 stylesheet. Removing it means refactoring
+  #                                 every inline style — not attempted.
+  #   img-src     data: blob:       snipped figures are data: JPEG URLs
+  #
+  # Verified 2026-08-07 against the real production build served with this exact
+  # policy in ENFORCING mode: app mounts, 62 Google Font faces load, jsdelivr
+  # reachable, blob worker runs, WASM instantiates, Gemini reachable, pdf.js
+  # worker spawns, data: images render, ExcelJS chunk dynamic-imports. Negative
+  # controls confirmed the policy is actually active (inline <script> blocked,
+  # example.com blocked) rather than silently absent.
+  #
+  # NOT verified in-sandbox: actual PDF page *rendering*, because pdf.js needs
+  # requestAnimationFrame and the preview pane is hidden (RISK_REVIEW
+  # "Verification limits"). Note this policy omits 'unsafe-eval', so pdf.js's
+  # own isEvalSupported() feature test returns false and it takes its non-eval
+  # font path — a configuration pdf.js supports by design (the test is wrapped
+  # in try/catch), but the visual result is unconfirmed here.
+  #
+  # ROLLBACK, if a real PDF run ever misbehaves: rename this one header to
+  # `Content-Security-Policy-Report-Only` (violations log, nothing blocks), or
+  # add 'unsafe-eval' to script-src to restore pdf.js's eval fast-path.
+  Content-Security-Policy: default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

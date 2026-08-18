@@ -1540,7 +1540,7 @@ function App() {
                   );
                 } else if (lower.includes("origin")) {
                   setTestMsg(
-                    "Blocked by the proxy origin allow-list. In Cloudflare Pages → Settings → Variables, set ALLOWED_ORIGINS to this site's origin (include https://, e.g. https://yog-sothoth.pages.dev) and redeploy.",
+                    "Blocked by the proxy origin allow-list. In Cloudflare Pages → Settings → Variables, set ALLOWED_ORIGINS to this site's origin (include https://, e.g. https://nyarlathotep-a6o.pages.dev) and redeploy.",
                   );
                 } else if (res.status === 429 || lower.includes("rate limit")) {
                   setTestMsg(
@@ -2591,7 +2591,7 @@ function App() {
               </div>
 
               {/* CONTENT */}
-              <div className="content">
+              <main className="content">
                 {loading && (
                   <div className="progress">
                     <div className="progress-fill" />
@@ -2860,7 +2860,7 @@ function App() {
                           {showCat && <th className="c-cat" scope="col">Category</th>}
                           <th className="c-sts" scope="col">Status</th>
                           <th className="c-rem" scope="col">Remarks</th>
-                          <th className="c-del" scope="col" />
+                          <th className="c-del" scope="col"><span className="sr-only">Row actions</span></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2911,7 +2911,7 @@ function App() {
                     </span>
                   )}
                 </div>
-              </div>
+              </main>
             </div>
           </div>
         );

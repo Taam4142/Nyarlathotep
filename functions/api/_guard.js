@@ -22,8 +22,8 @@ function allowedOrigins(env) {
 }
 
 // Canonical host[:port] — lowercased, scheme + trailing slash stripped — so a
-// configured "yog-sothoth.pages.dev" matches the browser's scheme-prefixed
-// Origin header "https://yog-sothoth.pages.dev". (Browsers always send the full
+// configured "nyarlathotep-a6o.pages.dev" matches the browser's scheme-prefixed
+// Origin header "https://nyarlathotep-a6o.pages.dev". (Browsers always send the full
 // origin, so an exact match against a bare host silently 403s — hence this.)
 function canonicalHost(o) {
   return (o || "")

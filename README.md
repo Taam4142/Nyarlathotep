@@ -147,4 +147,5 @@ what's planned.
 | `RISK_REVIEW.md`             | Known bugs, security, robustness risks — and the **verification limits** (what can't be tested in a sandbox). |
 | `TESTING.md`                 | How this project is verified: automated suite, sample PDFs, manual walkthrough, definition of done. |
 | `A11Y_PLAN.md`               | Accessibility audit, phased plan, and a11y risk register.      |
+| `LIGHTHOUSE_AUDIT.md`        | Lighthouse baseline (2026-08-07), findings, what shipped, and what awaits sign-off. |
 | `CHANGELOG.md`               | Version history.                                               |

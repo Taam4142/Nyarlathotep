@@ -57,9 +57,9 @@ dashboard: **Workers & Pages → your Pages project → Settings → Variables a
 An origin is **scheme + host + port** — no path, no trailing slash:
 
 ```
-https://yog-sothoth.pages.dev        ✅  an origin
+https://nyarlathotep-a6o.pages.dev        ✅  an origin
 https://tor.yourcompany.com          ✅  an origin
-https://yog-sothoth.pages.dev/app    ❌  that's a URL, not an origin
+https://nyarlathotep-a6o.pages.dev/app    ❌  that's a URL, not an origin
 ```
 
 When the app's browser code calls `/api/typhoon`, the browser **automatically attaches an `Origin:` header**
@@ -77,17 +77,17 @@ browser controls it — so checking it reliably answers "did this come from my a
 3. **Name:** `ALLOWED_ORIGINS`
 4. **Value:** every origin the app is actually served from, comma-separated:
    ```
-   https://yog-sothoth.pages.dev,https://tor.yourcompany.com
+   https://nyarlathotep-a6o.pages.dev,https://tor.yourcompany.com
    ```
    Find your exact `*.pages.dev` URL at the top of the project page / in the Deployments list — copy it
    verbatim. Include your custom domain too if you use one.
 5. Add it to **Production** (and **Preview**, if you use preview URLs). **Save.**
 
 > ⚠️ **The value must include the app's own origin**, or the app will 403 *its own* API calls. This is the
-> #1 mistake. If the site is served from `https://yog-sothoth.pages.dev`, that exact string must be in the
+> #1 mistake. If the site is served from `https://nyarlathotep-a6o.pages.dev`, that exact string must be in the
 > list.
 >
-> ⚠️ **Preview deployments** get per-build subdomains like `https://a1b2c3.yog-sothoth.pages.dev`, which
+> ⚠️ **Preview deployments** get per-build subdomains like `https://a1b2c3.nyarlathotep-a6o.pages.dev`, which
 > won't match a production-only list. Either test on production, or add the preview origin(s) to the
 > **Preview** environment's value.
 
@@ -105,7 +105,7 @@ The guard allows **60 requests per minute per IP** (keyed on Cloudflare's `CF-Co
 
 ### Steps
 1. **Create the namespace:** Cloudflare dashboard → **Storage & Databases → KV → Create a namespace**
-   *(older UI: Workers → KV)*. Name it e.g. `yog-sothoth-ratelimit`.
+   *(older UI: Workers → KV)*. Name it e.g. `nyarlathotep-ratelimit`.
 2. **Bind it to the Pages project:** **Workers & Pages → your Pages project → Settings → Bindings**
    *(older UI: "Functions → KV namespace bindings")* → **Add → KV namespace**.
    - **Variable name:** `RATE_LIMIT`  ← must be exactly this
@@ -161,7 +161,7 @@ allow-listed `Origin`, so they pass.
 **B) A foreign / header-less origin is blocked** (with `ALLOWED_ORIGINS` set):
 
 ```bash
-curl -i -X POST https://yog-sothoth.pages.dev/api/typhoon \
+curl -i -X POST https://nyarlathotep-a6o.pages.dev/api/typhoon \
   -H "Content-Type: application/json" \
   -H "Origin: https://evil.example" \
   -d '{"model":"typhoon-ocr","messages":[]}'
@@ -173,9 +173,9 @@ curl -i -X POST https://yog-sothoth.pages.dev/api/typhoon \
 bind `RATE_LIMIT`:
 
 ```bash
-curl -i -X POST https://yog-sothoth.pages.dev/api/typhoon \
+curl -i -X POST https://nyarlathotep-a6o.pages.dev/api/typhoon \
   -H "Content-Type: application/json" \
-  -H "Origin: https://yog-sothoth.pages.dev" \
+  -H "Origin: https://nyarlathotep-a6o.pages.dev" \
   -d '{"model":"typhoon-ocr","messages":[]}'
 # → passes origin; with RATE_LIMIT bound, the 61st such call within a minute → 429.
 ```
@@ -183,9 +183,9 @@ curl -i -X POST https://yog-sothoth.pages.dev/api/typhoon \
 **D) An off-list model is rejected:**
 
 ```bash
-curl -i -X POST https://yog-sothoth.pages.dev/api/claude \
+curl -i -X POST https://nyarlathotep-a6o.pages.dev/api/claude \
   -H "Content-Type: application/json" \
-  -H "Origin: https://yog-sothoth.pages.dev" \
+  -H "Origin: https://nyarlathotep-a6o.pages.dev" \
   -d '{"model":"gpt-4","max_tokens":10,"messages":[]}'
 # → HTTP/1.1 400 Bad Request   {"error":"Model not allowed: gpt-4"}
 ```

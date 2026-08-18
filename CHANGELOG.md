@@ -5,19 +5,6 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
-### Changed
-- **`App.tsx` is now type-checked** — the file-wide `@ts-nocheck` pragma is gone (ROADMAP #5). Measured
-  first: a dry-run `tsc --noEmit` with the pragma disabled found 13 errors, not the "large effort" the
-  roadmap had estimated sight-unseen, because the project's `strict`/`noImplicitAny` compiler flags stay
-  off by existing design — so this newly catches structural mistakes (wrong ref/state shapes), not every
-  untyped handler. All 13 fixed: three refs (`fileRef`/`tableRef`/`jsonRef`) properly typed with
-  `useRef<T>(null)` instead of bare `useRef()` (and a real latent bug caught in passing — a missing `?.`
-  on one of them), the undo/redo snapshot ref initialized from real state instead of `{}`, and two
-  `status`/`position` fields that had widened from their literal types re-typed precisely (one accurate
-  `as Status` cast at the single `<select>` bound to exactly those four values). No behavior change —
-  verified via the full suite plus a live in-browser pass of the two paths that touched real runtime code
-  (library-add end-to-end, file/JSON-load buttons). Full detail in `ROADMAP.md` #5.
-
 ### Added
 - **Tooltips + clearer labels on the engine pickers** — the top-bar extraction-engine dropdown and the
   scanned-PDF OCR-feeder buttons (under Claude/Gemini) now show a one-line "why pick this" summary on
@@ -26,38 +13,6 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
   layer, not the only place the information lives. Sourced from one new registry
   (`EXTRACTION_ENGINES`/`OCR_FEEDERS` in `src/lib/models.ts`) so the label/tooltip text can't drift out of
   sync with itself across the two pickers.
-
-### Security
-- **Prompt-injection framing around untrusted document text** (RISK_REVIEW R8) — both extraction prompts
-  (`buildSystemPrompt` for Claude, `buildGeminiPrompt` for Gemini, in `src/lib/extract.ts`) now state
-  up front that document content — including OCR'd text — is data to extract from, never instructions to
-  follow, and instruct the model to copy any instruction-like text verbatim as a requirement rather than
-  obey it. The scanned-PDF path additionally wraps the untrusted OCR text in `<document_text>` delimiter
-  tags at the point it's interpolated into the request, so the boundary between "prompt" and "document"
-  is explicit rather than one long unmarked string. Every existing verbatim/output-format rule is
-  unchanged — new paragraphs were inserted, nothing old was reworded or removed, and 6 new unit tests
-  assert both the new framing and the survival of the old rules. Digital-PDF extraction (the other path)
-  already sent the file as a native `document`/`inline_data` block rather than raw interpolated text, so
-  it wasn't part of this specific gap, but gets the same general framing paragraph for free since that's
-  unconditional in both prompt builders. Blast radius was already small (output is verbatim-copied and
-  human-reviewed before use) — this closes the gap rather than responding to an incident.
-- **Gemini API key no longer travels in the URL** (RISK_REVIEW R7) — all three call sites (extraction,
-  the Vision-OCR feeder, Test Connection) now send it via the `x-goog-api-key` request header instead of
-  `?key=` in the query string, so it can no longer land in server/proxy access logs or browser history.
-  Verified against the live API (a dummy key in the header got a genuine `API_KEY_INVALID`, confirming the
-  endpoint reads it there) and by intercepting the app's own request in-browser to confirm the URL is clean.
-
-### Fixed
-- **Tesseract (Browser OCR) no longer leaks memory for the rest of the session** (RISK_REVIEW R12) — the
-  worker is now terminated after every run instead of being created once and held forever; the Thai/English
-  language pack stays cached separately, so this doesn't bring back the old "re-download every time"
-  problem, it just stops the worker's memory from lingering. Also: rasterizing a PDF page for OCR now
-  retries at a lower render scale if the initial (higher-accuracy) scale fails, instead of the whole
-  extraction crashing on an unusually large page.
-- **CI**: added a GitHub Actions workflow (typecheck + tests + build on every push/PR) — nothing was
-  automatically checking pushes before this.
-
-### Added
 - **Accessibility: keyboard focus visibility, screen-reader labels/live-regions, reduced motion.**
   Phases P1/P2/P3a of [`A11Y_PLAN.md`](A11Y_PLAN.md). Strictly additive — no feature or behaviour change;
   see that doc's §4 for the full verification log.
@@ -83,6 +38,75 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 - **UI smoke tests** — `src/App.test.tsx` (Testing Library + jsdom, 6 tests): renders; key controls have
   accessible names; add row; edit a cell; bulk status-set; undo; search. The first automated coverage of
   `App.tsx`, which previously had none (the existing 84 tests cover only `src/lib/*`). 90 tests total.
+
+### Changed
+- **Accessibility and SEO fixes from the Lighthouse audit** (no visible design change) — the page now
+  has a real `<main>` landmark (the content column became `<main class="content">`; layout verified
+  unchanged at 1280×900), the row-actions table column has a screen-reader-only header so its cells are
+  no longer header-less, and a new `.sr-only` utility exists for that purpose. Added
+  `public/robots.txt` — there was none, so `/robots.txt` fell through to the SPA and returned
+  `index.html`, which Lighthouse parsed as 19 robots syntax errors — and a `<meta name="description">`.
+  Together these take SEO 82 → 100 and Accessibility 90 → ~93. The remaining accessibility items
+  (colour contrast, touch-target size) are visible design changes staged for sign-off; see
+  [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md) §5.
+- **Build now emits source maps** (`vite.config.ts`) so production stack traces are readable. No secret
+  is exposed: the source is public and all keys live server-side in Cloudflare env vars.
+- **Corrected the deploy URL throughout the docs** — the live site is `nyarlathotep-a6o.pages.dev`; the
+  previously documented `yog-sothoth.pages.dev` no longer resolves at all. This included a user-facing
+  error message in `App.tsx` that told users to allow-list the dead domain.
+- **`App.tsx` is now type-checked** — the file-wide `@ts-nocheck` pragma is gone (ROADMAP #5). Measured
+  first: a dry-run `tsc --noEmit` with the pragma disabled found 13 errors, not the "large effort" the
+  roadmap had estimated sight-unseen, because the project's `strict`/`noImplicitAny` compiler flags stay
+  off by existing design — so this newly catches structural mistakes (wrong ref/state shapes), not every
+  untyped handler. All 13 fixed: three refs (`fileRef`/`tableRef`/`jsonRef`) properly typed with
+  `useRef<T>(null)` instead of bare `useRef()` (and a real latent bug caught in passing — a missing `?.`
+  on one of them), the undo/redo snapshot ref initialized from real state instead of `{}`, and two
+  `status`/`position` fields that had widened from their literal types re-typed precisely (one accurate
+  `as Status` cast at the single `<select>` bound to exactly those four values). No behavior change —
+  verified via the full suite plus a live in-browser pass of the two paths that touched real runtime code
+  (library-add end-to-end, file/JSON-load buttons). Full detail in `ROADMAP.md` #5.
+
+### Fixed
+- **Tesseract (Browser OCR) no longer leaks memory for the rest of the session** (RISK_REVIEW R12) — the
+  worker is now terminated after every run instead of being created once and held forever; the Thai/English
+  language pack stays cached separately, so this doesn't bring back the old "re-download every time"
+  problem, it just stops the worker's memory from lingering. Also: rasterizing a PDF page for OCR now
+  retries at a lower render scale if the initial (higher-accuracy) scale fails, instead of the whole
+  extraction crashing on an unusually large page.
+- **CI**: added a GitHub Actions workflow (typecheck + tests + build on every push/PR) — nothing was
+  automatically checking pushes before this.
+
+### Security
+- **Security response headers on the deployed site** (`public/_headers`) — the 2026-08-07 Lighthouse
+  audit found four High-severity gaps that the Best Practices score (100) did not reflect, because
+  Lighthouse weights them at zero: no Content-Security-Policy, no HSTS, no COOP, no frame-control.
+  Added an **enforcing** CSP plus `X-Frame-Options: DENY`, HSTS (1 year, no `preload`),
+  `Cross-Origin-Opener-Policy: same-origin`, and a `Permissions-Policy`. This matters here more than on
+  a typical static site because users paste a Gemini API key into the page. The CSP was verified against
+  the real production build served with the policy in enforcing mode — Google Fonts, the tesseract.js
+  blob worker, its WebAssembly core, the jsdelivr language-data fetches, the pdf.js worker, `data:`
+  figure images, the Gemini endpoint, and the dynamic ExcelJS import were each exercised individually,
+  with negative controls confirming the policy was actually active rather than silently absent. Full
+  method, the one unverified path (PDF rendering), and the rollback note are in
+  [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md) §1.
+- **Prompt-injection framing around untrusted document text** (RISK_REVIEW R8) — both extraction prompts
+  (`buildSystemPrompt` for Claude, `buildGeminiPrompt` for Gemini, in `src/lib/extract.ts`) now state
+  up front that document content — including OCR'd text — is data to extract from, never instructions to
+  follow, and instruct the model to copy any instruction-like text verbatim as a requirement rather than
+  obey it. The scanned-PDF path additionally wraps the untrusted OCR text in `<document_text>` delimiter
+  tags at the point it's interpolated into the request, so the boundary between "prompt" and "document"
+  is explicit rather than one long unmarked string. Every existing verbatim/output-format rule is
+  unchanged — new paragraphs were inserted, nothing old was reworded or removed, and 6 new unit tests
+  assert both the new framing and the survival of the old rules. Digital-PDF extraction (the other path)
+  already sent the file as a native `document`/`inline_data` block rather than raw interpolated text, so
+  it wasn't part of this specific gap, but gets the same general framing paragraph for free since that's
+  unconditional in both prompt builders. Blast radius was already small (output is verbatim-copied and
+  human-reviewed before use) — this closes the gap rather than responding to an incident.
+- **Gemini API key no longer travels in the URL** (RISK_REVIEW R7) — all three call sites (extraction,
+  the Vision-OCR feeder, Test Connection) now send it via the `x-goog-api-key` request header instead of
+  `?key=` in the query string, so it can no longer land in server/proxy access logs or browser history.
+  Verified against the live API (a dummy key in the header got a genuine `API_KEY_INVALID`, confirming the
+  endpoint reads it there) and by intercepting the app's own request in-browser to confirm the URL is clean.
 
 ## [0.4.0] — 2026-08-04
 

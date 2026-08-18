@@ -1637,3 +1637,20 @@
           animation: none;
         }
       }
+
+      /* Visually-hidden text: available to screen readers and to axe's
+         table-header check, invisible on screen. Used for the row-actions
+         column header, which is intentionally blank in the visual design but
+         left `<td>` cells without an associated header (Lighthouse
+         `td-has-header`, 2026-08-07 audit). */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
