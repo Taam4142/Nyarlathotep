@@ -90,6 +90,11 @@ the two-second rollback.**
 
 ## 2. Accessibility (90) — 4 failures
 
+> **Superseded in scope by [`DESIGN_TOKENS.md`](DESIGN_TOKENS.md).** Checking the stylesheet directly
+> (rather than only the DOM Lighthouse happened to render) found **14 failing contrast pairings and 5
+> undersized controls**, not the 13 + 12 nodes reported here — the extra ones sit behind the Help modal,
+> alert banners, and active filter states. Read that file before acting on this section.
+
 ### 2.1 Contrast (13 nodes) — a genuine gap in the earlier P3b work → **Batch 2, needs sign-off**
 
 P3b derived `--txt3: #6a7790` and recorded it as "4.51:1, passes". That was measured **against `--sur1`
