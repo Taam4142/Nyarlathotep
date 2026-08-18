@@ -173,5 +173,13 @@ maps, stale-URL corrections. No visible design change — safe by construction.
 
 **Batch 2 (prepared, awaiting sign-off)** per [`A11Y_PLAN.md`](A11Y_PLAN.md) §0, which gates visible
 design changes: the contrast values in §2.1 and the target sizes in §2.2. Together they would take
-Accessibility to ~100. The contrast piece should be reviewed the way P3b was — a live before/after with
-ratios computed in-page — but this time against **every** surface, not just white.
+Accessibility to ~100. Review page (live before/after, ratios computed in-page against **every** surface, both themes):
+https://claude.ai/code/artifact/05f9500e-a28d-4281-9294-04941ac17f05
+
+Its formula was anchored against published WCAG reference pairs before publishing (#767676 on white =
+4.54:1, #777777 = 4.48:1, black-on-white = 21:1 — all exact), and the adjustment **direction** was checked
+in both themes, which is the specific way the P3b artifact nearly shipped wrong.
+
+One thing the live computation surfaced that a token swap would have missed: the current N/A colour
+(#5c6480) already **passes** at 5.22:1 — it is the CSS token (#64748b, 4.25:1) that would have been a
+regression there. Another reason not to bulk-swap.
