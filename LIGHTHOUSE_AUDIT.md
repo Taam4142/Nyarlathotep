@@ -171,20 +171,98 @@ exposed — the source is public on GitHub and all keys live server-side in Page
 
 ---
 
-## 5. Status
+## 5. Batch 1 — shipped
 
-**Batch 1 (shipped):** security headers, robots.txt, meta description, `<main>`, `td-has-header`, source
-maps, stale-URL corrections. No visible design change — safe by construction.
+Security headers, `robots.txt`, meta description, `<main>` landmark, `td-has-header`, source maps, and the
+stale-URL corrections. No visible design change — safe by construction. Live and verified on the deployed
+site (headers responding, `/robots.txt` now `text/plain`, app boots with zero console output under the
+enforcing CSP).
 
-**Batch 2 (prepared, awaiting sign-off)** per [`A11Y_PLAN.md`](A11Y_PLAN.md) §0, which gates visible
-design changes: the contrast values in §2.1 and the target sizes in §2.2. Together they would take
-Accessibility to ~100. Review page (live before/after, ratios computed in-page against **every** surface, both themes):
-https://claude.ai/code/artifact/05f9500e-a28d-4281-9294-04941ac17f05
+---
 
-Its formula was anchored against published WCAG reference pairs before publishing (#767676 on white =
-4.54:1, #777777 = 4.48:1, black-on-white = 21:1 — all exact), and the adjustment **direction** was checked
-in both themes, which is the specific way the P3b artifact nearly shipped wrong.
+## 6. Batch 2 — the phase plan
 
-One thing the live computation surfaced that a token swap would have missed: the current N/A colour
-(#5c6480) already **passes** at 5.22:1 — it is the CSS token (#64748b, 4.25:1) that would have been a
-regression there. Another reason not to bulk-swap.
+**Review page** (live before/after, every ratio computed in-page against every surface the token actually
+lands on, both themes): https://claude.ai/code/artifact/05f9500e-a28d-4281-9294-04941ac17f05
+
+That page's formula was anchored against published WCAG reference pairs before publishing (`#767676` on
+white = 4.54:1, `#777777` = 4.48:1, black-on-white = 21:1 — all exact), and the adjustment **direction**
+was checked per theme. Direction is the specific way the P3b artifact nearly shipped wrong.
+
+Four phases, ordered by **ascending visual risk** — the same discipline that kept P0–P3b safe. One phase =
+one commit = one `git revert`.
+
+| Phase | Change | Visual risk | Closes | Status |
+| --- | --- | --- | --- | --- |
+| **A** | Contrast regression guard (unit test over `styles.css`) | **none** | prevents recurrence | — |
+| **B** | `--txt3`, light + dark | low | 1 pairing, ~27 sites | — |
+| **C** | Status colour system + `lib-item-label` decoupling | **medium** | 13 pairings | **needs sign-off** |
+| **D** | 5 interactive targets → 24×24 | **none** (measured) | 5 controls | — |
+
+### Phase A — the regression guard, deliberately first
+
+The P3b bug survived months not because it was subtle but because **nothing checked it**. A green
+Lighthouse score cannot catch it either: Lighthouse audits the DOM that exists at audit time, so anything
+behind a closed modal, an inactive filter, or an unshown banner is invisible to it (§4). A test that reads
+the *stylesheet* catches what a browser audit structurally cannot.
+
+Shape: a pure `src/lib/contrast.ts` (ratio math + token parsing + pairing extraction), plus
+`contrast.test.ts` that (1) anchors the formula against published reference pairs, and (2) asserts every
+real `color`/`background` pairing in `styles.css` clears 4.5:1 — with today's known failures listed in an
+explicit allowlist that **shrinks to empty** as B and C land.
+
+The allowlist matters: it means the guard protects against *new* regressions from day one, while CI stays
+green. Without it the test would be red until every phase lands, and a permanently-red test gets ignored.
+
+**Known limitation, stated rather than glossed:** this guard covers contrast only. Target size depends on
+rendered layout (padding + font metrics), and jsdom does no layout, so §3.2 cannot be unit-tested the same
+way. Target sizes stay a manual/measured check.
+
+### Phase B — `--txt3`
+
+Two token values (light `#6a7790` → `#5d697f`, dark `#7a8393` → `#818998`). Token-only edit; roughly 27
+call sites update automatically. Visible effect: tertiary text (column headers, section labels,
+placeholders, counters) gets slightly darker in light mode and slightly lighter in dark.
+
+### Phase C — the status colour system ⚠️ needs sign-off
+
+The systemic one: **every status colour fails AA on its own tint** — one root cause, 14 symptoms
+(`.sts-*`, `.f-*.on`, `.help-tag-*`, `.alert-err`, `.alert-warn`, `.row-del:hover`). Proposed values in
+[`DESIGN_TOKENS.md`](DESIGN_TOKENS.md) §2.4.
+
+This is held back because these are the app's most semantically loaded colours — darkening them changes how
+the compliance matrix *feels*, which is a judgement call, not a measurement. Section 2b of the review page
+shows the pills before/after; judge the swatches, not the numbers.
+
+Also in this phase: `lib-item-label` stops reading from `STAT_COLORS`, which fixes its 2.03:1 contrast
+**and** the latent bug where it shows light-theme greens in dark mode. `STAT_COLORS` itself must not be
+edited — it drives Excel export via `xlsx.ts:103`.
+
+### Phase D — target sizes
+
+Five controls to 24×24: `.lib-remove` (7.6×15.2), `.row-check` (14×14), `.row-grip` (15.8×17),
+`.row-del` (18.8×21.6), `.row-ins` (19.4×20).
+
+**Measured as free.** An earlier estimate said rows would grow ~4 px taller; that was wrong. On the
+deployed site rows are **77 px** tall with **57 px of vertical headroom**, and the actions column is
+**64.1 px** wide while two 24 px buttons plus spacing need 56 px. Both dimensions already fit — only the
+clickable boxes grow, into space that is already empty. Verify the measurement again after the change
+rather than trusting this note.
+
+### Definition of done, per phase
+
+1. `npm run typecheck` clean · full test suite green · `npm run build` green.
+2. The Phase A guard's allowlist shrinks by exactly the pairings that phase claims to fix — no more, no less.
+3. Layout re-measured in-browser where the phase could move anything (B: none expected; D: none expected,
+   but measured anyway because that is the claim being made).
+4. Regression pass on the flows the change touches; no console errors.
+5. Honesty note in the commit: what was verified, and what could not be.
+
+### Rollback
+
+Each phase is one commit. `git revert <sha>` restores the previous appearance exactly; the guard's
+allowlist grows back with it, so the test stays green either way.
+
+---
+
+## 7. Status
