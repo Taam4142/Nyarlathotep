@@ -186,4 +186,50 @@ describe("App smoke tests", () => {
       window.matchMedia = original;
     }
   });
+
+  it("relocated controls are MOVED between top bar and drawer, never duplicated", async () => {
+    // RESPONSIVE_PLAN risk V2: the failure mode for responsive work is two
+    // renderings of the same control drifting apart — a fix applied to one and
+    // not the other. R2.5 moves the session fields, engine picker and column
+    // toggles into the drawer at phone width instead of duplicating them, and
+    // this pins that property so a later refactor cannot quietly reintroduce a
+    // second copy.
+    const original = window.matchMedia;
+    const stub = (phone) => (query) => ({
+      matches: phone ? true : query === MEDIA_COMPACT,
+      media: query,
+      addEventListener() {}, removeEventListener() {},
+      addListener() {}, removeListener() {},
+      onchange: null, dispatchEvent: () => false,
+    });
+
+    try {
+      // Desktop: exactly one of each, and they live in the top bar.
+      window.matchMedia = (query) => ({
+        matches: false, media: query,
+        addEventListener() {}, removeEventListener() {},
+        addListener() {}, removeListener() {},
+        onchange: null, dispatchEvent: () => false,
+      });
+      const desktop = render(<App />);
+      expect(screen.getAllByLabelText("Project name")).toHaveLength(1);
+      expect(screen.getAllByLabelText("Verified by")).toHaveLength(1);
+      expect(screen.getAllByLabelText("Extraction engine")).toHaveLength(1);
+      desktop.unmount();
+
+      // Phone: still exactly one of each — moved, not copied.
+      window.matchMedia = stub(true);
+      render(<App />);
+      expect(screen.getAllByLabelText("Project name")).toHaveLength(1);
+      expect(screen.getAllByLabelText("Verified by")).toHaveLength(1);
+      expect(screen.getAllByLabelText("Extraction engine")).toHaveLength(1);
+
+      // And on a phone they must be inside the drawer, not the top bar.
+      const drawer = screen.getByRole("dialog", { name: "Setup panel" });
+      expect(drawer).toContainElement(screen.getByLabelText("Project name"));
+      expect(drawer).toContainElement(screen.getByLabelText("Extraction engine"));
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

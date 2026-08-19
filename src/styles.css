@@ -1864,3 +1864,69 @@
           min-width: 0;
         }
       }
+
+      /* Phone: reclaim vertical space (RESPONSIVE_PLAN R2.5).
+         After R2 the matrix had the full width but only 36% of the height —
+         chrome took 517px of an 812px screen. The session fields, engine picker
+         and column toggles move into the drawer (in App.tsx, moved not
+         duplicated); what remains here is trimming padding that was tuned for a
+         desktop bar. */
+      @media (max-width: 699px) {
+        .topbar {
+          gap: 6px 10px;
+          padding: 6px 12px;
+        }
+        .toolbar {
+          gap: 8px;
+          padding: 8px 12px;
+        }
+        /* The stat row and filter chips were wrapping onto extra lines. One
+           horizontal strip each, scrollable rather than wrapped, so a long list
+           of filters costs one row instead of two. */
+        .stats,
+        .filters {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          overscroll-behavior-x: contain;
+          scrollbar-width: none;
+        }
+        .stats::-webkit-scrollbar,
+        .filters::-webkit-scrollbar {
+          display: none;
+        }
+        .stats > *,
+        .filters > * {
+          flex-shrink: 0;
+        }
+        .toolbar-sep {
+          display: none;
+        }
+        .tb-search {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        /* The restored-session notice is useful but was four lines tall. */
+        .alert {
+          padding: 8px 10px;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .bottom-bar {
+          padding: 6px 12px;
+        }
+        .bottom-hint {
+          display: none;
+        }
+      }
+
+      /* Drawer-only groups added by R2.5. */
+      .sb-phone-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .sb-phone-fields .proj-input,
+      .sb-phone-fields .model-sel {
+        width: 100%;
+        min-width: 0;
+      }

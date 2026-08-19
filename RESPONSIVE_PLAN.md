@@ -9,7 +9,7 @@
 > state before any of this work. Cut 2026-08-19 at commit `79749a3`. `git checkout v0.5.0`, or roll
 > back the deployment from Cloudflare Pages. Verified by actually checking the tag out and back.
 >
-> **R1 + R2 shipped 2026-08-19.**
+> **R1 + R2 + R2.5 shipped 2026-08-19.**
 
 ---
 
@@ -185,6 +185,7 @@ layout is restructured. One phase = one commit = one revert.
 | --- | --- | --- | --- |
 | **R1** | Top-bar overflow menu + wrapping | **low** | the live desktop bug (§1.3) *and* 11 unreachable phone controls — ✅ **Done** |
 | **R2** | Sidebar → drawer below 1120 px | med | returns 288 px to the matrix at every size below desktop — ✅ **Done** |
+| **R2.5** | Reclaim vertical space on phones | low | 36 % → **64 %** of a phone screen — ✅ **Done** |
 | **R3** | Matrix → card list below 700 px | **high** | makes the phone genuinely usable |
 | **R4** | Touch/mobile polish | low | 44 px targets, `-webkit-text-size-adjust`, safe-area insets, momentum scroll |
 | **R5** | Honest degradation | low | Snip hidden on touch with an explanation rather than silently broken |
@@ -273,6 +274,72 @@ baseline and byte-identical (sidebar 0,56 288×844; main 288,56 992×844; topbar
 no dialog role; toggle hidden; no scrim). At 1024 and 375: drawer opens/closes via toggle, scrim and
 Escape; focus moves in and returns; no page overflow; every top-bar control reachable. A new jsdom test
 covers the drawer with a `matchMedia` stub, since without one that path is invisible to CI.
+
+### R2.5 — reclaim vertical space on phones
+
+**Why this was not in the original plan.** The plan was written around the *horizontal* problem: a 288 px
+sidebar and an 817 px table crammed into 375 px. That framing was right as far as it went, and R1/R2 fixed
+it — the matrix went from 87 px wide (23 % of the screen) to the full 375 px. But width was only half the
+story. Once the matrix had the full width, the vertical stack became the binding constraint, and the plan
+had almost nothing to say about it.
+
+Measured at 375 × 812 after R2:
+
+| Band | Height | Share of screen |
+| --- | ---: | ---: |
+| Top bar | 160 px | 20 % |
+| Alert banner | 82 px | 10 % |
+| **Toolbar** | **205 px** | **25 %** |
+| **Matrix** | **295 px** | **36 %** |
+| Bottom bar | 51 px | 6 % |
+
+Chrome takes **517 px — 64 % of the screen** — to show 295 px of matrix. The toolbar is the largest single
+consumer: stats 36 + separator 16 + filters 37 + search 29 + toggles 18, plus roughly 69 px of padding and
+gaps that were tuned for a desktop bar.
+
+**R3 would not have fixed this.** Cards change how a row *renders*, not how much vertical room the list is
+given. Cards in a 295 px window means seeing about two of them — the highest-risk phase would have shipped
+and the screen would still feel cramped. Hence R2.5 first.
+
+**Target: the matrix gets more than 50 % of the screen.**
+
+| Change | Saves | Notes |
+| --- | ---: | --- |
+| Project name, Verified by and the engine picker **move into the drawer at phone width** | ~104 px | This is what §3.3 specified for Phone all along. R2 flexed them instead, which was the right call for tablet widths but leaves four wrapped rows on a phone. **Moved, not duplicated** — one rendering, placed conditionally, so risk V2 does not apply. |
+| Column toggles → drawer; phone-tuned toolbar padding; filters as one scrollable strip | ~115 px | The toggles are view settings, not per-moment actions, so they belong with the other settings. |
+| Alert banner compacted on phone | ~40 px | It is already dismissible; this shortens it while shown. |
+
+Expected result: **295 px → ~554 px, about 68 %**.
+
+**Result, measured at 375 × 812:**
+
+| Band | before | after |
+| --- | ---: | ---: |
+| Top bar | 160 px | **77 px** |
+| Alert banner | 82 px | **51 px** |
+| Toolbar | 205 px | **104 px** |
+| Bottom bar | 51 px | **42 px** |
+| **Matrix** | **295 px (36 %)** | **518 px (64 %)** |
+
+With the restored-session notice dismissed it reaches ~70 %. At 768 px the matrix is already at 70 %.
+
+The relocation is a **move, not a copy**: `sessionFields`, `enginePicker` and `viewToggles` are each
+defined once and placed in either the top bar or the drawer. Verified in-browser that at phone width the
+controls are absent from the top bar and present in the drawer, and that each still drives state — project
+name, verified-by, engine change (the sidebar engine panel reacts), and a column toggle changing the table
+header count. A test pins **exactly one instance** of each at both desktop and phone widths, because a
+silently duplicated control is precisely risk V2.
+
+Desktop re-measured against the pre-responsive baseline and unchanged (sidebar 0,56 288×844; main 288,56
+992×844; topbar 56 px), with every relocated control back in the top bar. Tablet (768 px) keeps them inline
+as intended — only phone width relocates.
+
+**Deliberately not doing (yet): letting the chrome scroll away.** The native mobile pattern is to let the
+whole page scroll so the header disappears and the list effectively gets the entire screen. It is the
+better end state, but it changes the layout model — the matrix currently scrolls inside its own container
+with a sticky header, which would need rethinking — and that is meaningful risk for a target the cheaper
+approach already clears. Kept as a follow-up to consider once the compacted version has been used in
+anger.
 
 ---
 

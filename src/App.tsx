@@ -36,7 +36,7 @@ import {
   OCR_FEEDERS,
 } from "./lib/models";
 import { fetchWithRetry } from "./lib/net";
-import { MEDIA_COMPACT } from "./lib/breakpoints";
+import { MEDIA_COMPACT, MEDIA_PHONE } from "./lib/breakpoints";
 import {
   DEFAULT_LIB,
   STATUS_OPTS,
@@ -1496,6 +1496,11 @@ function App() {
         // 288px is 26% of a 1024px screen and 77% of a phone, so it stops being
         // a column and becomes an off-canvas drawer.
         const isCompact = useMediaQuery(MEDIA_COMPACT);
+        // Phone width gets a stricter treatment than tablet: at 375px the top
+        // bar wrapped to four rows (160px, 20% of the screen) purely because
+        // the session fields and the engine picker were still inline. R2.5
+        // relocates them into the drawer — moved, not duplicated.
+        const isPhone = useMediaQuery(MEDIA_PHONE);
         const [drawerOpen, setDrawerOpen] = useState(false);
         const drawerToggleRef = useRef<HTMLButtonElement>(null);
         const sidebarRef = useRef<HTMLDivElement>(null);
@@ -1817,6 +1822,105 @@ function App() {
           clearSelection();
         };
 
+        // Defined once and PLACED conditionally — never rendered twice. A
+        // duplicate rendering of the same inputs is exactly the divergence risk
+        // RESPONSIVE_PLAN calls V2, so these move between the top bar and the
+        // drawer rather than existing in both.
+        const sessionFields = (
+          <>
+            <input
+              className="proj-input"
+              placeholder="Project name…"
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              aria-label="Project name"
+            />
+            <input
+              className="proj-input verifier-input"
+              placeholder="Verified by…"
+              title="Reviewer name — pre-filled into the “Verified By” column of the Excel export (with today's date)"
+              value={verifiedBy}
+              onChange={(e) => setVerifiedBy(e.target.value)}
+              aria-label="Verified by"
+            />
+          </>
+        );
+
+        // View settings, not per-moment actions — on a phone they belong with
+        // the other settings in the drawer rather than costing a toolbar row.
+        const viewToggles = (
+          <div className="toggles">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={showTr}
+                onChange={(e) => setShowTr(e.target.checked)}
+              />
+              Translation col
+            </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={showCat}
+                onChange={(e) => setShowCat(e.target.checked)}
+              />
+              Category col
+            </label>
+          </div>
+        );
+
+        const enginePicker = (
+          <>
+            <select
+              className="model-sel"
+              value={aiEngine}
+              onChange={(e) => {
+                setAiEngine(e.target.value);
+                setTestStatus(null);
+                setTestMsg("");
+              }}
+              aria-label="Extraction engine"
+              title={
+                EXTRACTION_ENGINES.find((e) => e.id === aiEngine)?.tooltip
+              }
+            >
+              {EXTRACTION_ENGINES.map((e) => (
+                <option key={e.id} value={e.id} title={e.tooltip}>
+                  {e.label}
+                </option>
+              ))}
+            </select>
+            {aiEngine === "claude" && (
+              <select
+                className="model-sel"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                aria-label="Claude model"
+              >
+                {CLAUDE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            )}
+            {aiEngine === "gemini" && (
+              <select
+                className="model-sel"
+                value={geminiModel}
+                onChange={(e) => setGeminiModel(e.target.value)}
+                aria-label="Gemini model"
+              >
+                {GEMINI_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
+        );
+
         return (
           <div className="app">
             <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
@@ -1874,21 +1978,7 @@ function App() {
                 How to use
               </button>
               <div className="brand-sep" />
-              <input
-                className="proj-input"
-                placeholder="Project name…"
-                value={project}
-                onChange={(e) => setProject(e.target.value)}
-                aria-label="Project name"
-              />
-              <input
-                className="proj-input verifier-input"
-                placeholder="Verified by…"
-                title="Reviewer name — pre-filled into the “Verified By” column of the Excel export (with today's date)"
-                value={verifiedBy}
-                onChange={(e) => setVerifiedBy(e.target.value)}
-                aria-label="Verified by"
-              />
+              {!isPhone && sessionFields}
               <div className="topbar-right">
                 <button
                   className="btn btn-ghost btn-sm undo-btn"
@@ -1908,53 +1998,7 @@ function App() {
                 >
                   ↷
                 </button>
-                <select
-                  className="model-sel"
-                  value={aiEngine}
-                  onChange={(e) => {
-                    setAiEngine(e.target.value);
-                    setTestStatus(null);
-                    setTestMsg("");
-                  }}
-                  aria-label="Extraction engine"
-                  title={
-                    EXTRACTION_ENGINES.find((e) => e.id === aiEngine)?.tooltip
-                  }
-                >
-                  {EXTRACTION_ENGINES.map((e) => (
-                    <option key={e.id} value={e.id} title={e.tooltip}>
-                      {e.label}
-                    </option>
-                  ))}
-                </select>
-                {aiEngine === "claude" && (
-                  <select
-                    className="model-sel"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    aria-label="Claude model"
-                  >
-                    {CLAUDE_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {aiEngine === "gemini" && (
-                  <select
-                    className="model-sel"
-                    value={geminiModel}
-                    onChange={(e) => setGeminiModel(e.target.value)}
-                    aria-label="Gemini model"
-                  >
-                    {GEMINI_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                {!isPhone && enginePicker}
                 {/* Export stays inline — it is the primary output action. The
                     rest move into the overflow menu so the bar always fits. */}
                 <button
@@ -2071,6 +2115,20 @@ function App() {
                   ? { role: "dialog", "aria-modal": true, "aria-label": "Setup panel" }
                   : {})}
               >
+                {isPhone && (
+                  <div className="sb-sec sb-phone-only">
+                    <div className="sb-label">Project</div>
+                    <div className="sb-phone-fields">{sessionFields}</div>
+                    <div className="sb-label" style={{ marginTop: 12 }}>
+                      Extraction engine
+                    </div>
+                    <div className="sb-phone-fields">{enginePicker}</div>
+                    <div className="sb-label" style={{ marginTop: 12 }}>
+                      Columns
+                    </div>
+                    {viewToggles}
+                  </div>
+                )}
                 {/* PDF section */}
                 <div className="sb-sec">
                   <div className="sb-label">TOR Document</div>
@@ -2914,24 +2972,7 @@ function App() {
                         </span>
                       )}
                     </div>
-                    <div className="toggles">
-                      <label className="toggle-label">
-                        <input
-                          type="checkbox"
-                          checked={showTr}
-                          onChange={(e) => setShowTr(e.target.checked)}
-                        />
-                        Translation col
-                      </label>
-                      <label className="toggle-label">
-                        <input
-                          type="checkbox"
-                          checked={showCat}
-                          onChange={(e) => setShowCat(e.target.checked)}
-                        />
-                        Category col
-                      </label>
-                    </div>
+{!isPhone && viewToggles}
                   </div>
                 )}
 
