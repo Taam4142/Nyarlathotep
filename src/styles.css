@@ -527,6 +527,18 @@
         line-height: 1.6;
         font-family: var(--font-thai);
       }
+      /* WCAG 2.2 AA 2.5.8 (target size, 24x24). These are background-less glyph
+         buttons, so growing the box is invisible until hover — the glyph keeps
+         its own font-size and is centred in the larger box.
+         Measured before changing anything: .row-ins/.row-del centres sit 21.1px
+         apart, so they do NOT qualify for the criterion's spacing exception and
+         genuinely needed resizing. .row-check (14x14) and .row-grip (15.8x17)
+         DO qualify — nearest neighbouring target is 42.9px away — so they are
+         deliberately left alone rather than visibly enlarging a checkbox for no
+         conformance gain. .lib-remove also qualifies (108.5px clear) but was
+         7.6x15.2px, under a third of the required area and hard to hit for
+         anyone at all, so it is fixed on usability grounds rather than
+         conformance ones. See LIGHTHOUSE_AUDIT.md section 6 Phase D. */
       .lib-remove {
         background: none;
         border: none;
@@ -535,6 +547,11 @@
         font-size: 13px;
         padding: 0;
         flex-shrink: 0;
+        min-width: 24px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .lib-remove:hover {
         color: var(--notcomply);
@@ -1196,6 +1213,11 @@
         font-size: 15px;
         padding: 2px 5px;
         border-radius: 3px;
+        min-width: 24px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .row-del:hover {
         color: var(--notcomply);
@@ -1216,6 +1238,11 @@
         line-height: 1;
         padding: 2px 5px;
         border-radius: 4px;
+        min-width: 24px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .row-ins:hover {
         color: var(--accent);

@@ -91,9 +91,10 @@ the two-second rollback.**
 ## 2. Accessibility (90) — 4 failures
 
 > **Superseded in scope by [`DESIGN_TOKENS.md`](DESIGN_TOKENS.md).** Checking the stylesheet directly
-> (rather than only the DOM Lighthouse happened to render) found **14 failing contrast pairings and 5
-> undersized controls**, not the 13 + 12 nodes reported here — the extra ones sit behind the Help modal,
-> alert banners, and active filter states. Read that file before acting on this section.
+> (rather than only the DOM Lighthouse happened to render) found **14 failing contrast pairings in light
+> and 5 undersized controls**, not the 13 + 12 nodes reported here — the extra ones sit behind the Help
+> modal, alert banners, and active filter states. The Phase A guard then found **3 more in dark**. Read
+> that file before acting on this section; `--txt3` and three of the target sizes are already fixed.
 
 ### 2.1 Contrast (13 nodes) — a genuine gap in the earlier P3b work → **Batch 2, needs sign-off**
 
@@ -243,11 +244,26 @@ edited — it drives Excel export via `xlsx.ts:103`.
 Five controls to 24×24: `.lib-remove` (7.6×15.2), `.row-check` (14×14), `.row-grip` (15.8×17),
 `.row-del` (18.8×21.6), `.row-ins` (19.4×20).
 
-**Measured as free.** An earlier estimate said rows would grow ~4 px taller; that was wrong. On the
-deployed site rows are **77 px** tall with **57 px of vertical headroom**, and the actions column is
-**64.1 px** wide while two 24 px buttons plus spacing need 56 px. Both dimensions already fit — only the
-clickable boxes grow, into space that is already empty. Verify the measurement again after the change
-rather than trusting this note.
+**Two corrections, both from measuring rather than estimating.**
+
+1. An early estimate said rows would grow ~4 px taller. Wrong: rows are **77 px** with **57 px of vertical
+   headroom**, so the vertical growth is genuinely free. Confirmed after the change — row height still 77 px.
+2. A later claim said the change costs *no* layout at all. Also not quite right. The actions column grew
+   **64.1 px → 74 px**; the table total stays exactly 992 px with no overflow and no horizontal scroll, so
+   the ~10 px is absorbed by the flexible Requirement/Remarks columns (about 1 % narrower each).
+
+**Only three of the five were resized**, because the criterion was checked properly rather than applied
+blindly. WCAG 2.5.8 exempts an undersized target whose 24 px circle does not intersect another target:
+
+| Control | size | nearest target | verdict |
+| --- | --- | ---: | --- |
+| `.row-ins` / `.row-del` | 19.4×20 / 18.8×21.6 | **21.1 px** apart | exception NOT met → **resized to 24×24** |
+| `.lib-remove` | 7.6×15.2 | 108.5 px | exempt, but **resized anyway** — under a third of the required area and hard for anyone to hit; usability, not conformance |
+| `.row-check` | 14×14 | 42.9 px | **exempt — left alone**; enlarging a visible checkbox for no conformance gain |
+| `.row-grip` | 15.8×17 | 42.9 px | **exempt — left alone** |
+
+All three resized controls are background-less glyph buttons, so the larger box is invisible until hover.
+Insert, delete and library-remove all re-verified working after the change.
 
 ### Definition of done, per phase
 

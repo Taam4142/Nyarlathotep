@@ -31,7 +31,7 @@ Status legend: ✅ meets WCAG AA · ❌ fails · 🔶 proposed, not yet applied.
 | `--bdr` / `--bdr2` / `--bdr3` | `#e4e7ee` / `#edeff4` / `#d7dbe4` | Borders, weak → strong |
 | `--txt` | `#1c2030` | Primary text |
 | `--txt2` | `#5a6376` | Secondary text |
-| `--txt3` | `#6a7790` ❌ | Tertiary: labels, placeholders, counters, help tags |
+| `--txt3` | `#5d697f` ✅ | Tertiary: labels, placeholders, counters, help tags |
 | `--accent` | `#4f46e5` | Indigo. Primary actions, focus ring, active |
 | `--accent-strong` / `--accent-text` | `#4338ca` | Pressed / accent-coloured text |
 | `--accent-fg` | `#ffffff` | Text on an accent fill |
@@ -54,7 +54,7 @@ pre-redesign `var(--amber)` references keep working.
 | --- | --- | --- | --- |
 | `--sur0` | `#0f1117` | `--txt` | `#e7e9f0` |
 | `--sur1` | `#171a21` | `--txt2` | `#a3adc0` |
-| `--sur2` | `#1e222c` | `--txt3` | `#7a8393` ❌ |
+| `--sur2` | `#1e222c` | `--txt3` | `#8a92a0` ✅ |
 | `--sur3` | `#262b36` | `--accent` | `#6366f1` |
 | `--sur4` | `#333a47` | `--accent-text` | `#a5b4fc` |
 | `--comply` | `#4ade80` | `--partial` | `#fbbf24` |
@@ -85,34 +85,46 @@ light-theme colours in dark mode. Current on-screen uses:
 
 ## 2. The contrast matrix — real pairings only
 
-Extracted from `styles.css` rule blocks that set both `color:` and `background:`, so these are pairings
-that **actually occur**, not a cartesian product. Translucent backgrounds are alpha-composited over the
-page. **26 pairings found; 14 fail AA.**
+Extracted from `styles.css` rule blocks that set both `color:` and `background:`, so these are
+pairings that **actually occur**, not a cartesian product. Translucent backgrounds are alpha-composited
+over the page. Produced by `src/lib/contrast.ts` and enforced by `src/lib/contrast.test.ts` — the
+numbers below are generated, not maintained by hand.
 
-### 2.1 Failing (light theme)
+**Current: 28 pairings per theme · 13 failing in light · 3 failing in dark** (9 distinct token pairs, all
+Phase C). `--txt3` is no longer among them — Phase B fixed it in both themes.
+
+### 2.1 Still failing — light theme
 
 | Selector | text | on | ratio |
 | --- | --- | --- | ---: |
-| `.help-tag` | `--txt3` | `--sur3` | 3.71 ❌ |
-| `.f-notcomply.on` · `.sts-notcomply` · `.row-del:hover` | `--notcomply` | `--notcomply-bg` | 3.93 ❌ |
-| `.f-na.on` · `.sts-na` | `--na` | `--na-bg` | 3.94 ❌ |
-| `.alert-err` | `--notcomply` | `--danger-bg` | 3.99 ❌ |
+| `.f-comply.on` · `.sts-comply` · `.help-tag-free` | `--comply` | `--comply-bg` | 4.22 ❌ |
 | `.f-partial.on` · `.sts-partial` · `.help-tag-paid` | `--partial` | `--partial-bg` | 4.16 ❌ |
 | `.alert-warn` | `--warn` | `--warn-bg` | 4.16 ❌ |
-| `.f-comply.on` · `.sts-comply` · `.help-tag-free` | `--comply` | `--comply-bg` | 4.22 ❌ |
+| `.alert-err` | `--notcomply` | `--danger-bg` | 3.99 ❌ |
+| `.f-na.on` · `.sts-na` | `--na` | `--na-bg` | 3.94 ❌ |
+| `.f-notcomply.on` · `.sts-notcomply` · `.row-del:hover` | `--notcomply` | `--notcomply-bg` | 3.93 ❌ |
 
-**The systemic finding: every status colour fails on its own tint.** This is one root cause with 14
-symptoms, not 14 separate bugs.
+**The systemic finding: every status colour fails on its own tint.** One root cause, 13 symptoms — not 13
+separate bugs.
 
-### 2.2 Passing
+### 2.2 Still failing — dark theme only
 
-`.lib-add-sel` 4.96 · `.row-grip:hover` 4.96 · `.row-ins:hover` 5.17 · `.cat-sel` 5.38 · `.alert-info`
-6.57 · `.lib-add-input` 13.30 · `.help-callout` 13.45 · `.proj-input` / `.model-sel` / `.key-input` 14.43 ·
-`body` 15.09 · `.sts-sel option` 16.17 — all ✅.
+Found by the Phase A guard on its first run. Neither the Lighthouse audit (which ran in light mode) nor the
+manual stylesheet review had caught these. All three pass comfortably in light and fail only in dark,
+because the dark accent `#6366f1` is lighter than the light accent `#4f46e5`.
+
+| Selector | text | on | dark | light |
+| --- | --- | --- | ---: | ---: |
+| `.btn-amber` — the primary action button | `--on-amber` | `--amber` | 4.47 ❌ | 6.29 ✅ |
+| `.f-all.on` — active "All" filter | `--amber` | `--amber-bg` | 3.69 ❌ | 5.23 ✅ |
+| `.row-ins:hover` — insert-row glyph | `--accent` | `--sur3` | 3.17 ❌ | 5.17 ✅ |
+
+Font sizes were checked before recording these — 13px/600, 11px/600 and a 16px glyph — so all three are
+normal text owing the full 4.5:1. The large-text 3:1 allowance does not apply.
 
 ### 2.3 `--txt3` against every surface it lands on
 
-| Surface | current `#6a7790` | proposed `#5d697f` 🔶 |
+| Surface | old `#6a7790` | **applied** `#5d697f` ✅ |
 | --- | ---: | ---: |
 | `--sur1` `#ffffff` | 4.51 ✅ *(the only one P3b tested)* | 5.54 ✅ |
 | `--sur0` `#f6f7f9` | 4.21 ❌ | 5.17 ✅ |
@@ -120,17 +132,21 @@ symptoms, not 14 separate bugs.
 | `--sur3` `#e6e9f0` | 3.71 ❌ | 4.56 ✅ |
 | key-panel `#f2fcf5` | 4.30 ❌ | 5.28 ✅ |
 
-Dark: `#7a8393` → 🔶 `#818998` (worst real surface `--sur2`: 4.16 ❌ → 4.52 ✅).
+Dark: `#7a8393` → **applied** `#8a92a0` — worst real surface is `--sur3` (`.help-tag`) at 4.52 ✅.
+
+> A first attempt at `#818998` was derived against `--sur1`/`--sur2` only and still failed
+> `--sur3` at 4.03:1 — the *same* omission as P3b, in the dark theme. The Phase A guard caught it
+> within seconds, before it shipped. Invariant 1 is not a hypothetical.
 
 `--sur4` is excluded deliberately — it is the scrollbar thumb and carries no text. Including it would
 over-report and force an unnecessarily dark token.
 
-### 2.4 Derived replacements (all 🔶 proposed, none applied)
+### 2.4 Derived replacements
 
 | Token | current | proposed | worst-case after |
 | --- | --- | --- | ---: |
-| `--txt3` light | `#6a7790` | `#5d697f` | 4.56 |
-| `--txt3` dark | `#7a8393` | `#818998` | 4.52 |
+| `--txt3` light | `#6a7790` | `#5d697f` ✅ **applied** | 4.56 |
+| `--txt3` dark | `#7a8393` | `#8a92a0` ✅ **applied** | 4.52 |
 | `--comply` | `#15803d` | `#127136` | 4.55 |
 | `--partial` / `--warn` | `#b45309` | `#9e4908` | 4.51 |
 | `--notcomply` / `--danger` | `#dc2626` | `#bb2020` | 4.52 |
@@ -164,11 +180,11 @@ WCAG 2.2 AA criterion **2.5.8** requires ≥ 24×24 px.
 
 | Control | measured | |
 | --- | --- | --- |
-| `.lib-remove` library remove | **7.6 × 15.2** | ❌ worst in the app |
-| `.row-check` row select | **14 × 14** | ❌ |
-| `.row-grip` drag handle | **15.8 × 17** | ❌ |
-| `.row-del` delete row | **18.8 × 21.6** | ❌ |
-| `.row-ins` insert row | **19.4 × 20** | ❌ |
+| `.lib-remove` library remove | 7.6 × 15.2 → **24 × 24** | ✅ resized (usability; was exempt) |
+| `.row-check` row select | 14 × 14 | ✅ exempt — 42.9 px clear of any target |
+| `.row-grip` drag handle | 15.8 × 17 | ✅ exempt — 42.9 px clear |
+| `.row-del` delete row | 18.8 × 21.6 → **24 × 24** | ✅ resized (21.1 px apart — not exempt) |
+| `.row-ins` insert row | 19.4 × 20 → **24 × 24** | ✅ resized (21.1 px apart — not exempt) |
 | `.btn-xs` | 221.6 × 25.6 | ✅ |
 | `.btn-sm` | 111.3 × 28.8 | ✅ |
 | `.sts-sel` status dropdown | 46.2 × 31.2 | ✅ |
@@ -176,6 +192,11 @@ WCAG 2.2 AA criterion **2.5.8** requires ≥ 24×24 px.
 
 **Lighthouse reported only `.row-ins` and `.row-del`** (12 nodes). It never measured `.lib-remove`,
 `.row-check` or `.row-grip` — see §4.
+
+WCAG 2.5.8 exempts an undersized target whose 24 px circle does not intersect another target, so the
+spacing was **measured** before resizing anything rather than applying 24×24 blindly. Cost of the three
+resizes: row height unchanged (77 px), table width unchanged (992 px, no overflow); the actions column
+grew 64.1 → 74 px, absorbed by the flexible Requirement/Remarks columns (~1 % narrower each).
 
 ### 3.3 Layout constants
 
@@ -195,8 +216,13 @@ Lighthouse audits **the DOM that exists at audit time**. When the 2026-08-07 run
 was closed, no alert banner was showing, no status filter was active, and the library list was in its
 default state. So it reported 13 contrast nodes and 12 target-size nodes.
 
-Checking the stylesheet directly found **14 failing contrast pairings and 5 undersized controls**,
-including `.help-tag*`, `.alert-err`, `.alert-warn`, the active filter buttons, and a 7.6×15.2 px button.
+Checking the stylesheet directly found **14 failing contrast pairings in light alone**, plus **5
+undersized controls** — including `.help-tag*`, `.alert-err`, `.alert-warn`, the active filter
+buttons, and a 7.6×15.2 px button.
+
+Then the automated guard found **3 more in the dark theme** that neither Lighthouse nor that manual pass
+had spotted (§2.2), because Lighthouse ran in light mode and the manual review followed it there. Two
+independent methods, two different blind spots — which is the argument for having the automated one at all.
 
 **Rule: treat a green Lighthouse accessibility score as necessary, not sufficient.** Anything behind a
 modal, a hover, an active state, or an error condition needs checking against this file instead.
@@ -224,6 +250,11 @@ modal, a hover, an active state, or an error condition needs checking against th
 
 ## 6. Current state
 
-Everything in §2.4 is **proposed and unapplied**. Live values are as listed in §1. The accessibility score
+**Applied:** `--txt3` in both themes (Phase B) and three target sizes (Phase D).
+**Still proposed:** the status-colour system in §2.4 — Phase C, held for sign-off because those are the
+app's most semantically loaded colours. Live values are as listed in §1.
+
+The Phase A guard (`src/lib/contrast.test.ts`) now enforces §2 automatically, with the remaining
+Phase C failures in an explicit allowlist that shrinks to empty when C lands. The accessibility score
 on the deployed site is ~93 after the Batch 1 fixes (landmark, table header, plus the SEO and security work
 in [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md)); closing §2 and §3.2 is what remains.
