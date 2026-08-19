@@ -5,7 +5,14 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
-_Nothing yet. Next up: the responsive/mobile work in [`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md)._
+### Fixed
+- **Top-bar controls are no longer clipped away** (RESPONSIVE_PLAN R1). The bar needed 1505 px of width
+  but sits inside an `overflow: hidden` container with no scroll, so anything past the viewport was
+  simply unreachable — at 1280 px, an ordinary laptop width, **"Load .json" and "New" were completely
+  hidden** with nothing on screen indicating they existed, and on a phone only 2 of 13 controls could be
+  reached. The secondary actions (+ Row, Snip, Save/Load .json, New) now live in a **"⋯ More actions"
+  menu** with Export kept inline, and the bar **wraps** instead of clipping. Intrinsic width 1505 → 1173 px;
+  zero clipped controls at 375 / 1120 / 1280 px; desktop visually unchanged (still one 56 px line).
 
 ## [0.5.0] — 2026-08-19
 

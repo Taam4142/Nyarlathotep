@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import App from "./App";
@@ -33,7 +33,13 @@ afterEach(cleanup);
 // that window before the test does anything else, so every test's typing
 // always lands in the field it explicitly targeted.
 async function addRow(user) {
-  await user.click(screen.getByRole("button", { name: "+ Row" }));
+  // Uses the always-visible "+ Add Row" beneath the table rather than the
+  // top-bar "+ Row", which moved into the overflow menu (RESPONSIVE_PLAN R1).
+  // Both call the same addRow() handler; this one keeps these tests focused on
+  // what they are actually about (editing, bulk-set, undo, search) instead of
+  // coupling every one of them to the menu's open/close behaviour. The menu
+  // itself is covered by its own test below.
+  await user.click(screen.getByRole("button", { name: "+ Add Row" }));
   await new Promise((r) => setTimeout(r, 150)); // >2x the app's own 60ms, for headroom under load
 }
 
@@ -94,5 +100,41 @@ describe("App smoke tests", () => {
     await addRow(user);
     await user.type(await screen.findByLabelText("Search rows"), "IP54");
     expect(await screen.findByText(/1 match/)).toBeInTheDocument();
+  });
+
+  it("the top-bar overflow menu opens, acts, and closes", async () => {
+    // R1 moved the secondary actions here because the inline row needed 1505px
+    // and was being clipped inside an overflow:hidden container — at 1280px
+    // "Load .json" and "New" were unreachable entirely.
+    const user = userEvent.setup();
+    render(<App />);
+
+    const trigger = screen.getByRole("button", { name: "More actions" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const menu = screen.getByRole("menu", { name: "More actions" });
+
+    // The actions that were previously clipped away must all be reachable.
+    for (const name of [/\+ Row/, /Snip a figure/, /Save \.json/, /Load \.json/, /New \/ clear matrix/]) {
+      expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
+    }
+
+    // An item actually performs its action, and the menu closes afterwards.
+    await user.click(within(menu).getByRole("menuitem", { name: /\+ Row/ }));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("Requirement text, verbatim").length).toBe(1);
+  });
+
+  it("the overflow menu closes on Escape", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });

@@ -4,6 +4,12 @@
 > "not functional at all" on mobile. Every number below is measured on the running app, not estimated.
 >
 > **Scope settled 2026-08-18: option (a), review-focused** — see §7.
+>
+> **Rollback point: [`v0.5.0`](https://github.com/Taam4142/Nyarlathotep/releases/tag/v0.5.0)** — the last
+> state before any of this work. Cut 2026-08-19 at commit `79749a3`. `git checkout v0.5.0`, or roll
+> back the deployment from Cloudflare Pages. Verified by actually checking the tag out and back.
+>
+> **R1 shipped 2026-08-19.**
 
 ---
 
@@ -177,7 +183,7 @@ layout is restructured. One phase = one commit = one revert.
 
 | Phase | Change | Risk | Fixes |
 | --- | --- | --- | --- |
-| **R1** | Top-bar overflow menu | **low** | the live desktop bug (§1.3) *and* 11 unreachable phone controls |
+| **R1** | Top-bar overflow menu + wrapping | **low** | the live desktop bug (§1.3) *and* 11 unreachable phone controls — ✅ **Done** |
 | **R2** | Sidebar → drawer below 1120 px | med | returns 288 px to the matrix at every size below desktop |
 | **R3** | Matrix → card list below 700 px | **high** | makes the phone genuinely usable |
 | **R4** | Touch/mobile polish | low | 44 px targets, `-webkit-text-size-adjust`, safe-area insets, momentum scroll |
@@ -190,6 +196,46 @@ people using the tool today on ordinary laptops.
 to the table row and not the card. Mitigation is to extract the per-row logic (status set, remarks edit,
 duplicate flag, selection) so both renderings call the same handlers, and to make the smoke tests run at
 both widths.
+
+---
+
+### R1 — shipped 2026-08-19
+
+Two changes, together guaranteeing nothing is ever clipped at any width:
+
+1. **The secondary actions moved into an overflow menu** (`+ Row`, Snip, Save/Load `.json`, New).
+   Export stays inline as the primary output action. The menu is **permanent, not behind a media query** —
+   one rendering cannot drift from a duplicate (risk V2), and the inline row did not fit even at 1440 px.
+2. **`.topbar` now wraps** (`flex-wrap: wrap` + `min-height` instead of a fixed `height`).
+   The menu alone was not enough: it cut the requirement from 1505 px to 1173 px, which fixes 1280 px but
+   still clipped at 1120 px. Wrapping turns any remaining overflow into a taller bar rather than an
+   unreachable control — a guarantee that holds at every width regardless of how many controls the bar
+   later holds.
+
+| | before | after |
+| --- | ---: | ---: |
+| Intrinsic width needed | 1505 px | **1173 px** |
+| Clipped controls at 1280 px | 3 (incl. Load `.json`, New) | **0** |
+| Reachable controls at 375 px | 2 of 13 | **8 of 8** |
+| Top-bar height at 1280 px | 56 px | **56 px** (unchanged — does not wrap) |
+
+**Desktop is visually unchanged**: at ≥1173 px the bar still fits on one 56 px line.
+
+Accessibility: `aria-haspopup="menu"`, `aria-expanded`, `role="menu"`/`menuitem`, closes on
+Escape and on outside click — matching the existing modal patterns.
+
+**Verified:** typecheck exit 0, 125 tests, build green. In-browser at 375 / 1120 / 1280: zero horizontal
+page overflow and zero clipped controls at every one; menu opens, every item fires, Escape and
+outside-click both close it, and the menu closes after an action. No console errors.
+
+The 5 UI smoke tests failed on first run because they clicked the top-bar `+ Row` that had just moved —
+the tests catching a real interaction change. Their helper now uses the always-visible `+ Add Row`
+beneath the table (same handler, keeps those tests about editing rather than about the menu), and **two new
+tests** cover the menu itself.
+
+⚠️ **Still ugly on a phone, by design of the phasing.** At 375 px the bar wraps to ~200 px tall because the
+project-name and verified-by fields are still inline. R2 moves them into the drawer, which is what shrinks
+it. R1's promise was *reachable*, not *pretty*.
 
 ---
 

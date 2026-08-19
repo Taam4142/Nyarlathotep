@@ -1452,8 +1452,35 @@ function App() {
           setShowLibAdd(false);
         };
 
+        // Top-bar overflow menu (RESPONSIVE_PLAN R1). The secondary actions live
+        // here permanently rather than behind a media query: a single rendering
+        // cannot drift from a duplicate, and the inline row did not fit even at
+        // 1440px — it needed 1505px, so below that the last buttons were being
+        // clipped away with no way to reach them.
+        const [menuOpen, setMenuOpen] = useState(false);
+        const menuRef = useRef<HTMLDivElement>(null);
+
         const [testStatus, setTestStatus] = useState(null); // null | 'testing' | 'ok' | 'fail'
         const [testMsg, setTestMsg] = useState("");
+
+        // Close the overflow menu on Escape or an outside click. Escape is
+        // checked before the outside-click handler so a keyboard user always has
+        // a way out, matching HelpModal/SnipModal/the lightbox.
+        useEffect(() => {
+          if (!menuOpen) return;
+          const onKey = (e) => {
+            if (e.key === "Escape") setMenuOpen(false);
+          };
+          const onDown = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+          };
+          document.addEventListener("keydown", onKey);
+          document.addEventListener("mousedown", onDown);
+          return () => {
+            document.removeEventListener("keydown", onKey);
+            document.removeEventListener("mousedown", onDown);
+          };
+        }, [menuOpen]);
 
         const testConnection = async () => {
           setTestStatus("testing");
@@ -1828,46 +1855,14 @@ function App() {
                     ))}
                   </select>
                 )}
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={addRow}
-                  disabled={loading}
-                >
-                  + Row
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setShowSnip(true)}
-                  disabled={loading || !pdfFile}
-                  title={
-                    pdfFile
-                      ? "Crop a figure from the PDF and attach it to a row"
-                      : "Load a PDF first to snip figures from it"
-                  }
-                >
-                  📷 Snip
-                </button>
+                {/* Export stays inline — it is the primary output action. The
+                    rest move into the overflow menu so the bar always fits. */}
                 <button
                   className="btn btn-amber btn-sm"
                   onClick={exportXLSX}
                   disabled={!rows.length}
                 >
                   ↓ Export .xlsx
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={saveJson}
-                  disabled={!rows.length}
-                  title="Download this matrix as a JSON file you can reopen later"
-                >
-                  ↓ Save .json
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => jsonRef.current?.click()}
-                  title="Load a matrix from a JSON file"
-                >
-                  ↑ Load .json
                 </button>
                 <input
                   ref={jsonRef}
@@ -1876,14 +1871,86 @@ function App() {
                   onChange={loadJson}
                   style={{ display: "none" }}
                 />
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={clearAll}
-                  disabled={!rows.length && !project}
-                  title="Clear the matrix and start a new one"
-                >
-                  New
-                </button>
+                <div className="tb-menu-wrap" ref={menuRef}>
+                  <button
+                    className="btn btn-ghost btn-sm tb-menu-btn"
+                    onClick={() => setMenuOpen((o) => !o)}
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    aria-label="More actions"
+                    title="More actions"
+                  >
+                    ⋯
+                  </button>
+                  {menuOpen && (
+                    <div className="tb-menu" role="menu" aria-label="More actions">
+                      <button
+                        role="menuitem"
+                        className="tb-menu-item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          addRow();
+                        }}
+                        disabled={loading}
+                      >
+                        + Row
+                      </button>
+                      <button
+                        role="menuitem"
+                        className="tb-menu-item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setShowSnip(true);
+                        }}
+                        disabled={loading || !pdfFile}
+                        title={
+                          pdfFile
+                            ? "Crop a figure from the PDF and attach it to a row"
+                            : "Load a PDF first to snip figures from it"
+                        }
+                      >
+                        📷 Snip a figure
+                      </button>
+                      <div className="tb-menu-sep" role="separator" />
+                      <button
+                        role="menuitem"
+                        className="tb-menu-item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          saveJson();
+                        }}
+                        disabled={!rows.length}
+                        title="Download this matrix as a JSON file you can reopen later"
+                      >
+                        ↓ Save .json
+                      </button>
+                      <button
+                        role="menuitem"
+                        className="tb-menu-item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          jsonRef.current?.click();
+                        }}
+                        title="Load a matrix from a JSON file"
+                      >
+                        ↑ Load .json
+                      </button>
+                      <div className="tb-menu-sep" role="separator" />
+                      <button
+                        role="menuitem"
+                        className="tb-menu-item tb-menu-danger"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          clearAll();
+                        }}
+                        disabled={!rows.length && !project}
+                        title="Clear the matrix and start a new one"
+                      >
+                        New / clear matrix
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

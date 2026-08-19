@@ -186,14 +186,22 @@
         overflow: hidden;
       }
       .topbar {
-        height: 56px;
+        /* min-height, not height, and wrap rather than nowrap: the bar used to
+           clip its trailing controls because it sat inside .app (overflow:
+           hidden) with no scroll container, so anything past the viewport was
+           simply unreachable. Wrapping makes the bar grow taller instead — a
+           guarantee that holds at every width, independent of how many controls
+           it ends up holding. At >=1173px it still fits on one 56px line, so
+           desktop is visually unchanged. */
+        min-height: 56px;
         flex-shrink: 0;
         background: var(--sur1);
         border-bottom: 1px solid var(--bdr);
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 14px;
-        padding: 0 20px;
+        gap: 8px 14px;
+        padding: 6px 20px;
       }
       .brand {
         display: flex;
@@ -260,6 +268,7 @@
       .topbar-right {
         margin-left: auto;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
       }
@@ -1726,4 +1735,69 @@
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
         border: 0;
+      }
+
+      /* Top-bar overflow menu (RESPONSIVE_PLAN R1).
+         Why this exists: the inline action row needed 1505px and .topbar is
+         flex-wrap:nowrap inside .app which is overflow:hidden, so below that
+         width the trailing buttons were clipped with no scroll container — at
+         1280px "Load .json" and "New" were completely unreachable, and at 375px
+         eleven of thirteen controls were. */
+      .tb-menu-wrap {
+        position: relative;
+        flex-shrink: 0;
+      }
+      .tb-menu-btn {
+        font-size: 16px;
+        line-height: 1;
+        min-width: 32px;
+        justify-content: center;
+      }
+      .tb-menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 6px);
+        min-width: 200px;
+        padding: 4px;
+        background: var(--sur1);
+        border: 1px solid var(--bdr);
+        border-radius: var(--r-md);
+        box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.28);
+        /* Above the sticky table header (10) and the progress bar (50), below
+           the modals (200) — a menu must never cover a dialog. */
+        z-index: 120;
+      }
+      .tb-menu-item {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+        padding: 8px 10px;
+        border: none;
+        border-radius: var(--r-sm);
+        background: var(--sur1);
+        color: var(--txt);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: left;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .tb-menu-item:hover:not(:disabled) {
+        background: var(--sur2);
+        color: var(--txt);
+      }
+      .tb-menu-item:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .tb-menu-danger:hover:not(:disabled) {
+        background: var(--notcomply-bg);
+        color: var(--notcomply);
+      }
+      .tb-menu-sep {
+        height: 1px;
+        margin: 4px 6px;
+        background: var(--bdr2);
       }
