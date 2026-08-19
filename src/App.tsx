@@ -36,7 +36,11 @@ import {
   OCR_FEEDERS,
 } from "./lib/models";
 import { fetchWithRetry } from "./lib/net";
-import { MEDIA_COMPACT, MEDIA_PHONE } from "./lib/breakpoints";
+import {
+  MEDIA_COMPACT,
+  MEDIA_PHONE,
+  MEDIA_COARSE_POINTER,
+} from "./lib/breakpoints";
 import {
   DEFAULT_LIB,
   STATUS_OPTS,
@@ -753,7 +757,6 @@ function SortableRow({
         <div className="td-p">
           <textarea
             className="cell-in"
-            style={{ fontFamily: "var(--font-thai)", fontSize: 14 }}
             value={row.remarks}
             onChange={(e) => upd(row.id, "remarks", e.target.value)}
             placeholder="Standard response or notes…"
@@ -1547,6 +1550,10 @@ function App() {
         // the session fields and the engine picker were still inline. R2.5
         // relocates them into the drawer — moved, not duplicated.
         const isPhone = useMediaQuery(MEDIA_PHONE);
+        // Snip is a mouse drag-crop. On a coarse pointer it cannot work, so it
+        // is shown as unavailable WITH A REASON rather than silently broken or
+        // silently missing (RESPONSIVE_PLAN R5, scope decision (a)).
+        const isCoarsePointer = useMediaQuery(MEDIA_COARSE_POINTER);
         const [drawerOpen, setDrawerOpen] = useState(false);
         const drawerToggleRef = useRef<HTMLButtonElement>(null);
         const sidebarRef = useRef<HTMLDivElement>(null);
@@ -2097,14 +2104,19 @@ function App() {
                           setMenuOpen(false);
                           setShowSnip(true);
                         }}
-                        disabled={loading || !pdfFile}
+                        disabled={loading || !pdfFile || isCoarsePointer}
                         title={
-                          pdfFile
-                            ? "Crop a figure from the PDF and attach it to a row"
-                            : "Load a PDF first to snip figures from it"
+                          isCoarsePointer
+                            ? "Snip needs a mouse — it works by dragging a crop box over the page. Open this tool on a desktop to capture figures."
+                            : pdfFile
+                              ? "Crop a figure from the PDF and attach it to a row"
+                              : "Load a PDF first to snip figures from it"
                         }
                       >
                         📷 Snip a figure
+                        {isCoarsePointer && (
+                          <span className="tb-menu-note">needs a mouse</span>
+                        )}
                       </button>
                       <div className="tb-menu-sep" role="separator" />
                       <button

@@ -4,7 +4,7 @@ import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import App from "./App";
-import { MEDIA_COMPACT } from "./lib/breakpoints";
+import { MEDIA_COMPACT, MEDIA_COARSE_POINTER } from "./lib/breakpoints";
 
 // Minimal smoke coverage for App.tsx — the one large, untested UI surface
 // (everything in src/lib/* has its own pure-function unit tests already).
@@ -262,5 +262,45 @@ describe("App smoke tests", () => {
     expect(cells.length).toBeGreaterThan(4);
     const missing = cells.filter((td) => !td.getAttribute("data-label"));
     expect(missing.map((td) => td.className)).toEqual([]);
+  });
+
+  it("Snip is disabled with a stated reason on a coarse pointer, enabled otherwise", async () => {
+    // RESPONSIVE_PLAN R5 / scope (a): Snip is a mouse drag-crop that cannot work
+    // on touch. It is shown unavailable WITH A REASON rather than silently
+    // broken or silently missing. Keyed on pointer, not width — the question is
+    // whether the device can drag precisely, which a narrow desktop window can
+    // and a wide tablet cannot.
+    const original = window.matchMedia;
+    const stub = (coarse) => (query) => ({
+      matches: query === MEDIA_COARSE_POINTER ? coarse : false,
+      media: query,
+      addEventListener() {}, removeEventListener() {},
+      addListener() {}, removeListener() {},
+      onchange: null, dispatchEvent: () => false,
+    });
+
+    try {
+      // Coarse pointer: disabled, and the reason is visible, not just a title.
+      window.matchMedia = stub(true);
+      const user = userEvent.setup();
+      const touch = render(<App />);
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      const snipTouch = screen.getByRole("menuitem", { name: /Snip a figure/ });
+      expect(snipTouch).toBeDisabled();
+      expect(snipTouch).toHaveTextContent(/needs a mouse/i);
+      expect(snipTouch.title).toMatch(/needs a mouse/i);
+      touch.unmount();
+
+      // Fine pointer: no mouse note, and the title reverts to the real reason
+      // it may still be unavailable (no PDF loaded yet).
+      window.matchMedia = stub(false);
+      render(<App />);
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      const snipMouse = screen.getByRole("menuitem", { name: /Snip a figure/ });
+      expect(snipMouse).not.toHaveTextContent(/needs a mouse/i);
+      expect(snipMouse.title).toMatch(/Load a PDF first/i);
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

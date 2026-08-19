@@ -9,7 +9,7 @@
 > state before any of this work. Cut 2026-08-19 at commit `79749a3`. `git checkout v0.5.0`, or roll
 > back the deployment from Cloudflare Pages. Verified by actually checking the tag out and back.
 >
-> **R1 + R2 + R2.5 + R3 shipped 2026-08-19.**
+> **All phases shipped 2026-08-19 (R1, R2, R2.5, R3, R4, R5).**
 
 ---
 
@@ -187,8 +187,8 @@ layout is restructured. One phase = one commit = one revert.
 | **R2** | Sidebar → drawer below 1120 px | med | returns 288 px to the matrix at every size below desktop — ✅ **Done** |
 | **R2.5** | Reclaim vertical space on phones | low | 36 % → **64 %** of a phone screen — ✅ **Done** |
 | **R3** | Matrix → card list below 700 px (CSS, not a second component) | ~~high~~ **low** | makes the phone genuinely usable — ✅ **Done** |
-| **R4** | Touch/mobile polish | low | 44 px targets, `-webkit-text-size-adjust`, safe-area insets, momentum scroll |
-| **R5** | Honest degradation | low | Snip hidden on touch with an explanation rather than silently broken |
+| **R4** | Touch/mobile polish | low | iOS input-zoom, safe-area insets, 40 px targets — ✅ **Done** |
+| **R5** | Honest degradation | low | Snip disabled on coarse pointer, with a stated reason — ✅ **Done** |
 
 **R1 is worth doing on its own even if nothing else follows**, because it fixes a real bug that affects
 people using the tool today on ordinary laptops.
@@ -383,6 +383,43 @@ Status stays a native `<select>` rather than the segmented control §3.2 imagine
 visible, editing/status/remarks/insert/delete all still work, roles present, labels rendered from
 `data-label`. At 1280 px the table is still a real table (`table-row`/`table-cell`, header
 visible, 77 px rows, drag grip active) and the sidebar matches its pre-responsive baseline exactly.
+
+---
+
+### R4 + R5 — shipped 2026-08-19
+
+**R4 — the real find was iOS input zoom, not padding.** iOS Safari zooms the whole page whenever a focused
+field has a font-size below 16 px, and then leaves it zoomed. **Seven of this app's field types were
+12–15 px**, including the requirement and remarks textareas tapped most in the review loop. That is a
+genuine mobile bug, not polish. Now **zero fields would trigger it**.
+
+Getting there took three cascade fixes, each found by measuring rather than assuming the edit had worked:
+
+1. The rule was first written with element selectors (`input, textarea, select`, specificity 0,0,1) and
+   lost to the existing class rules (0,1,0). Every affected class is now listed explicitly.
+2. The requirement field was pinned at 15 px by my own R3 rule (`.table-area td.c-req .cell-in`, 0,3,1).
+   Raised to 16 px — it reads the same.
+3. The remarks textarea carried an **inline** `fontSize: 14` in the JSX, which no stylesheet rule can
+   override. Moved into CSS (same value on desktop) so a media query can reach it — which then needed a
+   matching 0,2,0 selector to beat the rule I had just added.
+
+Also: `text-size-adjust: 100%` (stops iOS inflating text in landscape), transparent tap highlight,
+safe-area insets on the top bar, bottom bar and drawer, 40 px row-action targets, 20 px row checkbox.
+
+**R5 — Snip is disabled on a coarse pointer, with the reason visible.** Keyed on `(pointer: coarse)`,
+not on width: the question is whether the device can drag precisely, which a narrow desktop window can and
+a wide tablet cannot. The menu item carries a short visible note and a full explanation in its title,
+rather than being silently absent or silently broken. On a fine pointer nothing changes — the title reverts
+to the real reason it may be unavailable (no PDF loaded yet).
+
+**Verified:** typecheck exit 0, 134 tests, build green. At 375 px zero fields would zoom, Snip states its
+reason, other menu items unaffected. At 1280 px desktop font sizes are untouched (15/14/13 px exactly as
+before), Snip is enabled again, rows are still `table-row` at 77 px, and the sidebar matches its
+pre-responsive baseline.
+
+> ⚠️ **Still emulation, not a real device.** Chrome gets layout right but not iOS Safari's dynamic viewport,
+> its momentum scrolling, or the actual zoom behaviour. The 16 px threshold and the safe-area insets are
+> precisely the things that want confirming on real hardware.
 
 ---
 

@@ -25,3 +25,14 @@ export const MEDIA_PHONE = `(max-width: ${PHONE_MAX}px)`;
 export const isCompactWidth = (width: number): boolean => width <= COMPACT_MAX;
 /** True when the viewport width falls in the phone (card) range. */
 export const isPhoneWidth = (width: number): boolean => width <= PHONE_MAX;
+
+/**
+ * Coarse pointer — a finger or stylus rather than a mouse.
+ *
+ * Used to hide the figure-snip tool, which is a mouse drag-crop and cannot work
+ * on touch (A11Y_PLAN P4 records the keyboard gap; touch is the same problem).
+ * Deliberately a POINTER query, not a width one: the question is "can this
+ * device drag precisely", which a narrow desktop window can and a wide tablet
+ * cannot. RESPONSIVE_PLAN scope (a) makes Snip a stated desktop feature.
+ */
+export const MEDIA_COARSE_POINTER = "(pointer: coarse)";

@@ -1168,6 +1168,13 @@
         background: var(--sur2);
         border-radius: 3px;
       }
+      /* Remarks reads a touch smaller than the verbatim requirement. This was
+         an inline style on the textarea, which no media query could override —
+         so the phone rule that lifts fields to 16px (iOS zoom) silently lost to
+         it. Same value, now reachable. */
+      .c-rem .cell-in {
+        font-size: 14px;
+      }
       .cell-in::placeholder {
         color: var(--txt3);
         font-size: 11px;
@@ -2040,8 +2047,10 @@
           display: none;
         }
         .table-area td.c-req .cell-in {
-          font-size: 15px;
-          line-height: 1.55;
+          /* 16px, not 15: below 16 iOS Safari zooms the page on focus, and this
+             is the field tapped most. Reads the same at this size. */
+          font-size: 16px;
+          line-height: 1.5;
         }
 
         /* Category and Status pair on one line instead of claiming a block
@@ -2081,4 +2090,93 @@
         .table-area .row-grip {
           display: none;
         }
+      }
+
+      /* Touch and mobile-platform polish (RESPONSIVE_PLAN R4). */
+
+      html {
+        /* Stops iOS inflating text when a phone is rotated to landscape, which
+           silently breaks any layout tuned at portrait width. */
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      body {
+        /* The default flat blue flash on every tap looks like a rendering bug on
+           a dense form. Focus and active states already give feedback. */
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      @media (max-width: 699px) {
+        /* iOS Safari ZOOMS THE PAGE whenever a focused field has a font-size
+           below 16px, then leaves it zoomed — measured: 7 of this app's field
+           types were 12–15px, including the requirement and remarks textareas
+           that are tapped most. 16px is the threshold, not a preference.
+           The element selectors below are not enough on their own: every one of
+           these fields is styled by a CLASS rule (specificity 0,1,0) which beats
+           a bare element selector (0,0,1). They are listed explicitly so the
+           specificity matches and source order decides. */
+        input:not([type="checkbox"]):not([type="file"]),
+        textarea,
+        select,
+        .proj-input,
+        .verifier-input,
+        .model-sel,
+        .search-in,
+        .ref-in,
+        .cell-in,
+        .cat-sel,
+        .sts-sel,
+        .key-input,
+        .lib-add-input,
+        .lib-add-sel,
+        /* 0,2,0 to outrank the base .c-rem .cell-in rule, which is itself 0,2,0 —
+           source order then decides, and this comes later. */
+        .c-rem .cell-in {
+          font-size: 16px;
+        }
+
+        /* Respect the notch / home indicator rather than sitting under them. */
+        .topbar {
+          padding-left: max(12px, env(safe-area-inset-left));
+          padding-right: max(12px, env(safe-area-inset-right));
+        }
+        .bottom-bar {
+          padding-left: max(12px, env(safe-area-inset-left));
+          padding-right: max(12px, env(safe-area-inset-right));
+          padding-bottom: max(6px, env(safe-area-inset-bottom));
+        }
+        .sidebar {
+          padding-left: env(safe-area-inset-left);
+        }
+
+        /* 24px clears WCAG 2.5.8, but these are thumb targets on a card, and
+           there is room here that the desktop table did not have. */
+        .table-area .row-ins,
+        .table-area .row-del {
+          min-width: 40px;
+          min-height: 40px;
+        }
+        .table-area .row-check {
+          width: 20px;
+          height: 20px;
+        }
+
+        /* Momentum scrolling inside the matrix and the drawer. */
+        .table-area,
+        .sidebar {
+          -webkit-overflow-scrolling: touch;
+        }
+      }
+
+      /* Explains WHY a menu item is unavailable, rather than leaving a disabled
+         control with no reason (RESPONSIVE_PLAN R5). */
+      .tb-menu-note {
+        margin-left: auto;
+        padding-left: 10px;
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--txt3);
+        white-space: nowrap;
       }
