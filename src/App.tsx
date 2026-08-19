@@ -36,6 +36,7 @@ import {
   OCR_FEEDERS,
 } from "./lib/models";
 import { fetchWithRetry } from "./lib/net";
+import { MEDIA_COMPACT } from "./lib/breakpoints";
 import {
   DEFAULT_LIB,
   STATUS_OPTS,
@@ -78,6 +79,42 @@ import {
   matrixToJson,
   matrixFromJson,
 } from "./lib/storage";
+
+/**
+ * Subscribe to a CSS media query.
+ *
+ * The drawer needs this in JS as well as CSS because its *semantics* change
+ * with width, not just its looks: below the compact breakpoint the sidebar is a
+ * modal dialog (scrim, focus trap, Escape), and above it is just a column.
+ * Applying dialog roles unconditionally would mislabel the desktop layout.
+ * The query string comes from lib/breakpoints so it cannot drift from the CSS.
+ */
+function useMediaQuery(query) {
+  // matchMedia is guarded rather than assumed: jsdom does not implement it, so
+  // an unguarded call took down every App test at import time. Falling back to
+  // false means "assume the desktop layout" — the safe default, since the
+  // desktop path is the plain two-pane layout with no drawer semantics.
+  const supported =
+    typeof window !== "undefined" && typeof window.matchMedia === "function";
+  const [matches, setMatches] = useState(
+    () => (supported ? window.matchMedia(query).matches : false),
+  );
+  useEffect(() => {
+    if (!supported) return;
+    const mq = window.matchMedia(query);
+    const onChange = (e) => setMatches(e.matches);
+    setMatches(mq.matches); // resync in case the width changed before we subscribed
+    // addEventListener is the modern API; addListener is the deprecated one that
+    // some older WebKit builds still only expose.
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener?.(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener?.(onChange);
+    };
+  }, [query, supported]);
+  return matches;
+}
 
 // Full-screen "How to use" guide, opened from the top bar. Closes on the ✕, a
 // backdrop click, or Escape. Pure content (no app state), so it lives at module
@@ -1423,6 +1460,9 @@ function App() {
         };
 
         const applyLib = (item) => {
+          // The drawer covers the matrix on compact widths, so leaving it open
+          // would hide the very change this click just made. No-op on desktop.
+          setDrawerOpen(false);
           if (selectedRow !== null) {
             upd(selectedRow, "remarks", item.text);
             setSelectedRow(null);
@@ -1452,6 +1492,14 @@ function App() {
           setShowLibAdd(false);
         };
 
+        // Sidebar-as-drawer (RESPONSIVE_PLAN R2). Below 1120px the sidebar's
+        // 288px is 26% of a 1024px screen and 77% of a phone, so it stops being
+        // a column and becomes an off-canvas drawer.
+        const isCompact = useMediaQuery(MEDIA_COMPACT);
+        const [drawerOpen, setDrawerOpen] = useState(false);
+        const drawerToggleRef = useRef<HTMLButtonElement>(null);
+        const sidebarRef = useRef<HTMLDivElement>(null);
+
         // Top-bar overflow menu (RESPONSIVE_PLAN R1). The secondary actions live
         // here permanently rather than behind a media query: a single rendering
         // cannot drift from a duplicate, and the inline row did not fit even at
@@ -1462,6 +1510,47 @@ function App() {
 
         const [testStatus, setTestStatus] = useState(null); // null | 'testing' | 'ok' | 'fail'
         const [testMsg, setTestMsg] = useState("");
+
+        // Leaving compact width must not strand the drawer open — above the
+        // breakpoint the sidebar is a normal column again and `open` is
+        // meaningless, but a stale `true` would leave the scrim mounted.
+        useEffect(() => {
+          if (!isCompact && drawerOpen) setDrawerOpen(false);
+        }, [isCompact, drawerOpen]);
+
+        // Drawer is a modal dialog while compact: Escape closes it, focus moves
+        // into it on open and returns to the toggle on close. Matches the
+        // HelpModal / SnipModal / lightbox pattern already in this file.
+        useEffect(() => {
+          if (!drawerOpen || !isCompact) return;
+          const onKey = (e) => {
+            if (e.key === "Escape") setDrawerOpen(false);
+          };
+          document.addEventListener("keydown", onKey);
+          // Must skip HIDDEN focusables. The sidebar's first match is the
+          // display:none <input type=file> behind the upload zone, and focusing
+          // that silently does nothing — the drawer opened with focus still on
+          // the toggle, outside the dialog. offsetParent is null for anything
+          // display:none'd, which is exactly the case to reject here.
+          const focusables = [
+            ...(sidebarRef.current?.querySelectorAll(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            ) ?? []),
+          ].filter((el) => {
+            if (el.disabled) return false;
+            // Computed display/visibility rather than offsetParent. offsetParent
+            // is also null for position:fixed elements (a false negative), and
+            // it is null for EVERYTHING under jsdom, which does no layout — so
+            // the check would have been untestable as well as subtly wrong.
+            const cs = window.getComputedStyle(el);
+            return cs.display !== "none" && cs.visibility !== "hidden";
+          });
+          focusables[0]?.focus?.();
+          return () => {
+            document.removeEventListener("keydown", onKey);
+            drawerToggleRef.current?.focus?.();
+          };
+        }, [drawerOpen, isCompact]);
 
         // Close the overflow menu on Escape or an outside click. Escape is
         // checked before the outside-click handler so a keyboard user always has
@@ -1759,6 +1848,17 @@ function App() {
             )}
             {/* TOPBAR */}
             <div className="topbar">
+              <button
+                ref={drawerToggleRef}
+                className="btn btn-ghost btn-sm drawer-toggle"
+                onClick={() => setDrawerOpen((o) => !o)}
+                aria-label={drawerOpen ? "Close setup panel" : "Open setup panel"}
+                aria-expanded={drawerOpen}
+                aria-controls="app-sidebar"
+                title="Document, engine and response library"
+              >
+                ☰
+              </button>
               <div className="brand">
                 <div className="brand-pulse" />
                 <span className="brand-name">Nyarlathotep</span>
@@ -1956,7 +2056,21 @@ function App() {
 
             <div className="body">
               {/* SIDEBAR */}
-              <div className="sidebar">
+              {isCompact && drawerOpen && (
+                <div
+                  className="drawer-scrim"
+                  onClick={() => setDrawerOpen(false)}
+                  aria-hidden="true"
+                />
+              )}
+              <div
+                id="app-sidebar"
+                ref={sidebarRef}
+                className={`sidebar${drawerOpen ? " open" : ""}`}
+                {...(isCompact
+                  ? { role: "dialog", "aria-modal": true, "aria-label": "Setup panel" }
+                  : {})}
+              >
                 {/* PDF section */}
                 <div className="sb-sec">
                   <div className="sb-label">TOR Document</div>

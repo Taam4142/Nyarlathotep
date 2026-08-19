@@ -4,6 +4,7 @@ import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import App from "./App";
+import { MEDIA_COMPACT } from "./lib/breakpoints";
 
 // Minimal smoke coverage for App.tsx — the one large, untested UI surface
 // (everything in src/lib/* has its own pure-function unit tests already).
@@ -136,5 +137,53 @@ describe("App smoke tests", () => {
     expect(screen.getByRole("menu")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("the sidebar drawer opens, traps focus, and closes on Escape (compact widths)", async () => {
+    // jsdom has no matchMedia, so useMediaQuery falls back to "desktop" and the
+    // drawer semantics never engage. Stub it to report compact so this path is
+    // covered at all — without this the drawer would be verified only in a real
+    // browser, and nothing would catch a regression in CI.
+    const original = window.matchMedia;
+    window.matchMedia = (query) => ({
+      matches: query === MEDIA_COMPACT,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      onchange: null,
+      dispatchEvent: () => false,
+    });
+
+    try {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const toggle = screen.getByRole("button", { name: "Open setup panel" });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      // Closed: the sidebar exists but is not a dialog the user is inside.
+      expect(screen.queryByRole("dialog", { name: "Setup panel" })).toBeInTheDocument();
+
+      await user.click(toggle);
+      expect(screen.getByRole("button", { name: "Close setup panel" })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+
+      // Focus must land on a VISIBLE control inside the drawer. The first
+      // focusable descendant is a display:none file input; focusing that
+      // silently does nothing and strands focus outside the dialog.
+      const drawer = screen.getByRole("dialog", { name: "Setup panel" });
+      expect(drawer.contains(document.activeElement)).toBe(true);
+
+      await user.keyboard("{Escape}");
+      expect(screen.getByRole("button", { name: "Open setup panel" })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

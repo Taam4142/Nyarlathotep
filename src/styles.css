@@ -1718,6 +1718,9 @@
         .help-overlay {
           animation: none;
         }
+        .sidebar {
+          transition: none;
+        }
       }
 
       /* Visually-hidden text: available to screen readers and to axe's
@@ -1800,4 +1803,64 @@
         height: 1px;
         margin: 4px 6px;
         background: var(--bdr2);
+      }
+
+      /* Sidebar-as-drawer (RESPONSIVE_PLAN R2).
+         Above the breakpoint nothing here applies and the sidebar stays the
+         plain 288px column it has always been. Below it, that 288px is 26% of a
+         1024px screen and 77% of a phone, so it slides off-canvas instead. */
+      .drawer-toggle {
+        display: none;
+        font-size: 15px;
+        line-height: 1;
+        min-width: 32px;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .drawer-scrim {
+        position: fixed;
+        inset: 0;
+        background: var(--overlay);
+        /* Under the drawer (150), over everything else, below modals (200) —
+           a scrim must never sit on top of a dialog. */
+        z-index: 140;
+      }
+
+      @media (max-width: 1119px) {
+        .drawer-toggle {
+          display: inline-flex;
+        }
+        .sidebar {
+          position: fixed;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          /* Never wider than the screen it is covering. */
+          width: min(var(--sb), 86vw);
+          z-index: 150;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          border-right: 1px solid var(--bdr);
+          box-shadow: 0 0 40px -8px rgba(0, 0, 0, 0.35);
+          transform: translateX(-100%);
+          transition: transform 0.22s ease;
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+
+        /* The top bar wrapped to 5 rows (200px tall) at 375px because three
+           controls carry hard pixel widths -- project 220, verified-by 160,
+           engine 213 -- so each claimed a line of its own. Letting them flex
+           lets them share rows instead. Deliberately NOT moved into the drawer,
+           which the plan first suggested: that would mean a second rendering of
+           the same inputs, and a duplicate is exactly what risk V2 warns about.
+           Same markup, different sizing. */
+        .proj-input,
+        .verifier-input,
+        .model-sel {
+          width: auto;
+          flex: 1 1 140px;
+          min-width: 0;
+        }
       }

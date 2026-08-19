@@ -9,7 +9,7 @@
 > state before any of this work. Cut 2026-08-19 at commit `79749a3`. `git checkout v0.5.0`, or roll
 > back the deployment from Cloudflare Pages. Verified by actually checking the tag out and back.
 >
-> **R1 shipped 2026-08-19.**
+> **R1 + R2 shipped 2026-08-19.**
 
 ---
 
@@ -184,7 +184,7 @@ layout is restructured. One phase = one commit = one revert.
 | Phase | Change | Risk | Fixes |
 | --- | --- | --- | --- |
 | **R1** | Top-bar overflow menu + wrapping | **low** | the live desktop bug (§1.3) *and* 11 unreachable phone controls — ✅ **Done** |
-| **R2** | Sidebar → drawer below 1120 px | med | returns 288 px to the matrix at every size below desktop |
+| **R2** | Sidebar → drawer below 1120 px | med | returns 288 px to the matrix at every size below desktop — ✅ **Done** |
 | **R3** | Matrix → card list below 700 px | **high** | makes the phone genuinely usable |
 | **R4** | Touch/mobile polish | low | 44 px targets, `-webkit-text-size-adjust`, safe-area insets, momentum scroll |
 | **R5** | Honest degradation | low | Snip hidden on touch with an explanation rather than silently broken |
@@ -236,6 +236,43 @@ tests** cover the menu itself.
 ⚠️ **Still ugly on a phone, by design of the phasing.** At 375 px the bar wraps to ~200 px tall because the
 project-name and verified-by fields are still inline. R2 moves them into the drawer, which is what shrinks
 it. R1's promise was *reachable*, not *pretty*.
+
+---
+
+### R2 — shipped 2026-08-19
+
+Below 1120 px the sidebar slides off-canvas behind a ☰ toggle, over a scrim. Above it, nothing applies —
+the sidebar is the plain 288 px column it has always been.
+
+| At 375 px | before | after |
+| --- | ---: | ---: |
+| Matrix width | 87 px (23 % of screen) | **375 px (100 %)** |
+| Top-bar height | 200 px (R1) | **160 px** |
+
+The drawer is a real dialog while compact — `role="dialog"`, `aria-modal`, scrim, Escape, focus moves in
+and returns to the toggle on close — and **none of those semantics apply on desktop**, where it is just a
+column. That is why the breakpoint is mirrored in JS (`useMediaQuery`) and not only in CSS.
+
+The top-bar reduction came from letting the three hard-width controls flex, **not** from moving them into
+the drawer as §3.3 first suggested — moving them would mean a second rendering of the same inputs, which
+is exactly risk V2. Same markup, different sizing.
+
+**Three bugs found and fixed during verification**, each by a check that could have been skipped:
+
+1. **Focus never entered the drawer.** The first focusable descendant is the `display:none` file input
+   behind the upload zone; focusing it silently does nothing, so focus stayed on the toggle, outside the
+   dialog. Now filtered to visible controls.
+2. **The visibility filter used `offsetParent !== null`**, which is also null for `position:fixed`
+   elements (a false negative) and null for *everything* under jsdom, which does no layout — so it was
+   both subtly wrong and untestable. Switched to computed `display`/`visibility`.
+3. **`useMediaQuery` crashed every App test.** jsdom does not implement `matchMedia`. Now guarded,
+   falling back to the desktop layout when the environment cannot answer.
+
+**Verified:** typecheck exit 0, 130 tests, build green. Desktop measured against its pre-responsive
+baseline and byte-identical (sidebar 0,56 288×844; main 288,56 992×844; topbar 56 px; `position: static`;
+no dialog role; toggle hidden; no scrim). At 1024 and 375: drawer opens/closes via toggle, scrim and
+Escape; focus moves in and returns; no page overflow; every top-bar control reachable. A new jsdom test
+covers the drawer with a `matchMedia` stub, since without one that path is invisible to CI.
 
 ---
 
