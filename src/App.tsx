@@ -569,10 +569,16 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
+      role="row"
       className={`${selectedRow === row.id ? "sel-row" : ""}${selected ? " bulk-row" : ""}`}
       onClick={() => setSelectedRow(selectedRow === row.id ? null : row.id)}
     >
-      <td className="c-sel" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-sel"
+        role="cell"
+        data-label="Select"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p sel-cell">
           <input
             type="checkbox"
@@ -583,7 +589,12 @@ function SortableRow({
           />
         </div>
       </td>
-      <td className="c-no" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-no"
+        role="cell"
+        data-label="#"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p no-txt">
           {dragEnabled && (
             <button
@@ -602,7 +613,12 @@ function SortableRow({
           <span className="no-num">{index + 1}</span>
         </div>
       </td>
-      <td className="c-ref" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-ref"
+        role="cell"
+        data-label="Ref."
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p">
           <input
             className="ref-in"
@@ -613,7 +629,12 @@ function SortableRow({
           />
         </div>
       </td>
-      <td className="c-req" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-req"
+        role="cell"
+        data-label="Requirement"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p">
           <textarea
             className="cell-in"
@@ -661,7 +682,12 @@ function SortableRow({
         </div>
       </td>
       {showTr && (
-        <td className="c-tr" onClick={(e) => e.stopPropagation()}>
+        <td
+        className="c-tr"
+        role="cell"
+        data-label="Translation"
+        onClick={(e) => e.stopPropagation()}
+      >
           <div className="td-p">
             <textarea
               className="cell-in"
@@ -675,7 +701,12 @@ function SortableRow({
         </td>
       )}
       {showCat && (
-        <td className="c-cat" onClick={(e) => e.stopPropagation()}>
+        <td
+        className="c-cat"
+        role="cell"
+        data-label="Category"
+        onClick={(e) => e.stopPropagation()}
+      >
           <div className="td-p">
             <select
               className="cat-sel"
@@ -692,7 +723,12 @@ function SortableRow({
           </div>
         </td>
       )}
-      <td className="c-sts" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-sts"
+        role="cell"
+        data-label="Status"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p">
           <select
             className={`sts-sel sts-${row.status}`}
@@ -708,7 +744,12 @@ function SortableRow({
           </select>
         </div>
       </td>
-      <td className="c-rem" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-rem"
+        role="cell"
+        data-label="Remarks"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p">
           <textarea
             className="cell-in"
@@ -721,7 +762,12 @@ function SortableRow({
           />
         </div>
       </td>
-      <td className="c-del" onClick={(e) => e.stopPropagation()}>
+      <td
+        className="c-del"
+        role="cell"
+        data-label="Actions"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="td-p row-actions">
           <button
             className="row-ins"
@@ -1793,7 +1839,12 @@ function App() {
         const dupIds = useMemo(() => findDuplicateIds(rows), [rows]);
 
         // Bulk selection derived values + actions (F5).
-        const dragEnabled = filter === "all" && !query.trim();
+        // Drag-reorder is disabled on phones: the card layout sets display:block
+        // on the table elements, which breaks dnd-kit's transform-based
+        // measurement, and dragging a full-width card on touch is a poor
+        // interaction regardless. Disabling it while filtering/searching is an
+        // established pattern here (RESPONSIVE_PLAN risk V3).
+        const dragEnabled = filter === "all" && !query.trim() && !isPhone;
         const selectedCount = useMemo(
           () => rows.reduce((n, r) => n + (selectedIds.has(r.id) ? 1 : 0), 0),
           [rows, selectedIds],
@@ -3048,8 +3099,8 @@ function App() {
                         items={filtered.map((r) => r.id)}
                         strategy={verticalListSortingStrategy}
                       >
-                    <table>
-                      <thead>
+                    <table role="table">
+                      <thead role="rowgroup">
                         <tr>
                           <th className="c-sel" scope="col">
                             <input
@@ -3084,7 +3135,7 @@ function App() {
                           <th className="c-del" scope="col"><span className="sr-only">Row actions</span></th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody role="rowgroup">
                         {filtered.map((row, i) => (
                           <SortableRow
                             key={row.id}

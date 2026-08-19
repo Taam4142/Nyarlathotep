@@ -232,4 +232,35 @@ describe("App smoke tests", () => {
       window.matchMedia = original;
     }
   });
+
+  it("table semantics survive the phone card layout", async () => {
+    // R3 turns the table into cards with CSS (display:block), which strips a
+    // table's IMPLICIT ARIA roles in the accessibility tree. They are restored
+    // explicitly in the markup — this pins that, because the roles are
+    // invisible in normal use and a later cleanup could easily remove them as
+    // "redundant". They are only redundant while display is table-*.
+    const user = userEvent.setup();
+    render(<App />);
+    // The table only exists once there is a row — the empty state renders a
+    // placeholder instead, so asserting before this found nothing.
+    await user.click(screen.getByRole("button", { name: "+ Add Row" }));
+    const table = document.querySelector(".table-area table");
+    expect(table).toHaveAttribute("role", "table");
+    expect(document.querySelector(".table-area thead")).toHaveAttribute("role", "rowgroup");
+    expect(document.querySelector(".table-area tbody")).toHaveAttribute("role", "rowgroup");
+  });
+
+  it("every row cell carries the data-label the card layout renders", async () => {
+    // In card mode the column header row is hidden, and each cell shows its own
+    // label from data-label via a ::before. A cell missing the attribute would
+    // render an unlabelled value on a phone — invisible on desktop, so tested.
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "+ Add Row" }));
+
+    const cells = [...document.querySelectorAll("tbody tr td")];
+    expect(cells.length).toBeGreaterThan(4);
+    const missing = cells.filter((td) => !td.getAttribute("data-label"));
+    expect(missing.map((td) => td.className)).toEqual([]);
+  });
 });

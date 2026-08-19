@@ -5,6 +5,15 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Added
+- **The app now works on a phone.** Previously the matrix got 87 px of a 375 px screen (23 %) and only 2 of
+  13 top-bar controls could be reached at all. Now: the sidebar is an off-canvas drawer below 1120 px, the
+  top bar never clips, and below 700 px **the matrix renders as a card list** — one card per requirement,
+  with the verbatim text full-width and readable at 15 px, Category and Status paired, and no sideways
+  scrolling. The matrix holds **64 % of a phone screen** (about 70 % once the restored-session notice is
+  dismissed). Desktop is unchanged at every step, measured against its pre-responsive baseline.
+  Full detail and the measurements in [`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md).
+
 ### Fixed
 - **Top-bar controls are no longer clipped away** (RESPONSIVE_PLAN R1). The bar needed 1505 px of width
   but sits inside an `overflow: hidden` container with no scroll, so anything past the viewport was

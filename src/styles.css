@@ -1930,3 +1930,155 @@
         width: 100%;
         min-width: 0;
       }
+
+      /* Phone: the matrix becomes a card list (RESPONSIVE_PLAN R3, option B).
+         The table needs 817px of column widths; at 375px that meant 442px of
+         sideways scrolling, with the Requirement field starting off-screen at
+         x=131 and Status further right again — so reading a requirement and
+         setting its status sat at different scroll positions, which is the
+         review loop itself.
+
+         Done as CSS on the EXISTING markup rather than a second card component.
+         One rendering cannot drift from a duplicate, which is the divergence
+         risk (V2) the plan flags as the highest in this work. The trades: the
+         table's implicit ARIA roles are lost to display:block and are restored
+         explicitly in App.tsx, and Status stays a native <select>, which on
+         touch opens a large OS picker and is no worse than a bespoke segmented
+         control.
+
+         The row is a FLEX container, not stacked blocks. Stacking every cell
+         full-width produced a 396px card — barely one per screen — because
+         Category and Status each burned ~46px on a label above a 28px control.
+         Flex lets them pair on one line. */
+      @media (max-width: 699px) {
+        .table-area table,
+        .table-area thead,
+        .table-area tbody,
+        .table-area td {
+          display: block;
+          width: auto;
+        }
+        .table-area thead {
+          display: none;
+        }
+        .table-area table {
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+
+        .table-area tr {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 2px 10px;
+          margin: 0 0 10px;
+          padding: 8px 12px 10px;
+          background: var(--sur1);
+          border: 1px solid var(--bdr);
+          border-radius: var(--r-md);
+        }
+        .table-area tr.sel-row {
+          border-color: var(--accent-bdr);
+          box-shadow: 0 0 0 2px var(--accent-soft);
+        }
+
+        /* Full width by default; specific cells opt out below. */
+        .table-area td {
+          flex: 1 1 100%;
+          padding: 2px 0;
+          border: none;
+        }
+        .table-area td::before {
+          content: attr(data-label);
+          display: block;
+          margin-bottom: 2px;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--txt3);
+        }
+
+        /* Identity strip: checkbox, number and ref share the first line, with
+           the row actions pushed to its right end. */
+        .table-area td.c-sel,
+        .table-area td.c-no,
+        .table-area td.c-ref,
+        .table-area td.c-del {
+          flex: 0 0 auto;
+          padding: 0;
+        }
+        .table-area td.c-sel::before,
+        .table-area td.c-del::before {
+          display: none;
+        }
+        .table-area td.c-no::before,
+        .table-area td.c-ref::before {
+          display: inline;
+          margin: 0 4px 0 0;
+        }
+        .table-area td.c-no .td-p,
+        .table-area td.c-ref .td-p {
+          display: inline;
+        }
+        .table-area td.c-ref .ref-in {
+          width: 5.5em;
+        }
+        /* margin-left:auto rather than float — float would force display:block
+           and drop the cell out of the flex line entirely. */
+        .table-area td.c-del {
+          margin-left: auto;
+        }
+
+        /* The requirement is the thing being read: full width, no label, and
+           the largest type in the card. */
+        .table-area td.c-req {
+          flex: 1 1 100%;
+          padding-top: 2px;
+        }
+        .table-area td.c-req::before {
+          display: none;
+        }
+        .table-area td.c-req .cell-in {
+          font-size: 15px;
+          line-height: 1.55;
+        }
+
+        /* Category and Status pair on one line instead of claiming a block
+           each — this is where most of the 396px went. */
+        .table-area td.c-cat,
+        .table-area td.c-sts {
+          flex: 1 1 calc(50% - 5px);
+        }
+
+        .table-area td .cell-in,
+        .table-area td .ref-in,
+        .table-area td .sts-sel,
+        .table-area td .cat-sel {
+          width: 100%;
+          box-sizing: border-box;
+        }
+        /* Flex order, so the actions cell joins the identity line instead of
+           wrapping to a line of its own at the bottom. DOM order puts it last,
+           after the wide cells, so without this it always lands alone. */
+        .table-area td.c-sel { order: 1; }
+        .table-area td.c-no  { order: 2; }
+        .table-area td.c-ref { order: 3; }
+        .table-area td.c-del { order: 4; }
+        .table-area td.c-req { order: 5; }
+        .table-area td.c-tr  { order: 6; }
+        .table-area td.c-cat { order: 7; }
+        .table-area td.c-sts { order: 8; }
+        .table-area td.c-rem { order: 9; }
+
+        /* Remarks is usually empty during a first pass and was claiming 94px.
+           Smaller resting height; it still grows as the user types. */
+        .table-area td.c-rem .cell-in {
+          min-height: 34px;
+        }
+
+        /* Inert here — drag is disabled at this width. */
+        .table-area .row-grip {
+          display: none;
+        }
+      }

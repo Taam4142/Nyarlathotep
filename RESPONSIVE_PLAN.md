@@ -9,7 +9,7 @@
 > state before any of this work. Cut 2026-08-19 at commit `79749a3`. `git checkout v0.5.0`, or roll
 > back the deployment from Cloudflare Pages. Verified by actually checking the tag out and back.
 >
-> **R1 + R2 + R2.5 shipped 2026-08-19.**
+> **R1 + R2 + R2.5 + R3 shipped 2026-08-19.**
 
 ---
 
@@ -186,7 +186,7 @@ layout is restructured. One phase = one commit = one revert.
 | **R1** | Top-bar overflow menu + wrapping | **low** | the live desktop bug (§1.3) *and* 11 unreachable phone controls — ✅ **Done** |
 | **R2** | Sidebar → drawer below 1120 px | med | returns 288 px to the matrix at every size below desktop — ✅ **Done** |
 | **R2.5** | Reclaim vertical space on phones | low | 36 % → **64 %** of a phone screen — ✅ **Done** |
-| **R3** | Matrix → card list below 700 px | **high** | makes the phone genuinely usable |
+| **R3** | Matrix → card list below 700 px (CSS, not a second component) | ~~high~~ **low** | makes the phone genuinely usable — ✅ **Done** |
 | **R4** | Touch/mobile polish | low | 44 px targets, `-webkit-text-size-adjust`, safe-area insets, momentum scroll |
 | **R5** | Honest degradation | low | Snip hidden on touch with an explanation rather than silently broken |
 
@@ -340,6 +340,49 @@ better end state, but it changes the layout model — the matrix currently scrol
 with a sticky header, which would need rethinking — and that is meaningful risk for a target the cheaper
 approach already clears. Kept as a follow-up to consider once the compacted version has been used in
 anger.
+
+---
+
+### R3 — shipped 2026-08-19, and done differently than planned
+
+**The plan said bespoke card JSX. That was the wrong call, and the plan was revised before building.**
+
+§3.2 assumed cards required a second rendering — a card component swapped in below 700 px. But that is
+precisely risk **V2**, the divergence the whole phase list has been arranged to avoid: a fix landing on the
+table row and not the card. The classic CSS responsive-table pattern gets the same result on the *existing*
+markup, where a duplicate is structurally impossible.
+
+| At 375 px | before | after |
+| --- | ---: | ---: |
+| Table intrinsic width | 817 px | **370 px — fits** |
+| Sideways scrolling | **442 px** | **none** |
+| Requirement field | 261 px wide, starting off-screen at x=131 | **321 px, starts at x=25, fully visible, 15 px** |
+| Card/row height | 77 px (unreadable) | 311 px (readable) |
+
+Before R3, reading a requirement and setting its status sat at *different horizontal scroll positions* —
+the review loop itself was broken.
+
+**The card is a flex row, not stacked blocks.** Stacking every cell full-width gave a 396 px card, barely
+one per screen, because Category and Status each spent ~46 px on a label above a 28 px control. Flex pairs
+them on one line, and `order` pulls the row-actions cell up onto the identity strip instead of leaving it
+stranded on a line of its own. 396 → 351 → **311 px**.
+
+**Two things the CSS route costs, both handled rather than accepted:**
+
+1. `display:block` strips a table's *implicit* ARIA roles. Restored explicitly
+   (`role="table"/"rowgroup"/"row"/"cell"`) and pinned by a test — those attributes look redundant on
+   desktop and a later cleanup could plausibly delete them.
+2. Drag-reorder is disabled at phone width: `display:block` breaks dnd-kit's transform measurement, and
+   dragging a full-width card on touch is poor anyway. Disabling it while filtering/searching was already
+   an established pattern (risk V3).
+
+Status stays a native `<select>` rather than the segmented control §3.2 imagined. That was a design
+*opinion* written into the plan, never measured; on touch a `<select>` opens a large OS-native picker.
+
+**Verified:** typecheck exit 0, 133 tests, build green. At 375 px: no sideways scroll, requirement fully
+visible, editing/status/remarks/insert/delete all still work, roles present, labels rendered from
+`data-label`. At 1280 px the table is still a real table (`table-row`/`table-cell`, header
+visible, 77 px rows, drag grip active) and the sidebar matches its pre-responsive baseline exactly.
 
 ---
 
