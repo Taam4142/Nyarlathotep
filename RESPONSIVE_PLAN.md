@@ -2,6 +2,8 @@
 
 > Status: **plan only, nothing implemented.** Written 2026-08-18 after the engineer reported the app is
 > "not functional at all" on mobile. Every number below is measured on the running app, not estimated.
+>
+> **Scope settled 2026-08-18: option (a), review-focused** — see §7.
 
 ---
 
@@ -219,22 +221,28 @@ both widths.
 
 ---
 
-## 7. The open decision
+## 7. Scope decision — **settled: (a) review-focused**
 
-**How far should mobile go?**
+Decided by the engineer, 2026-08-18.
 
-- **(a) Review-focused — recommended.** Upload, extract, review, export all work; Snip and side-by-side
-  column comparison are stated desktop features. Covers the valuable phone task without pretending a
-  drag-crop works on touch.
-- **(b) Full parity.** Everything works everywhere, including a touch-capable Snip. Materially more work,
-  for a use case (cropping a figure on a phone) that is rare and awkward regardless.
-- **(c) Fix the clipping only.** Ship R1 alone; the app stops hiding controls but the phone layout stays
-  a 23 %-wide column. Cheapest, and leaves the tool unusable on a phone.
+**Mobile targets the review workflow.** Upload, extract, review (set status + remarks), and export all
+work on a phone. Snip and side-by-side column comparison remain stated desktop features.
 
-Everything in §4 is written for (a). Choosing (b) adds a phase for touch Snip; choosing (c) stops after
-R1.
+The reasoning behind the recommendation, kept for whoever reads this later: the valuable phone task is
+working through the matrix setting statuses — that is triage, it is the longest and most tedious part of
+the job, and it suits a phone well. Cropping a figure on a phone is rare and awkward regardless of how
+much work is put into it, and `Snip` is a mouse drag-crop already known to be mouse-only
+(`A11Y_PLAN.md` P4). Shipping a control that cannot work on touch is worse than saying plainly that it
+is a desktop feature.
 
----
+Rejected alternatives:
+
+- **(b) Full parity** — adds a phase for a touch-capable Snip, for a use case that stays awkward even
+  when it works.
+- **(c) Fix the clipping only** — ships R1 alone. The app would stop hiding controls, but the phone layout
+  would remain a 23 %-wide column, i.e. still unusable for the task mobile is actually good at.
+
+Everything in §4 is already written for (a), so the phase list stands as-is: **R1 → R2 → R3 → R4 → R5**.
 
 ## 8. Out of scope
 
