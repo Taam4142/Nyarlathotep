@@ -84,7 +84,6 @@ describe("stylesheet token parsing", () => {
  */
 const KNOWN_FAILURES: Record<string, string> = {
   // Light + dark
-  "--txt3 on --sur3": "Phase B — help tags; 3.71:1 light",
   "--comply on --comply-bg": "Phase C — status pill; 4.22:1 light",
   "--partial on --partial-bg": "Phase C — status pill; 4.16:1 light",
   "--notcomply on --notcomply-bg": "Phase C — status pill; 3.93:1 light",

@@ -48,10 +48,18 @@
         --bdr3: #d7dbe4;
         --txt: #1c2030;
         --txt2: #5a6376;
-        /* Accessibility P3b: darkened from #98a1b3 (2.60:1 on --sur1, fails
-           AA) to clear WCAG AA's 4.5:1 for normal text — same hue, derived
-           and verified at claude.ai/code/artifact/5fa56804-72b5-4a3f-9b1e-421ce6117f00 (4.51:1). */
-        --txt3: #6a7790;
+        /* Tertiary text. Darkened twice:
+             #98a1b3 -> #6a7790  (P3b, 2026-08-05) — but verified against --sur1
+                                 (white) ONLY, so it still failed on --sur0/2/3
+                                 and the key panel. That gap is why
+                                 DESIGN_TOKENS.md exists.
+             #6a7790 -> #5d697f  (2026-08-18) — derived against EVERY surface
+                                 this token actually lands on. Worst case is
+                                 --sur3 (.help-tag) at 4.56:1; best is --sur1
+                                 at 5.54:1. --sur4 is excluded on purpose: it
+                                 is the scrollbar thumb and carries no text.
+           Enforced by src/lib/contrast.test.ts — do not change without it. */
+        --txt3: #5d697f;
 
         /* Legacy aliases so existing var(--amber*) refs resolve to the accent */
         --amber: var(--accent);
@@ -110,10 +118,15 @@
           --bdr3: rgba(255, 255, 255, 0.14);
           --txt: #e7e9f0;
           --txt2: #a3adc0;
-          /* Accessibility P3b: lightened from #6b7484 (3.70:1 on --sur1,
-             fails AA) to clear 4.5:1 — same hue, derived and verified at
-             claude.ai/code/artifact/5fa56804-72b5-4a3f-9b1e-421ce6117f00 (4.56:1). */
-          --txt3: #7a8393;
+          /* Tertiary text, dark. Same two-step story as the light token:
+             #6b7484 -> #7a8393 (P3b) passed on --sur1 (4.56:1) but failed on
+             --sur2 (4.16:1) and --sur3 (3.71:1).
+             #7a8393 -> #8a92a0 (2026-08-18) clears every dark surface that
+             carries text; worst case is --sur3 (.help-tag) at 4.52:1.
+             NB: a first attempt at #818998 was derived against --sur1/--sur2
+             only and still failed --sur3 at 4.03:1 — the same omission as P3b,
+             caught by src/lib/contrast.test.ts before it shipped. */
+          --txt3: #8a92a0;
 
           --comply: #4ade80;
           --comply-bg: rgba(34, 197, 94, 0.14);
