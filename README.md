@@ -149,4 +149,5 @@ what's planned.
 | `A11Y_PLAN.md`               | Accessibility audit, phased plan, and a11y risk register.      |
 | `LIGHTHOUSE_AUDIT.md`        | Lighthouse baseline (2026-08-07), findings, what shipped, and what awaits sign-off. |
 | `DESIGN_TOKENS.md`           | **Canonical palette + sizing reference**: every colour token, the real contrast matrix, target sizes, and the rules that govern changes. |
+| `RESPONSIVE_PLAN.md`         | Mobile/responsive plan — what breaks below 1500px (incl. a live desktop bug), the breakpoint design, and phasing. |
 | `CHANGELOG.md`               | Version history.                                               |
