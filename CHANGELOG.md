@@ -5,7 +5,34 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+_Nothing yet. Next up: the responsive/mobile work in [`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md)._
+
+## [0.5.0] — 2026-08-19
+
+**Checkpoint release: the last state before the responsive/mobile rewrite begins.** Cut deliberately so
+there is a clean point to return to if that work is unwanted or goes wrong — the same reason `v0.4.0`
+was cut before the accessibility pass. To roll back: `git checkout v0.5.0`, or redeploy this tag from
+Cloudflare Pages.
+
+Accessibility is complete for its scope in this release: the contrast guard's allowlist is **empty**, and
+every `color`/`background` pairing in the stylesheet clears WCAG AA in both themes.
+
+
 ### Added
+- **Automated contrast guard** (`src/lib/contrast.ts` + `contrast.test.ts`, 17 tests) — reads
+  `styles.css` and asserts every real `color`/`background` pairing clears WCAG AA in both themes.
+  It exists because a Lighthouse score structurally cannot catch this class of bug: Lighthouse audits the
+  DOM present at audit time, so anything behind a closed modal, an inactive filter or an unshown banner is
+  invisible to it. The maths is anchored against published WCAG reference pairs before any result is
+  trusted. It found three dark-theme failures on its first run that neither the audit nor a manual review
+  had spotted — including the primary action button at 4.47:1.
+- **[`DESIGN_TOKENS.md`](DESIGN_TOKENS.md)** — canonical reference for every colour token and
+  interactive size: full light/dark tables, the generated contrast matrix, measured target sizes, and the
+  invariants that govern changes (notably that `STAT_COLORS` is shared with the Excel export and must
+  never be edited to fix an on-screen problem).
+- **[`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md)** and **[`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md)** —
+  the 2026-08-07 audit baseline with its findings and phasing, and the measured mobile/responsive plan
+  (nothing implemented yet).
 - **Tooltips + clearer labels on the engine pickers** — the top-bar extraction-engine dropdown and the
   scanned-PDF OCR-feeder buttons (under Claude/Gemini) now show a one-line "why pick this" summary on
   hover, and the Claude/Gemini options in the top-bar dropdown gained a short suffix (`— Paid API` /
@@ -31,10 +58,10 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
     UI is English — Thai is field content).
   - `prefers-reduced-motion` now stops/slows the brand pulse, progress bar, spinner, and modal fade for
     users who've set that OS preference; unchanged for everyone else.
-  - **Secondary text darkened to pass AA contrast** (P3b, approved after viewing a live comparison —
-    ratios computed in-page, not estimated): `--txt3` light `#98a1b3`→`#6a7790` (2.60:1→4.51:1), dark
-    `#6b7484`→`#7a8393` (3.70:1→4.56:1). One token, ~27 call sites update automatically — labels, stat
-    labels, the search match-count, the Snip page counter, row numbers, hint text, placeholders.
+  - **Secondary text darkened to pass AA contrast** (P3b): `--txt3` light `#98a1b3`→`#6a7790`,
+    dark `#6b7484`→`#7a8393`. One token, ~27 call sites. **Superseded later in this same release** —
+    those values were verified against white only and still failed the other four surfaces; see the
+    contrast entry below for the corrected ones.
 - **UI smoke tests** — `src/App.test.tsx` (Testing Library + jsdom, 6 tests): renders; key controls have
   accessible names; add row; edit a cell; bulk status-set; undo; search. The first automated coverage of
   `App.tsx`, which previously had none (the existing 84 tests cover only `src/lib/*`). 90 tests total.
@@ -46,9 +73,9 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
   no longer header-less, and a new `.sr-only` utility exists for that purpose. Added
   `public/robots.txt` — there was none, so `/robots.txt` fell through to the SPA and returned
   `index.html`, which Lighthouse parsed as 19 robots syntax errors — and a `<meta name="description">`.
-  Together these take SEO 82 → 100 and Accessibility 90 → ~93. The remaining accessibility items
-  (colour contrast, touch-target size) are visible design changes staged for sign-off; see
-  [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md) §5.
+  Together these take SEO 82 → 100 and Accessibility 90 → ~93. The remaining items (colour contrast,
+  touch-target size) were visible design changes and shipped separately after sign-off — see the contrast
+  and target-size entries below.
 - **Build now emits source maps** (`vite.config.ts`) so production stack traces are readable. No secret
   is exposed: the source is public and all keys live server-side in Cloudflare env vars.
 - **Corrected the deploy URL throughout the docs** — the live site is `nyarlathotep-a6o.pages.dev`; the
@@ -67,6 +94,23 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
   (library-add end-to-end, file/JSON-load buttons). Full detail in `ROADMAP.md` #5.
 
 ### Fixed
+- **Colour contrast now clears WCAG AA everywhere, in both themes.** Three separate fixes, all with the
+  ratios measured in-browser against real composited backgrounds rather than estimated:
+  - `--txt3` (tertiary text) light `#6a7790`→`#5d697f`, dark `#7a8393`→`#8a92a0`. The
+    earlier P3b values were verified against white alone and still failed the other four surfaces.
+  - **Every status colour failed on its own tint** — one root cause with 13 symptoms across the status
+    pills, active filter buttons, help tags and alert banners. `--comply`→`#127136`,
+    `--partial`/`--warn`→`#9e4908`, `--notcomply`/`--danger`→`#bb2020`,
+    `--na`→`#546175`. Measured after: 5.08–5.20, up from 3.93–4.22.
+  - A dark-theme accent conflict with no single-value solution: two selectors used the accent as *text*
+    (needing it lighter) while the primary button uses it as a *fill* under white text (needing it
+    darker). Resolved semantically — the text usages now point at `--accent-text`, which already
+    existed for that role, freeing the fill colour to darken.
+  - The library card label no longer draws from `STAT_COLORS`: 2.03:1 → 5.45:1, **and** it finally
+    follows the dark theme instead of showing light-theme greens. Excel exports are unchanged.
+- **Undersized tap targets** — three controls raised to the WCAG 2.2 minimum of 24×24 (the library remove
+  button was 7.6×15.2). Two others were measured as exempt under the criterion's spacing rule and left
+  alone rather than visibly enlarging a checkbox for no gain. Row height and table width are unchanged.
 - **Tesseract (Browser OCR) no longer leaks memory for the rest of the session** (RISK_REVIEW R12) — the
   worker is now terminated after every run instead of being created once and held forever; the Thai/English
   language pack stays cached separately, so this doesn't bring back the old "re-download every time"
