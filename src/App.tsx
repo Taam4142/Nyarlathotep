@@ -2491,8 +2491,7 @@ function App() {
                       <div className="lib-item-top">
                         <div>
                           <div
-                            className="lib-item-label"
-                            style={{ color: STAT_COLORS[item.status] }}
+                            className={`lib-item-label lib-label-${item.status}`}
                           >
                             {item.label}
                           </div>

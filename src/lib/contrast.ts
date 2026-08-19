@@ -59,6 +59,43 @@ export function compositeOver(rgba: string, background: string): string | null {
 }
 
 /**
+ * Strip `/* … *\/` comments.
+ *
+ * Not cosmetic — required for correctness. A comment that happens to contain
+ * `--token: some prose;` is otherwise picked up as a real token definition.
+ * That is exactly what happened when a comment explaining the `--amber` fix was
+ * added: it read as a definition of `--amber` whose value was the sentence, and
+ * every dark-theme ratio involving the accent silently became unresolvable.
+ */
+export function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/**
+ * Slice out the `@media (prefers-color-scheme: dark)` block by brace matching.
+ *
+ * Also correctness, not tidiness: taking everything from the media query to the
+ * end of the file (the obvious shortcut) drags in every ordinary rule that
+ * follows it, so any `--token: value;` further down the stylesheet would be
+ * mistaken for a dark-theme override.
+ */
+function darkBlock(css: string): { start: number; body: string } | null {
+  const at = css.search(/@media[^{]*prefers-color-scheme:\s*dark/);
+  if (at === -1) return null;
+  const open = css.indexOf("{", at);
+  if (open === -1) return null;
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}") {
+      depth--;
+      if (depth === 0) return { start: at, body: css.slice(open + 1, i) };
+    }
+  }
+  return null;
+}
+
+/**
  * Collect custom-property definitions from a CSS source.
  *
  * `scope` picks which block to read: "light" takes the first (bare `:root`)
@@ -66,9 +103,10 @@ export function compositeOver(rgba: string, background: string): string | null {
  * `prefers-color-scheme: dark` block and falls back to the light value.
  */
 export function parseTokens(css: string, scope: "light" | "dark" = "light"): Record<string, string> {
-  const darkStart = css.search(/@media[^{]*prefers-color-scheme:\s*dark/);
+  const src = stripComments(css);
+  const dark = darkBlock(src);
   const region =
-    scope === "dark" && darkStart !== -1 ? css.slice(darkStart) : css.slice(0, darkStart === -1 ? undefined : darkStart);
+    scope === "dark" && dark ? dark.body : src.slice(0, dark ? dark.start : undefined);
 
   const out: Record<string, string> = {};
   for (const m of region.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+);/g)) {
@@ -77,7 +115,7 @@ export function parseTokens(css: string, scope: "light" | "dark" = "light"): Rec
     if (!(name in out)) out[name] = value;
   }
   // Dark blocks only redefine some tokens; inherit the rest from light.
-  if (scope === "dark" && darkStart !== -1) {
+  if (scope === "dark" && dark) {
     const light = parseTokens(css, "light");
     for (const [k, v] of Object.entries(light)) if (!(k in out)) out[k] = v;
   }
@@ -134,7 +172,10 @@ export function extractPairings(
   const base = compositeBase ?? tokens["--sur0"] ?? "#ffffff";
   const out: Pairing[] = [];
 
-  for (const block of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  // Comments must go before rule matching too: a commented-out or merely
+  // discussed `color: var(--x)` inside a block would otherwise be read as a
+  // live declaration.
+  for (const block of stripComments(css).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = block[1].trim().split("\n").pop()!.trim();
     const body = block[2];
     const cm = body.match(/(?:^|[\s;])color:\s*var\((--[\w-]+)\)/);

@@ -195,10 +195,10 @@ one commit = one `git revert`.
 
 | Phase | Change | Visual risk | Closes | Status |
 | --- | --- | --- | --- | --- |
-| **A** | Contrast regression guard (unit test over `styles.css`) | **none** | prevents recurrence | — |
-| **B** | `--txt3`, light + dark | low | 1 pairing, ~27 sites | — |
-| **C** | Status colour system + `lib-item-label` decoupling | **medium** | 13 pairings | **needs sign-off** |
-| **D** | 5 interactive targets → 24×24 | **none** (measured) | 5 controls | — |
+| **A** | Contrast regression guard (unit test over `styles.css`) | **none** | prevents recurrence | ✅ **Done** |
+| **B** | `--txt3`, light + dark | low | 1 pairing, ~27 sites | ✅ **Done** |
+| **C** | Status colour system + `lib-item-label` decoupling | **medium** | 13 light + 3 dark | ✅ **Done — 2026-08-18** |
+| **D** | 5 interactive targets → 24×24 | **none** (measured) | 3 resized, 2 exempt | ✅ **Done** |
 
 ### Phase A — the regression guard, deliberately first
 
@@ -225,7 +225,7 @@ Two token values (light `#6a7790` → `#5d697f`, dark `#7a8393` → `#818998`). 
 call sites update automatically. Visible effect: tertiary text (column headers, section labels,
 placeholders, counters) gets slightly darker in light mode and slightly lighter in dark.
 
-### Phase C — the status colour system ⚠️ needs sign-off
+### Phase C — the status colour system ✅ Done
 
 The systemic one: **every status colour fails AA on its own tint** — one root cause, 14 symptoms
 (`.sts-*`, `.f-*.on`, `.help-tag-*`, `.alert-err`, `.alert-warn`, `.row-del:hover`). Proposed values in

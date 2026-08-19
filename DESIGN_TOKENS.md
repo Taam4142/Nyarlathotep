@@ -37,11 +37,11 @@ Status legend: ✅ meets WCAG AA · ❌ fails · 🔶 proposed, not yet applied.
 | `--accent-fg` | `#ffffff` | Text on an accent fill |
 | `--accent-soft` / `--accent-soft2` / `--accent-bdr` | `rgba(79,70,229, .08/.14/.32)` | Accent tints |
 | `--focus` | `rgba(79,70,229,.35)` | Focus glow |
-| `--comply` | `#15803d` ❌ | Status: comply |
-| `--partial` | `#b45309` ❌ | Status: partial |
-| `--notcomply` | `#dc2626` ❌ | Status: not comply |
-| `--na` | `#64748b` ❌ | Status: N/A |
-| `--warn` / `--info` / `--danger` | `#b45309` / `#4338ca` / `#dc2626` | Banner semantics |
+| `--comply` | `#127136` ✅ | Status: comply |
+| `--partial` | `#9e4908` ✅ | Status: partial |
+| `--notcomply` | `#bb2020` ✅ | Status: not comply |
+| `--na` | `#546175` ✅ | Status: N/A |
+| `--warn` / `--info` / `--danger` | `#9e4908` / `#4338ca` / `#bb2020` ✅ | Banner semantics |
 | `--*-bg` / `--*-bdr` | `rgba(…, .08–.32)` | Matching tint + border per status |
 | `--overlay` | `rgba(246,247,249,.82)` | Modal scrim |
 
@@ -55,7 +55,7 @@ pre-redesign `var(--amber)` references keep working.
 | `--sur0` | `#0f1117` | `--txt` | `#e7e9f0` |
 | `--sur1` | `#171a21` | `--txt2` | `#a3adc0` |
 | `--sur2` | `#1e222c` | `--txt3` | `#8a92a0` ✅ |
-| `--sur3` | `#262b36` | `--accent` | `#6366f1` |
+| `--sur3` | `#262b36` | `--accent` | `#5f62e7` ✅ |
 | `--sur4` | `#333a47` | `--accent-text` | `#a5b4fc` |
 | `--comply` | `#4ade80` | `--partial` | `#fbbf24` |
 | `--notcomply` | `#f87171` | `--na` | `#94a3b8` |
@@ -78,8 +78,11 @@ pre-redesign `var(--amber)` references keep working.
 It is also **not theme-aware** (one palette, both themes), so anything drawing text from it shows
 light-theme colours in dark mode. Current on-screen uses:
 
-- `App.tsx` `lib-item-label` — **text**, `#22c55e` on `--sur2` = **2.03:1** ❌
-- `App.tsx` `stat-dot` — a decorative swatch, not text. Fine.
+- ~~`App.tsx` `lib-item-label`~~ — **no longer reads from STAT_COLORS** (Phase C). It now uses
+  `.lib-item-label.lib-label-*` classes bound to the theme tokens: 2.03:1 → **5.45:1** measured on the
+  real card background, and it finally follows the dark theme instead of showing light-theme greens.
+- `App.tsx` `stat-dot` — the one remaining on-screen use. A decorative swatch, not text, so it
+  carries no contrast obligation; left on `STAT_COLORS` so it stays consistent with the Excel export.
 
 ---
 
@@ -90,37 +93,38 @@ pairings that **actually occur**, not a cartesian product. Translucent backgroun
 over the page. Produced by `src/lib/contrast.ts` and enforced by `src/lib/contrast.test.ts` — the
 numbers below are generated, not maintained by hand.
 
-**Current: 28 pairings per theme · 13 failing in light · 3 failing in dark** (9 distinct token pairs, all
-Phase C). `--txt3` is no longer among them — Phase B fixed it in both themes.
+**Current: 28 pairings per theme · 0 failing in light · 0 failing in dark.** The guard's allowlist is
+**empty** as of 2026-08-18 (Phase C). Every `color`/`background` pairing in the stylesheet clears
+WCAG AA in both themes.
 
-### 2.1 Still failing — light theme
+### 2.1 What Phase C fixed
 
-| Selector | text | on | ratio |
-| --- | --- | --- | ---: |
-| `.f-comply.on` · `.sts-comply` · `.help-tag-free` | `--comply` | `--comply-bg` | 4.22 ❌ |
-| `.f-partial.on` · `.sts-partial` · `.help-tag-paid` | `--partial` | `--partial-bg` | 4.16 ❌ |
-| `.alert-warn` | `--warn` | `--warn-bg` | 4.16 ❌ |
-| `.alert-err` | `--notcomply` | `--danger-bg` | 3.99 ❌ |
-| `.f-na.on` · `.sts-na` | `--na` | `--na-bg` | 3.94 ❌ |
-| `.f-notcomply.on` · `.sts-notcomply` · `.row-del:hover` | `--notcomply` | `--notcomply-bg` | 3.93 ❌ |
+**Light — the systemic one.** Every status colour was used as text on its own matching tint and every one
+failed (3.47–3.74:1 worst case). One root cause, 13 symptoms across `.sts-*`, `.f-*.on`,
+`.help-tag-*`, `.alert-err` and `.alert-warn`. Fixed by darkening the six tokens; measured
+in-browser against the real composited pill backgrounds afterwards:
 
-**The systemic finding: every status colour fails on its own tint.** One root cause, 13 symptoms — not 13
-separate bugs.
+| Pill | before | after |
+| --- | ---: | ---: |
+| comply `#127136` on `#e0efe8` | 4.22 ❌ | **5.12** ✅ |
+| partial `#9e4908` on `#f3e8dc` | 4.16 ❌ | **5.08** ✅ |
+| not comply `#bb2020` on `#f4e4e6` | 3.93 ❌ | **5.12** ✅ |
+| N/A `#546175` on `#e7eaee` | 3.94 ❌ | **5.20** ✅ |
 
-### 2.2 Still failing — dark theme only
+Dark status colours needed no change — they already ran 5.68–9.01.
 
-Found by the Phase A guard on its first run. Neither the Lighthouse audit (which ran in light mode) nor the
-manual stylesheet review had caught these. All three pass comfortably in light and fail only in dark,
-because the dark accent `#6366f1` is lighter than the light accent `#4f46e5`.
+**Dark — an accent conflict that had no chromatic solution.** Three failures pulled in opposite
+directions: `.row-ins:hover` (3.17) and `.f-all.on` (3.69) used `--accent` as *text* on a dark
+surface and needed it **lighter**, while `.btn-amber` put white on `--accent` as a *fill* (4.47) and
+needed it **darker**. No single value satisfies both.
 
-| Selector | text | on | dark | light |
-| --- | --- | --- | ---: | ---: |
-| `.btn-amber` — the primary action button | `--on-amber` | `--amber` | 4.47 ❌ | 6.29 ✅ |
-| `.f-all.on` — active "All" filter | `--amber` | `--amber-bg` | 3.69 ❌ | 5.23 ✅ |
-| `.row-ins:hover` — insert-row glyph | `--accent` | `--sur3` | 3.17 ❌ | 5.17 ✅ |
+The fix was semantic, not chromatic: the two text usages were pointed at `--accent-text`, the token that
+already existed for exactly that role (→ 7.11 and 8.26), leaving `--accent` free to darken slightly for
+the fill (→ **4.79**, measured live). `--accent` in dark is now used only as fill/border, never as text.
 
-Font sizes were checked before recording these — 13px/600, 11px/600 and a 16px glyph — so all three are
-normal text owing the full 4.5:1. The large-text 3:1 allowance does not apply.
+> `#5f62e7` was chosen over the minimum passing nudge `#6265ef` (4.54). Landing 0.04 above a
+> threshold is gaming it; 4.79 leaves room for future tweaks, and the fill still sits at 3.94:1 against
+> `--sur0` so the button reads as a distinct shape.
 
 ### 2.3 `--txt3` against every surface it lands on
 
@@ -147,10 +151,10 @@ over-report and force an unnecessarily dark token.
 | --- | --- | --- | ---: |
 | `--txt3` light | `#6a7790` | `#5d697f` ✅ **applied** | 4.56 |
 | `--txt3` dark | `#7a8393` | `#8a92a0` ✅ **applied** | 4.52 |
-| `--comply` | `#15803d` | `#127136` | 4.55 |
-| `--partial` / `--warn` | `#b45309` | `#9e4908` | 4.51 |
-| `--notcomply` / `--danger` | `#dc2626` | `#bb2020` | 4.52 |
-| `--na` | `#64748b` | `#546175` | 4.62 |
+| `--comply` | `#15803d` | `#127136` ✅ **applied** | 4.55 |
+| `--partial` / `--warn` | `#b45309` | `#9e4908` ✅ **applied** | 4.51 |
+| `--notcomply` / `--danger` | `#dc2626` | `#bb2020` ✅ **applied** | 4.52 |
+| `--na` | `#64748b` | `#546175` ✅ **applied** | 4.62 |
 
 Library-label colours, if that component switches off `STAT_COLORS` (worst across all five light
 surfaces): comply `#147839` · partial `#a94e08` · notcomply `#ca2323` · na `#5b6a7e`.
@@ -250,11 +254,9 @@ modal, a hover, an active state, or an error condition needs checking against th
 
 ## 6. Current state
 
-**Applied:** `--txt3` in both themes (Phase B) and three target sizes (Phase D).
-**Still proposed:** the status-colour system in §2.4 — Phase C, held for sign-off because those are the
-app's most semantically loaded colours. Live values are as listed in §1.
+**All of §2.4 is applied.** The contrast guard's allowlist is empty: 28 pairings per theme, zero failing,
+both themes. Phases A (guard), B (`--txt3`), C (status + accent) and D (target sizes) have all landed.
 
-The Phase A guard (`src/lib/contrast.test.ts`) now enforces §2 automatically, with the remaining
-Phase C failures in an explicit allowlist that shrinks to empty when C lands. The accessibility score
-on the deployed site is ~93 after the Batch 1 fixes (landmark, table header, plus the SEO and security work
-in [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md)); closing §2 and §3.2 is what remains.
+`src/lib/contrast.test.ts` enforces §2 automatically on every push, and covers two pairings the
+extractor structurally cannot see — the library label and the primary button — because their colour and
+background are declared on separate rules.

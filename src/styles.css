@@ -68,25 +68,31 @@
         --amber-bg2: var(--accent-soft2);
         --on-amber: var(--accent-fg);
 
-        /* Semantic status — kept distinct from the accent hue */
-        --comply: #15803d;
+        /* Semantic status — kept distinct from the accent hue.
+           Darkened 2026-08-18 (a11y Phase C): each of these is used as TEXT on
+           its own matching tint (.sts-*, .f-*.on, .help-tag-*, .alert-*), and
+           every one failed AA there — 3.47 to 3.74:1. Derived against the tint
+           composited over all four light surfaces, so the worst real case
+           clears 4.5. Values are hue-preserving, lightness-only.
+           Enforced by src/lib/contrast.test.ts. */
+        --comply: #127136;
         --comply-bg: rgba(22, 163, 74, 0.1);
         --comply-bdr: rgba(22, 163, 74, 0.28);
-        --partial: #b45309;
+        --partial: #9e4908;
         --partial-bg: rgba(217, 119, 6, 0.12);
         --partial-bdr: rgba(217, 119, 6, 0.3);
-        --notcomply: #dc2626;
+        --notcomply: #bb2020;
         --notcomply-bg: rgba(220, 38, 38, 0.09);
         --notcomply-bdr: rgba(220, 38, 38, 0.28);
-        --na: #64748b;
+        --na: #546175;
         --na-bg: rgba(100, 116, 139, 0.1);
         --na-bdr: rgba(100, 116, 139, 0.26);
-        --warn: #b45309;
+        --warn: #9e4908;
         --warn-bg: rgba(217, 119, 6, 0.12);
         --info: #4338ca;
         --info-bg: rgba(79, 70, 229, 0.08);
         --info-bdr: rgba(79, 70, 229, 0.3);
-        --danger: #dc2626;
+        --danger: #bb2020;
         --danger-bg: rgba(220, 38, 38, 0.08);
 
         --overlay: rgba(246, 247, 249, 0.82);
@@ -99,7 +105,12 @@
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --accent: #6366f1;
+          /* Darkened 2026-08-18 (a11y Phase C): .btn-amber puts white text on
+             this as a FILL and only reached 4.47:1. Now 4.79:1 — chosen with
+             margin rather than the minimum nudge that would scrape 4.51. Still
+             3.94:1 against --sur0 and 3.64:1 against --sur1, so the button
+             remains a clearly distinguishable shape. */
+          --accent: #5f62e7;
           --accent-strong: #818cf8;
           --accent-text: #a5b4fc;
           --accent-fg: #ffffff;
@@ -521,6 +532,24 @@
         margin-bottom: 4px;
         flex: 1;
       }
+      /* Status colour for the library card label. Declared AFTER .lib-item-label
+         on purpose: both are single-class selectors (specificity 0,1,0), so
+         source order decides, and .lib-item-label sets color: var(--txt2).
+         Placed before it, these silently lost the cascade and the label stayed
+         grey — caught by reading the computed colour rather than trusting the
+         edit.
+
+         Reads the theme-aware tokens rather than STAT_COLORS
+         (src/lib/constants.ts), which is one hard-coded palette shared with the
+         Excel export (xlsx.ts:103): recolouring it would have changed exported
+         workbooks, and it showed light-theme greens in dark mode. Sits on
+         .lib-item's --sur2 background; contrast asserted explicitly in
+         contrast.test.ts, since the guard only sees rules that declare colour
+         and background together and these are on separate rules. */
+      .lib-item-label.lib-label-comply { color: var(--comply); }
+      .lib-item-label.lib-label-partial { color: var(--partial); }
+      .lib-item-label.lib-label-notcomply { color: var(--notcomply); }
+      .lib-item-label.lib-label-na { color: var(--na); }
       .lib-item-text {
         font-size: 13px;
         color: var(--txt2);
@@ -708,7 +737,9 @@
       }
       .f-all.on {
         border-color: var(--amber);
-        color: var(--amber);
+        /* --accent-text, not --amber: accent-coloured TEXT on a tint.
+           Was 3.69:1 in dark; now 8.26:1. */
+        color: var(--accent-text);
         background: var(--amber-bg);
       }
       .f-comply.on {
@@ -1245,7 +1276,9 @@
         justify-content: center;
       }
       .row-ins:hover {
-        color: var(--accent);
+        /* --accent-text, not --accent: this is accent-coloured TEXT on a
+           surface, not an accent fill. Was 3.17:1 in dark; now 7.11:1. */
+        color: var(--accent-text);
         background: var(--sur3);
       }
       .no-txt {

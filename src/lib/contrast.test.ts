@@ -11,6 +11,7 @@ import {
   resolveToken,
   extractPairings,
   pairingKey,
+  stripComments,
 } from "./contrast";
 
 const CSS = fs.readFileSync(path.resolve(__dirname, "../styles.css"), "utf8");
@@ -64,6 +65,40 @@ describe("stylesheet token parsing", () => {
     expect(t["--r-md"]).toBe("8px"); // not redefined -> inherited from light
   });
 
+  it("ignores token-shaped text inside comments (regression)", () => {
+    // This is not hypothetical. A comment added while fixing --amber read
+    //     /* --accent-text, not --amber: ... Was 3.69:1 in dark; ... */
+    // and the parser matched "--amber: ... ;" INSIDE it as a real definition,
+    // so every dark accent ratio silently became unresolvable.
+    const css = `
+      :root { --real: #ffffff; }
+      /* --fake: this sentence ends with a semicolon; and should be ignored */
+      .x { color: var(--real); }
+    `;
+    const t = parseTokens(css, "light");
+    expect(t["--real"]).toBe("#ffffff");
+    expect(t["--fake"]).toBeUndefined();
+  });
+
+  it("reads the dark block only, not the rest of the file after it (regression)", () => {
+    // Taking css.slice(darkStart) drags in every rule that follows the media
+    // query, so an ordinary later declaration would masquerade as a dark override.
+    const css = `
+      :root { --tone: #111111; }
+      @media (prefers-color-scheme: dark) {
+        :root { --tone: #eeeeee; }
+      }
+      .later { --tone: #ff0000; }
+    `;
+    expect(parseTokens(css, "dark")["--tone"]).toBe("#eeeeee");
+    expect(parseTokens(css, "light")["--tone"]).toBe("#111111");
+  });
+
+  it("stripComments removes comments without disturbing declarations", () => {
+    expect(stripComments("a{/* x */color:red;}").trim()).toBe("a{color:red;}");
+    expect(stripComments("/* multi\nline */b{}").trim()).toBe("b{}");
+  });
+
   it("follows var() aliases (the legacy --amber* -> accent indirection)", () => {
     const t = parseTokens(CSS, "light");
     expect(resolveToken(t["--amber"], t, "#ffffff")).toBe(t["--accent"]);
@@ -83,21 +118,12 @@ describe("stylesheet token parsing", () => {
  * Never add an entry to make a failure go away without recording why.
  */
 const KNOWN_FAILURES: Record<string, string> = {
-  // Light + dark
-  "--comply on --comply-bg": "Phase C — status pill; 4.22:1 light",
-  "--partial on --partial-bg": "Phase C — status pill; 4.16:1 light",
-  "--notcomply on --notcomply-bg": "Phase C — status pill; 3.93:1 light",
-  "--na on --na-bg": "Phase C — status pill; 3.94:1 light",
-  "--warn on --warn-bg": "Phase C — warning banner; 4.16:1 light",
-  "--notcomply on --danger-bg": "Phase C — error banner; 3.99:1 light",
-
-  // Dark-theme only. Found by this guard on its first run — neither the
-  // Lighthouse audit (which ran in light mode) nor the manual review caught
-  // them. All three pass comfortably in light and fail only in dark, because
-  // the dark accent (#6366f1) is lighter than the light one (#4f46e5).
-  "--on-amber on --amber": "Phase C — primary button, white on dark accent; 4.47:1 dark (light 6.29)",
-  "--amber on --amber-bg": "Phase C — active 'All' filter; 3.69:1 dark (light 5.23)",
-  "--accent on --sur3": "Phase C — insert-row hover glyph; 3.17:1 dark (light 5.17)",
+  // Empty — every pairing in styles.css now clears AA in both themes.
+  //
+  // It reached empty on 2026-08-18 when Phase C landed. Adding an entry here is
+  // a deliberate act: it must name the phase or decision that will retire it,
+  // and the stale-entry test below will fail once the pairing is fixed, forcing
+  // the line to be removed rather than left to rot.
 };
 
 describe("styles.css contrast guard (DESIGN_TOKENS.md §2)", () => {
@@ -126,6 +152,36 @@ describe("styles.css contrast guard (DESIGN_TOKENS.md §2)", () => {
     );
     const stale = Object.keys(KNOWN_FAILURES).filter((k) => !failingNow.has(k));
     expect(stale).toEqual([]);
+  });
+
+  it("library status labels clear AA on the card background they sit on", () => {
+    // The extractor only sees rules that declare colour AND background together.
+    // Here they are split: .lib-item sets background: var(--sur2), while
+    // .lib-label-* set the colour. That pairing is real but invisible to the
+    // guard, so it is asserted explicitly.
+    for (const scope of ["light", "dark"] as const) {
+      const t = parseTokens(CSS, scope);
+      for (const status of ["comply", "partial", "notcomply", "na"]) {
+        const fg = t["--" + status];
+        const ratio = contrastRatio(fg, t["--sur2"]);
+        expect(
+          ratio,
+          `${scope} .lib-label-${status}: ${fg} on --sur2 ${t["--sur2"]}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    }
+  });
+
+  it("white text on the accent fill clears AA in both themes (.btn-amber)", () => {
+    // Also split across rules: .btn-amber sets both, but via the --amber alias,
+    // and this is the pairing that forced the dark accent to be darkened. Pinned
+    // so a future accent tweak cannot quietly re-break the primary button.
+    for (const scope of ["light", "dark"] as const) {
+      const t = parseTokens(CSS, scope);
+      const fill = resolveToken(t["--amber"], t, t["--sur0"]);
+      const fg = resolveToken(t["--on-amber"], t, t["--sur0"]);
+      expect(contrastRatio(fg!, fill!), `${scope}: ${fg} on ${fill}`).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
   it("--sur4 carries no text (excluded from the matrix by design)", () => {
