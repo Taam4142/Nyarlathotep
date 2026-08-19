@@ -125,12 +125,34 @@ risks solving a problem that doesn't exist in practice. Must stay extract-only +
 ### 7. Optional
 - **P5** — ESLint + `eslint-plugin-jsx-a11y` + axe. Note this means **introducing ESLint from scratch**
   (the project has no config and no `lint` script), so it's larger than "add a plugin."
-- **Turn on `strict`/`noImplicitAny`** in `tsconfig.json` — the genuinely large, high-risk undertaking #5's
-  original estimate was picturing (see #5's closing note). `App.tsx` no longer carries `@ts-nocheck`, but
-  the config itself is still loose, so this is a live option, not a blocked one — just not attempted, since
-  its cost (likely 100+ new errors, phased multi-commit work) hasn't been weighed against its benefit
-  (catching whole classes of future bugs) with the engineer. Would need the same "measure first" approach
-  that made #5 tractable: a dry-run error count before committing to a plan.
+- **Turn on `strict`/`noImplicitAny`** in `tsconfig.json` — **measured 2026-08-19: 5 errors, all in
+  `src/App.test.tsx`, zero in application code.**
+
+  This row previously called it "the genuinely large, high-risk undertaking… likely 100+ new errors, phased
+  multi-commit work." **That was wrong**, and it was written without measuring — the same mistake the
+  `@ts-nocheck` row made before it (estimated Large/High, actually 13 errors and one commit). Measured
+  properly this time, by editing the real `tsconfig.json`, running `tsc`, and restoring it:
+
+  | Setting | Errors | Where |
+  | --- | ---: | --- |
+  | baseline (as shipped) | 0 | — |
+  | `noImplicitAny` alone | 9 | test files only |
+  | `strictNullChecks` alone | 0 | — |
+  | **full `strict`** | **5** | `App.test.tsx` only |
+
+  All five are `TS7006`/`TS7018` implicit-any parameters in the `matchMedia` stubs written during the
+  responsive work. **Nothing in `src/lib/*` or `App.tsx` fails**, because the libs were typed from the
+  start and `App.tsx` was cleaned when `@ts-nocheck` came off.
+
+  > ⚠️ **Measurement trap worth recording.** Setting `"strict": true` alone reports **0** errors, because
+  > the config also carries an explicit `"noImplicitAny": false` that survives and overrides what
+  > `strict` implies. The honest number needs `noImplicitAny` removed so it inherits. An earlier probe
+  > also silently measured *nothing* because Git Bash's `/tmp` and Node's `C:\\tmp` are different
+  > directories, so the config was never actually modified — every run reported the baseline and looked
+  > like a clean pass.
+
+  So this is roughly an hour, not a phased project. Still the engineer's call, but the cost argument for
+  deferring it no longer holds.
 - **npm audit** — 2 moderate advisories, both **pre-existing, dev-only, transitive**: `esbuild` (via
   vitest's own toolchain) and `uuid` (via `exceljs`). Neither ships to the browser. Fixing either needs a
   **breaking major bump** (vitest 4.x / exceljs 3.x) — an engineer decision, not a silent change.
