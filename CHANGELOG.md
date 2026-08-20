@@ -5,11 +5,24 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.6.0] — 2026-08-20
+
+**The app works on a phone.** All six phases of [`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md) shipped, and
+this is the checkpoint *with* mobile — the counterpart to `v0.5.0`, which was cut deliberately as the
+last state *before* it. Roll back to whichever suits: `git checkout v0.6.0` (or `v0.5.0`), or
+redeploy either tag from Cloudflare Pages.
+
+Desktop was re-measured against its pre-responsive baseline after **every** phase and never changed —
+sidebar 0,56 288×844; main 288,56 992×844; top bar 56 px; rows `table-row` at 77 px.
+
+
 ### Added
 - **The app now works on a phone.** Previously the matrix got 87 px of a 375 px screen (23 %) and only 2 of
   13 top-bar controls could be reached at all. Now: the sidebar is an off-canvas drawer below 1120 px, the
   top bar never clips, and below 700 px **the matrix renders as a card list** — one card per requirement,
-  with the verbatim text full-width and readable at 15 px, Category and Status paired, and no sideways
+  with the verbatim text full-width at 16 px, Category and Status paired, and no sideways
   scrolling. The matrix holds **64 % of a phone screen** (about 70 % once the restored-session notice is
   dismissed). Desktop is unchanged at every step, measured against its pre-responsive baseline.
   Full detail and the measurements in [`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md).

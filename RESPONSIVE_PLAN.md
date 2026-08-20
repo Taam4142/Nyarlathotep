@@ -1,13 +1,18 @@
 # RESPONSIVE_PLAN.md — making Nyarlathotep work below 1500px
 
-> Status: **plan only, nothing implemented.** Written 2026-08-18 after the engineer reported the app is
-> "not functional at all" on mobile. Every number below is measured on the running app, not estimated.
+> Status: **complete — all phases shipped 2026-08-19**, live and verified on the deployed site.
+> Written 2026-08-18 after the engineer reported the app was "not functional at all" on mobile. Every
+> number in this document is measured on the running app, not estimated.
 >
 > **Scope settled 2026-08-18: option (a), review-focused** — see §7.
 >
 > **Rollback point: [`v0.5.0`](https://github.com/Taam4142/Nyarlathotep/releases/tag/v0.5.0)** — the last
 > state before any of this work. Cut 2026-08-19 at commit `79749a3`. `git checkout v0.5.0`, or roll
 > back the deployment from Cloudflare Pages. Verified by actually checking the tag out and back.
+>
+> **Checkpoint *after* this work: [`v0.6.0`](https://github.com/Taam4142/Nyarlathotep/releases/tag/v0.6.0)**
+> — the known-good state *with* mobile. Until it was cut, the only named checkpoint predated all of this,
+> so any rollback would have discarded the responsive work wholesale.
 >
 > **All phases shipped 2026-08-19 (R1, R2, R2.5, R3, R4, R5).**
 
