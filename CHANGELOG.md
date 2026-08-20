@@ -5,6 +5,42 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+_Nothing yet. Next: geometric wrapped-line detection in the digital extraction
+path — see the "Known issue" note below._
+
+## [0.6.1] — 2026-08-20
+
+**Checkpoint before changing how the digital path splits requirements into rows.**
+Cut so there is a clean point to return to, since that change touches extraction —
+the one area where a regression corrupts the actual deliverable rather than just
+the UI.
+
+### Fixed
+- **Clause references written with spaced dots are now read correctly.** Found by
+  running the real extraction path over three published Thai government TORs (45
+  pages). Those documents write clause numbers as `๓ . ๑` rather than `๓.๑` —
+  that is how the text layer comes out of the word processors they are authored in —
+  and the pattern required the dot immediately after the digit. So every sub-clause
+  matched only its first component: in one document, clauses ๓.๑ through ๓.๗ **all
+  carried ref "๓"**, leaving seven distinct requirements indistinguishable in the one
+  column whose job is tracing a row back to the source. The requirement text itself
+  was and remains byte-for-byte verbatim.
+
+### Changed
+- **TypeScript `strict` mode is on.** The roadmap had called this a large,
+  high-risk undertaking likely to produce 100+ errors — written without measuring.
+  Measured, it was **5**, all in one test file, none in application code. Nothing in
+  the app changed; the compiler is simply stricter about what lands next.
+
+### Known issue (being addressed next)
+- **The digital path over-splits wrapped requirements.** A clause that wraps across
+  several PDF lines becomes several rows: measured at ~30 rows per page on real
+  documents, where only a quarter to a half carry a real clause reference and the
+  rest are sentence fragments. This affects the **default** configuration — Typhoon
+  on a digital PDF reads the text layer directly — so it is not limited to the no-AI
+  mode. The fix uses line geometry, which the extractor already has and currently
+  discards.
+
 ### Changed
 - **TypeScript `strict` mode is on.** The roadmap had called this "the genuinely large, high-risk
   undertaking… likely 100+ new errors, phased multi-commit work" — written without measuring. Measured, it
