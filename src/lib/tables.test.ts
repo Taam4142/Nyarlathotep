@@ -69,9 +69,36 @@ describe("rowToLine", () => {
     expect(rowToLine(rows[0], b)).toBe("3.2 — PLC controller — Siemens S7-1500");
   });
 
-  it("is a plain space-join when there are no boundaries (prose)", () => {
-    const row = [cell(20, 100, "just"), cell(60, 100, "a"), cell(80, 100, "line")];
+  it("space-joins words that are separated by a real gap (prose)", () => {
+    // Widths chosen so the cells genuinely do not touch, which is what a space
+    // between words looks like geometrically. The previous version of this test
+    // used the default width of 40 at x = 20/60/80, which made the cells OVERLAP
+    // (60 + 40 = 100 > 80) — impossible for real text, and it only passed because
+    // rowToLine used to insert a space between every pair regardless of position.
+    const row = [
+      cell(20, 100, "just", 30), // 20..50
+      cell(58, 100, "a", 8), //     58..66   (8pt gap before it)
+      cell(74, 100, "line", 30), //  74..104 (8pt gap before it)
+    ];
     expect(rowToLine(row, [])).toBe("just a line");
+  });
+
+  it("does NOT insert a space between items that abut (regression: a mangled currency figure)", () => {
+    // pdf.js splits a run of text wherever the PDF's own operators split it,
+    // which in real Thai documents happens INSIDE a token: "2,000,000.-" arrives
+    // as several abutting items. Rejoining every pair with a space turned a
+    // budget of two million baht into "2,000, 000. -" — corruption of the very
+    // field the verbatim law protects.
+    //
+    // Observed 2026-08-20 on a published Thai government TOR (page 2 of the
+    // RMUTSV CCTV tender).
+    const row = [
+      cell(100, 200, "2,000,", 24), // 100..124
+      cell(124, 200, "000.", 16), //   124..140, touching
+      cell(140, 200, "-", 4), //       140..144, touching
+      cell(152, 200, "บาท", 20), //    152..172, a real gap before it
+    ];
+    expect(rowToLine(row, [])).toBe("2,000,000.- บาท");
   });
 });
 

@@ -87,6 +87,29 @@ export function columnOf(x: number, boundaries: number[]): number {
  * `sep` is inserted only when moving into a later column. With no boundaries
  * this is a plain space-join, so prose is unchanged.
  */
+/**
+ * Are two cells touching, i.e. was there no space between them in the document?
+ *
+ * pdf.js splits a run of text into items wherever the PDF's own text-showing
+ * operators split it, which for Thai documents routinely happens INSIDE a token:
+ * "2,000,000.-" arrives as several items. The whitespace items that represent
+ * real spaces are filtered out before this point, so rejoining every pair with a
+ * space turned that figure into "2,000, 000. -" — a budget of two million baht,
+ * corrupted in the requirement field the verbatim law exists to protect.
+ *
+ * Geometry answers it exactly: consecutive items of one token abut, while a real
+ * space leaves a gap of roughly a quarter em or more. The threshold is a fraction
+ * of the glyph height rather than an absolute, so it holds at any font size.
+ *
+ * Found 2026-08-20 against three published Thai government TORs.
+ */
+function adjacent(a: RowCell, b: RowCell): boolean {
+  if (!a) return false;
+  const gap = b.x - (a.x + a.width);
+  const em = a.height || b.height || 10;
+  return gap < em * 0.18;
+}
+
 export function rowToLine(
   row: RowCell[],
   boundaries: number[],
@@ -98,12 +121,20 @@ export function rowToLine(
     .sort((a, b) => a.x - b.x);
   let line = "";
   let prevCol = -1;
+  let prev: RowCell | null = null;
   for (const c of cells) {
     const col = boundaries.length ? columnOf(c.x, boundaries) : 0;
     if (prevCol === -1) line = c.str;
+    // Adjacency outranks the column boundary. Boundaries are inferred from the
+    // x-positions of OTHER rows on the page, so one can land in the middle of a
+    // token that happens to straddle it — which is how "2,000,000.-" became
+    // "2,000, — 000.-". If two items physically touch they are one token, and
+    // nothing belongs between them.
+    else if (adjacent(prev!, c)) line += c.str;
     else if (col > prevCol) line += sep + c.str;
     else line += " " + c.str;
     prevCol = col;
+    prev = c;
   }
   // Collapse runs of spaces without touching the sep's spacing.
   return line.replace(/ {2,}/g, " ").trim();
