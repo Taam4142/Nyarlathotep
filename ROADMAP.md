@@ -125,7 +125,7 @@ risks solving a problem that doesn't exist in practice. Must stay extract-only +
 ### 7. Optional
 - **P5** — ESLint + `eslint-plugin-jsx-a11y` + axe. Note this means **introducing ESLint from scratch**
   (the project has no config and no `lint` script), so it's larger than "add a plugin."
-- **Turn on `strict`/`noImplicitAny`** in `tsconfig.json` — **measured 2026-08-19: 5 errors, all in
+- ~~**Turn on `strict`/`noImplicitAny`**~~ — ✅ **Done 2026-08-20.** Measured 2026-08-19: 5 errors, all in
   `src/App.test.tsx`, zero in application code.**
 
   This row previously called it "the genuinely large, high-risk undertaking… likely 100+ new errors, phased

@@ -5,7 +5,14 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+- **TypeScript `strict` mode is on.** The roadmap had called this "the genuinely large, high-risk
+  undertaking… likely 100+ new errors, phased multi-commit work" — written without measuring. Measured, it
+  was **5 errors**, all in a single test file, **none in application code**: `src/lib/*` was typed from
+  the start and `App.tsx` was cleaned when `@ts-nocheck` came off. All five were typed properly
+  (`ReturnType<typeof userEvent.setup>`, `MediaQueryList`) rather than silenced with `any`,
+  which would have left the checker enabled and the benefit switched off. Nothing in the app changed; the
+  compiler is simply stricter about what lands next.
 
 ## [0.6.0] — 2026-08-20
 

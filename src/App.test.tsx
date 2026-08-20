@@ -33,7 +33,7 @@ afterEach(cleanup);
 // producing flaky failures. Clicking "+ Row" through this helper waits past
 // that window before the test does anything else, so every test's typing
 // always lands in the field it explicitly targeted.
-async function addRow(user) {
+async function addRow(user: ReturnType<typeof userEvent.setup>) {
   // Uses the always-visible "+ Add Row" beneath the table rather than the
   // top-bar "+ Row", which moved into the overflow menu (RESPONSIVE_PLAN R1).
   // Both call the same addRow() handler; this one keeps these tests focused on
@@ -195,7 +195,7 @@ describe("App smoke tests", () => {
     // this pins that property so a later refactor cannot quietly reintroduce a
     // second copy.
     const original = window.matchMedia;
-    const stub = (phone) => (query) => ({
+    const stub = (phone: boolean) => (query: string): MediaQueryList => ({
       matches: phone ? true : query === MEDIA_COMPACT,
       media: query,
       addEventListener() {}, removeEventListener() {},
@@ -271,7 +271,7 @@ describe("App smoke tests", () => {
     // whether the device can drag precisely, which a narrow desktop window can
     // and a wide tablet cannot.
     const original = window.matchMedia;
-    const stub = (coarse) => (query) => ({
+    const stub = (coarse: boolean) => (query: string): MediaQueryList => ({
       matches: query === MEDIA_COARSE_POINTER ? coarse : false,
       media: query,
       addEventListener() {}, removeEventListener() {},
