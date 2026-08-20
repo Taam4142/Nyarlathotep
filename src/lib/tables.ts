@@ -6,6 +6,8 @@
 // together. Column boundaries must recur across ≥2 rows to count, so a lone wide
 // gap in ordinary prose is never treated as a column.
 
+import { startsWithClauseRef } from "./clauseref";
+
 export interface RowCell {
   x: number;
   y: number;
@@ -138,4 +140,81 @@ export function rowToLine(
   }
   // Collapse runs of spaces without touching the sep's spacing.
   return line.replace(/ {2,}/g, " ").trim();
+}
+
+/** Right-hand edge of a row of cells. */
+const rowRight = (row: RowCell[]): number =>
+  Math.max(...row.map((c) => c.x + c.width), 0);
+
+/** Left-hand edge of a row of cells. */
+const rowLeft = (row: RowCell[]): number => Math.min(...row.map((c) => c.x));
+
+/** Representative glyph height for a row, used to scale the thresholds. */
+const rowEm = (row: RowCell[]): number =>
+  row.find((c) => c.height)?.height ?? 10;
+
+/**
+ * Join lines that are continuations of the line above into single entries.
+ *
+ * WHY: a requirement that wraps across several PDF lines was becoming several
+ * rows. Measured on three published Thai government TORs, that produced ~30 rows
+ * per page where only a quarter to a half carried a real clause reference — the
+ * rest were sentence fragments meaningless on their own, and each one still had
+ * to be reviewed and exported. This is the default path (Typhoon on a digital PDF
+ * reads the text layer directly), not a niche mode.
+ *
+ * HOW: geometry, not guesswork about the text. A line that runs to the right
+ * margin of the text block has wrapped; a line that stops short of it ends a
+ * paragraph. The margin is taken as the widest right edge on the page, so it
+ * adapts to each document's own layout rather than assuming page size.
+ *
+ * GUARDS, because a wrong merge silently welds two requirements together:
+ *  - a line opening a new clause reference never merges into the one above,
+ *    even if that line happened to reach the margin;
+ *  - a line indented well past the previous line's left edge starts something
+ *    new (sub-list items, indented blocks);
+ *  - blank lines never merge.
+ *
+ * The caller keeps every character; joining inserts a single space, which is
+ * what the line break stood for.
+ */
+export function joinWrappedRows(rows: RowCell[][], lines: string[]): string[] {
+  if (rows.length !== lines.length) return lines;
+  const nonEmpty = rows.filter((r) => r.length && rowRight(r) > 0);
+  if (nonEmpty.length < 2) return lines;
+
+  // The text block's right margin: the widest right edge on the page.
+  const margin = Math.max(...nonEmpty.map(rowRight));
+
+  const out: string[] = [];
+  const srcRow: RowCell[][] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i];
+    const row = rows[i];
+    const prevRow = srcRow[srcRow.length - 1];
+
+    const canMerge =
+      out.length > 0 &&
+      text.trim() !== "" &&
+      out[out.length - 1].trim() !== "" &&
+      prevRow &&
+      prevRow.length > 0 &&
+      row.length > 0 &&
+      // The line above ran to the margin, so it wrapped rather than ended.
+      rowRight(prevRow) >= margin - rowEm(prevRow) * 1.5 &&
+      // This line does not begin a new numbered clause.
+      !startsWithClauseRef(text) &&
+      // This line is not indented past the one above (a new sub-block).
+      rowLeft(row) <= rowLeft(prevRow) + rowEm(row) * 1.5;
+
+    if (canMerge) {
+      out[out.length - 1] += " " + text;
+      // Keep the widest right edge so a run of full lines stays "full".
+      srcRow[srcRow.length - 1] = rowRight(row) > rowRight(prevRow) ? row : prevRow;
+    } else {
+      out.push(text);
+      srcRow.push(row);
+    }
+  }
+  return out;
 }

@@ -5,6 +5,7 @@ import {
   columnOf,
   rowToLine,
   type RowCell,
+  joinWrappedRows,
 } from "./tables";
 
 const cell = (x: number, y: number, str: string, width = 40, height = 12): RowCell => ({
@@ -124,5 +125,62 @@ describe("column detection with pdf.js-style whitespace fillers", () => {
     expect(b).toHaveLength(2);
     expect(rowToLine(rows[0], b)).toBe("3.2 — PLC controller — Siemens S7-1500");
     expect(rowToLine(rows[1], b)).toBe("3.3 — HMI panel — 10 inch touchscreen");
+  });
+});
+
+// A requirement that wraps across several PDF lines was becoming several rows.
+// On three real Thai government TORs that produced ~30 rows per page, most of
+// them sentence fragments that still had to be reviewed and exported.
+//
+// The signal is geometric: a line reaching the text block's right margin has
+// wrapped; one stopping short of it ends a paragraph.
+describe("joinWrappedRows", () => {
+  // Margin is derived from the widest right edge present, so these fixtures set
+  // it implicitly by including one full-width line.
+  const at = (x: number, y: number, w: number, str: string): RowCell[] => [
+    { x, y, width: w, height: 10, str },
+  ];
+
+  it("joins a line that follows one running to the right margin", () => {
+    const rows = [at(20, 100, 380, "the contractor shall supply and install"), at(20, 88, 90, "the equipment")];
+    const lines = ["the contractor shall supply and install", "the equipment"];
+    expect(joinWrappedRows(rows, lines)).toEqual([
+      "the contractor shall supply and install the equipment",
+    ]);
+  });
+
+  it("does NOT join after a line that stops short of the margin", () => {
+    // First line ends a paragraph; the long second line sets the margin.
+    const rows = [at(20, 100, 80, "a short line."), at(20, 88, 380, "a new paragraph starts here and runs on")];
+    const lines = ["a short line.", "a new paragraph starts here and runs on"];
+    expect(joinWrappedRows(rows, lines)).toHaveLength(2);
+  });
+
+  it("never absorbs a line that opens a new clause reference", () => {
+    // Guard: the previous line reaches the margin, but the next begins "๓ . ๒",
+    // so it is a new requirement rather than a continuation. Welding two
+    // requirements together would be far worse than leaving one split.
+    const rows = [at(20, 100, 380, "๓ . ๑ ผู้ประสงค์จะเสนอราคาต้องเป็นผู้มีอาชีพ"), at(20, 88, 200, "๓ . ๒ ผู้ประสงค์จะเสนอราคาต้องไม่เป็น")];
+    const lines = ["๓ . ๑ ผู้ประสงค์จะเสนอราคาต้องเป็นผู้มีอาชีพ", "๓ . ๒ ผู้ประสงค์จะเสนอราคาต้องไม่เป็น"];
+    expect(joinWrappedRows(rows, lines)).toHaveLength(2);
+  });
+
+  it("never absorbs a line indented past the one above", () => {
+    // Sub-list items sit further right; they start something new.
+    const rows = [at(20, 100, 380, "the system shall provide the following"), at(60, 88, 100, "an indented sub-item")];
+    const lines = ["the system shall provide the following", "an indented sub-item"];
+    expect(joinWrappedRows(rows, lines)).toHaveLength(2);
+  });
+
+  it("keeps every character, inserting one space for the line break", () => {
+    const rows = [at(20, 100, 380, "alpha beta"), at(20, 88, 60, "gamma")];
+    const joined = joinWrappedRows(rows, ["alpha beta", "gamma"]);
+    expect(joined.join("").replace(/\s/g, "")).toBe("alphabetagamma");
+    expect(joined[0]).toBe("alpha beta gamma");
+  });
+
+  it("is a no-op when it cannot tell (mismatched input, or too few rows)", () => {
+    expect(joinWrappedRows([], ["a", "b"])).toEqual(["a", "b"]);
+    expect(joinWrappedRows([at(0, 0, 10, "only")], ["only"])).toEqual(["only"]);
   });
 });

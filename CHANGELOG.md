@@ -5,8 +5,20 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
-_Nothing yet. Next: geometric wrapped-line detection in the digital extraction
-path — see the "Known issue" note below._
+### Fixed
+- **Requirements that wrap across several PDF lines are no longer split into separate rows.** Measured on
+  three real Thai government TORs, the digital path was emitting **~30 rows per page**, of which only a
+  quarter to a half carried a real clause reference — the rest were sentence fragments that still had to be
+  reviewed and exported into the compliance matrix. Lines are now rejoined using **geometry**: a line
+  reaching the text block right margin has wrapped, one stopping short of it ends a paragraph. Row counts
+  fell **47 % / 37 % / 48 %** across the three documents (~30 → ~16 per page) and the share carrying a real
+  clause reference rose from 24–49 % to **61–84 %**. Guards prevent welding two requirements together: a
+  line opening a new clause reference, or indented past the line above, never merges. Verified across all
+  three documents — every character preserved, and zero welded rows in 742.
+- **A budget figure was being corrupted in the requirement text.** `2,000,000.-` came out as
+  `2,000, — 000. - ` because pdf.js splits a run of text inside the token and the assembler both
+  inserted spaces between the pieces and let an inferred column boundary fall between them. Both now defer
+  to geometry. Verified over 1,298 rows: zero characters altered.
 
 ## [0.6.1] — 2026-08-20
 

@@ -2,6 +2,7 @@ import { VALID_CATS, mkRow } from "./constants";
 import { fileToBase64 } from "./pdf";
 import { fetchWithRetry } from "./net";
 import type { ExtractedItem, PdfType, Row } from "./types";
+import { matchClauseRef } from "./clauseref";
 
 export function isLikelyTranslated(txt: string): boolean {
   return !/[฀-๿]/.test(txt) && txt.trim().length > 0;
@@ -75,31 +76,6 @@ export function parseJsonArray(raw: string): ExtractedItem[] {
   );
 }
 
-// Digit class covering both ASCII (0-9) and Thai (๐-๙, U+0E50–U+0E59) numerals.
-const D = "[0-9๐-๙]";
-// Optional whitespace around the separating dot.
-//
-// This is not cosmetic. Real Thai TOR PDFs routinely emit clause numbers with
-// spaces around the dots — "๓ . ๑" rather than "๓.๑" — because that is how the
-// text layer comes out of the word processors these documents are written in.
-// The pattern originally required the dot immediately after the digit, so every
-// such sub-clause matched only its FIRST component: ๓.๑ through ๓.๗ all became
-// ref "๓", and "๓ . ๑๑ . ๒" lost two levels. Seven distinct requirements sharing
-// one Ref is actively harmful in a compliance matrix, since Ref is the column
-// used to trace a row back to the source document.
-//
-// Found 2026-08-20 by running the real extraction path over three published Thai
-// government TORs. It was invisible against the synthetic fixture because that
-// fixture was written with unspaced clause numbers — the shape I assumed.
-const DOT = "\\s*\\.\\s*";
-// A leading clause reference: "3", "3.2", "๓ . ๑๑ . ๒", "ข้อ ๕", "(๑)".
-const CLAUSE_REF = new RegExp(
-  `^(?:(${D}+(?:${DOT}${D}+)*)[.)]?|ข้อ\\s*(${D}+)|\\((${D}+)\\))(?=\\s|$)`,
-);
-
-/** Collapse "๓ . ๑" to "๓.๑" so the Ref column is compact and comparable. */
-const normalizeRef = (ref: string): string => ref.replace(/\s*\.\s*/g, ".");
-
 /**
  * No-AI fallback: split raw OCR text into requirement rows, **one row per line**
  * (respecting the source document's line structure). A leading clause reference —
@@ -116,11 +92,9 @@ export function structureWithoutAI(
 
   const rows: { ref: string; requirement: string; category: string }[] = [];
   for (const line of lines) {
-    const m = line.match(CLAUSE_REF);
-    const matched = m && (m[1] || m[2] || m[3]);
-    const ref = matched
-      ? normalizeRef(matched)
-      : `CL-${String(rows.length + 1).padStart(3, "0")}`;
+    const ref =
+      matchClauseRef(line) ??
+      `CL-${String(rows.length + 1).padStart(3, "0")}`;
     rows.push({ ref, requirement: line, category: "General" });
   }
   return rows;

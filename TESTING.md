@@ -3,7 +3,7 @@
 > How this project is verified: the automated suite, the sample PDFs, the manual walkthrough, and — most
 > importantly — **what cannot be verified automatically and therefore needs a human**.
 > Risk context: [`RISK_REVIEW.md`](RISK_REVIEW.md) · Plan: [`ROADMAP.md`](ROADMAP.md).
-> Last updated 2026-08-06.
+> Last updated 2026-08-20.
 
 ---
 
@@ -83,8 +83,9 @@ through Cloudflare Pages Functions that don't exist under `npm run dev`. **Brows
    file — that's a bug worth reporting.
 3. Switch to **✎ Text PDF — No AI · exact**, re-extract → expect identical rows, instantly, no network.
 4. **Check refs:** `3.1`, `๓.๒`, `3.3`, `4` (from `ข้อ 4`), `5` (from `(5)`), `๖`, `๖.๑๑.๒`.
-   *Expected, not a bug:* title/subtitle lines become their own rows — the splitter is deliberately
-   "one line = one row" rather than guessing what to merge.
+   *Expected, not a bug:* title/subtitle lines become their own rows. Note the splitter is **no longer**
+   strictly "one line = one row" — since 2026-08-20 it rejoins lines that a requirement wrapped across,
+   using line geometry (§3b). A requirement spanning several PDF lines should now appear as ONE row.
 5. **Table (p2):** the five equipment rows should join their three columns with ` — `
    (e.g. `1 — ตู้ควบคุม MDB ขนาด 400A — Siemens หรือเทียบเท่า`), not mash together and not split into
    separate rows.
@@ -109,6 +110,58 @@ through Cloudflare Pages Functions that don't exist under `npm run dev`. **Brows
 
 ### Reporting a problem
 Give the step number, expected vs. actual, a screenshot if visual, and the exact text of any banner.
+
+---
+
+## 3b. The real-document pass (2026-08-20)
+
+The synthetic fixtures in §2 are written by hand, which means they can only ever
+confirm the assumptions used to write them. On 2026-08-20 the extraction path was
+run against **three published Thai government TORs** — 45 pages, three agencies,
+three sets of house conventions:
+
+| Source | Document | Pages |
+| --- | --- | ---: |
+| Office of the Auditor General | equipment procurement | 9 |
+| Rajamangala Univ. of Technology Srivijaya | CCTV / fingerprint system | 22 |
+| Dairy Farming Promotion Organization | facility works | 14 |
+
+**It found two real bugs within the hour, neither visible to the 137 tests then
+passing.** Both were on the *default* path — Typhoon on a digital PDF reads the
+text layer directly — not in a niche mode:
+
+1. **Clause numbers written with spaced dots** (`๓ . ๑`) matched only their first
+   component, so ๓.๑ through ๓.๗ all carried ref "๓".
+2. **Token-splitting corrupted the requirement text.** `2,000,000.-` became
+   `2,000, — 000. - ` — a verbatim-law violation on a budget figure.
+
+A third finding, wrapped-line over-splitting, was fixed the same day.
+
+### Repeating it
+
+Not automated, because it needs documents this repo does not ship. To redo it:
+
+1. Fetch a few public TOR PDFs (Thai agencies publish procurement TORs openly).
+2. Copy them into `public/` temporarily — the dev server must serve them over
+   HTTP so the app's own pdf.js can load them. **Remove them afterwards**; they
+   are not committed.
+3. In the browser console against `npm run dev`, import the real modules
+   (`/src/lib/pdf.ts`, `/src/lib/extract.ts`, `/src/lib/tables.ts`) and run
+   them directly — not a reimplementation.
+
+### The three checks worth running every time
+
+- **Verbatim integrity.** Concatenate every glyph pdf.js reports, strip
+  whitespace, and compare against the extractor's output similarly stripped. They
+  must contain the *same characters in the same counts*. Compare multisets rather
+  than strings: the extractor deliberately reorders cells into visual reading
+  order, while raw pdf.js follows the PDF's content stream, so a pure ordering
+  difference is expected and correct.
+- **Rows per page.** A TOR page holds perhaps 5–15 requirements. ~30 means the
+  splitter is fragmenting; a very low number means it is over-merging.
+- **Share of rows carrying a real clause reference.** Low means fragments are
+  being emitted as requirements. It rose from 24–49 % to 61–84 % once wrapped
+  lines were joined.
 
 ---
 

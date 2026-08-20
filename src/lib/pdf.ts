@@ -6,6 +6,7 @@ import {
   detectColumnBoundaries,
   rowToLine,
   type RowCell,
+  joinWrappedRows,
 } from "./tables";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -139,7 +140,11 @@ export async function extractDigitalText(
     const tc = await page.getTextContent();
     const rows = groupIntoRows(itemsToCells(tc.items));
     const boundaries = detectColumnBoundaries(rows);
-    pages.push(rows.map((r) => rowToLine(r, boundaries)).join("\n"));
+    const lines = rows.map((r) => rowToLine(r, boundaries));
+    // Rejoin lines that continue the one above. A requirement wrapping across
+    // several PDF lines was otherwise becoming several rows — on real documents
+    // roughly 30 per page, most of them sentence fragments.
+    pages.push(joinWrappedRows(rows, lines).join("\n"));
   }
   return pages.join(PAGE_BREAK);
 }
