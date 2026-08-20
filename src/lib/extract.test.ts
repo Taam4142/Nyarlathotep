@@ -66,6 +66,41 @@ describe("structureWithoutAI (one line = one row)", () => {
     expect(rows[1].requirement).toContain("อุปกรณ์ตรวจวัด");
   });
 
+  it("reads clause numbers written with SPACES around the dots (real-document shape)", () => {
+    // Regression, found 2026-08-20 by running the real extraction path over three
+    // published Thai government TORs. Those PDFs emit "๓ . ๑" rather than "๓.๑" —
+    // that is simply how the text layer comes out of the word processors the
+    // documents are authored in. The pattern used to require the dot immediately
+    // after the digit, so it matched only the first component: ๓.๑ through ๓.๗
+    // ALL became ref "๓", and "๓ . ๑๑ . ๒" lost two levels entirely.
+    //
+    // Seven distinct requirements sharing one Ref is actively harmful here, since
+    // Ref is the column used to trace a row back to the source document.
+    //
+    // The synthetic fixture never caught this because it was authored with
+    // unspaced clause numbers — the shape that was assumed rather than observed.
+    const spaced = structureWithoutAI(
+      "๓ . ๑ ผู้ประสงค์จะเสนอราคาต้องเป็นผู้มีอาชีพ\n" +
+        "๓ . ๒ ผู้ประสงค์จะเสนอราคาต้องไม่เป็นผู้ที่ถูกระบุชื่อ\n" +
+        "๓ . ๑๑ . ๒ อุปกรณ์ตรวจวัด\n" +
+        "2 . 1 The system shall comply",
+    );
+    expect(spaced.map((r) => r.ref)).toEqual(["๓.๑", "๓.๒", "๓.๑๑.๒", "2.1"]);
+  });
+
+  it("normalizes spaced refs but leaves the requirement text verbatim", () => {
+    // The Ref column is normalized for comparability; the requirement itself must
+    // keep every character exactly as the document wrote it (the verbatim law).
+    const [row] = structureWithoutAI("๓ . ๑ ผู้ประสงค์จะเสนอราคา");
+    expect(row.ref).toBe("๓.๑");
+    expect(row.requirement).toBe("๓ . ๑ ผู้ประสงค์จะเสนอราคา");
+  });
+
+  it("still reads unspaced refs identically (no regression)", () => {
+    const tight = structureWithoutAI("๓.๑ a\n3.2 b\n๓.๑๑.๒.๒ c");
+    expect(tight.map((r) => r.ref)).toEqual(["๓.๑", "3.2", "๓.๑๑.๒.๒"]);
+  });
+
   it("reads ข้อ, parenthesized, and Thai dotted refs", () => {
     const rows = structureWithoutAI("ข้อ ๕ blah\n(๑) item\n๒.๑) wrapped");
     expect(rows[0].ref).toBe("๕");
