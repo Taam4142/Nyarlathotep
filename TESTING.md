@@ -165,6 +165,65 @@ Not automated, because it needs documents this repo does not ship. To redo it:
 
 ---
 
+## 3c. The first real *AMR* document (2026-08-20)
+
+§3b used three published government TORs. This pass used a **real AMR equipment
+TOR** (2 pages, scanned). It differed from all three in two ways that mattered:
+
+- it is **scanned**, so it runs the **OCR path**, which §3b never exercised;
+- its house style is **bulleted**, not paragraphed — most requirements are
+  dash-bulleted spec lines hanging off a numbered clause, with no ref of their own.
+
+**It immediately caught a regression shipped the same day.** `joinWrappedRows`
+guarded against absorbing a line that opened a *clause reference*, but not one
+that opened a *bullet*. Given three consecutive bullets where the first ran to
+the margin, it welded all three into a single row — the exact failure the guard
+existed to prevent. The three published TORs are paragraph-style and never
+exercised it. Fixed by widening the guard to bullet markers (`opensNewItem`).
+
+> A marker only counts as a bullet when whitespace follows it. That is what
+> separates a bullet from a minus sign, and real TORs write both on one line:
+> `- มีอุณหภูมิในการใช้งาน -๔๐ ถึง ๘๐ องศาเซลเซียส`.
+
+### What the OCR path looks like on this document
+
+Measured with the free local Tesseract engine and `structureWithoutAI`:
+
+| Measure | Value | Healthy |
+| --- | ---: | --- |
+| Rows per page | **40** | 5–15 |
+| Continuation fragments | **28 %** | near 0 |
+| Page furniture emitted as requirements | **~7 %** | 0 |
+| Rows carrying a real clause ref | **21 %** | 60 %+ |
+
+Three things are **known-open** on the OCR path (none regressions — all
+pre-existing, all now measured rather than assumed):
+
+1. **Wrapped lines fragment.** The digital path rejoins them from cell geometry;
+   OCR returns plain text, so there is no geometry to consult and the splitter
+   stays strictly one-line-one-row. ~28 % of rows are sentence fragments.
+   Tesseract *can* report per-line bounding boxes — the code currently takes
+   only `data.text` — so the same geometric fix is reachable, but it is a
+   real change, not a tweak.
+2. **Signature blocks and page numbers become requirements.** Every page of a
+   Thai government TOR ends with a committee signature block
+   (`ลงชื่อ … ประธานกรรมการ`) and a centred page number. These are emitted as
+   requirement rows to be deleted by hand — ~7 % here, and it scales with page
+   count, not document length.
+3. **OCR digit errors are silent.** Sampled against the page images, Tesseract
+   systematically confuses Thai `๔` and `๕`. Observed: stainless `๓๐๔` read as
+   `๓๐๕`; `IP ๖๘` as `IP ๒๕`; `๔๐ นิ้ว` as `๕๐ นิ้ว`; clause `๓.๑๑.๔` as `๓.๑๑.๕`;
+   a list item `๔.` as `๕.`, which produced a **duplicate ref**. These are exactly
+   the values an engineer checks. Tesseract reports per-word confidence and the
+   code discards it; surfacing it would satisfy *flag, never silently fill*
+   rather than presenting a confident wrong number.
+
+**None of this is visible to the test suite**, which is why it is written down
+here. The engineer's own AMR documents remain the highest-value test input the
+project has.
+
+---
+
 ## 4. What cannot be verified in the sandbox
 
 Full table with reasons: [`RISK_REVIEW.md`](RISK_REVIEW.md) → *Verification limits*. In short, these need a

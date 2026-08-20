@@ -6,7 +6,7 @@
 // together. Column boundaries must recur across ≥2 rows to count, so a lone wide
 // gap in ordinary prose is never treated as a column.
 
-import { startsWithClauseRef } from "./clauseref";
+import { opensNewItem } from "./clauseref";
 
 export interface RowCell {
   x: number;
@@ -202,8 +202,11 @@ export function joinWrappedRows(rows: RowCell[][], lines: string[]): string[] {
       row.length > 0 &&
       // The line above ran to the margin, so it wrapped rather than ended.
       rowRight(prevRow) >= margin - rowEm(prevRow) * 1.5 &&
-      // This line does not begin a new numbered clause.
-      !startsWithClauseRef(text) &&
+      // This line does not begin a new item of its own — neither a numbered
+      // clause nor a bullet. Bullets matter as much as clause numbers: in a
+      // bulleted TOR every dash line is its own requirement, and merging one
+      // into the line above silently welds two requirements together.
+      !opensNewItem(text) &&
       // This line is not indented past the one above (a new sub-block).
       rowLeft(row) <= rowLeft(prevRow) + rowEm(row) * 1.5;
 

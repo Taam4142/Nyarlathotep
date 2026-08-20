@@ -41,3 +41,27 @@ export function matchClauseRef(line: string): string | null {
 /** Whether a line opens a new numbered clause. */
 export const startsWithClauseRef = (line: string): boolean =>
   matchClauseRef(line) !== null;
+
+/**
+ * Bullet markers that open a list item: hyphen, the dashes, and the usual
+ * glyph bullets. A marker only counts when whitespace follows it, which is what
+ * separates a bullet from a minus sign — real TORs write both, often on the
+ * same line ("- มีอุณหภูมิในการใช้งาน -๔๐ ถึง ๘๐ องศาเซลเซียส").
+ */
+const BULLET = /^[-–—•·*▪‣+]\s/;
+
+/**
+ * Whether a line opens a new bullet item.
+ *
+ * Needed alongside startsWithClauseRef because a great many requirements carry
+ * no clause number at all: they hang off the clause above as dash-bulleted
+ * specification lines, each one a separate requirement to be complied with.
+ * Found 2026-08-20 in a real AMR equipment TOR, whose house style is almost
+ * entirely bulleted — the three published TORs tested before it were
+ * paragraph-style and never exercised this.
+ */
+export const startsWithBullet = (line: string): boolean => BULLET.test(line);
+
+/** Whether a line starts a new item rather than continuing the one above. */
+export const opensNewItem = (line: string): boolean =>
+  startsWithClauseRef(line) || startsWithBullet(line);

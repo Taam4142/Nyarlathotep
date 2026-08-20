@@ -179,6 +179,42 @@ describe("joinWrappedRows", () => {
     expect(joined[0]).toBe("alpha beta gamma");
   });
 
+// REGRESSION: a bulleted TOR. Every dash line is its own requirement, so a
+  // dash line must never be absorbed into the one above even when that line ran
+  // to the margin. Lines taken from a real AMR equipment TOR, whose house style
+  // is almost entirely bulleted; the three published TORs tested before it were
+  // paragraph-style and never exercised this.
+  it("never absorbs a bullet line, however full the line above", () => {
+    const rows = [
+      at(60, 100, 380, "- มีช่องต่อสัญญาณภาพแบบ HDMI อย่างน้อย ๑ ช่อง และ DisplayPort อย่างน้อย ๑ ช่อง"),
+      at(60, 88, 200, "- มีความละเอียด ๓,๘๔๐ x ๒,๑๖๐ พิกเซล เป็นอย่างน้อย"),
+      at(60, 76, 150, "- มีอัตราส่วนภาพ ๑๖:๙"),
+    ];
+    const lines = rows.map((r) => r[0].str);
+    expect(joinWrappedRows(rows, lines)).toHaveLength(3);
+  });
+
+  // The flip side: a bullet that genuinely wraps must still be rejoined. Only
+  // the continuation lacks a marker, so only it merges.
+  it("still rejoins a bullet that wraps onto an unmarked continuation", () => {
+    const rows = [
+      at(60, 100, 380, "- ต้องมีคุณสมบัติตามมาตรฐานที่ใช้วัดความสามารถในการปกป้องสิ่งที่อยู่ภายในของ"),
+      at(60, 88, 120, "อุปกรณ์อิเล็กทรอนิกส์ที่ระดับ IP ๖๘"),
+    ];
+    const lines = rows.map((r) => r[0].str);
+    expect(joinWrappedRows(rows, lines)).toEqual([
+      "- ต้องมีคุณสมบัติตามมาตรฐานที่ใช้วัดความสามารถในการปกป้องสิ่งที่อยู่ภายในของ อุปกรณ์อิเล็กทรอนิกส์ที่ระดับ IP ๖๘",
+    ]);
+  });
+
+  // A leading minus sign is not a bullet. Requiring whitespace after the marker
+  // is what separates them; TORs write both, often on the same line.
+  it("treats a leading minus sign as continuation, not a bullet", () => {
+    const rows = [at(60, 100, 380, "- มีอุณหภูมิในการใช้งาน"), at(60, 88, 100, "-๔๐ ถึง ๘๐ องศาเซลเซียส")];
+    const lines = rows.map((r) => r[0].str);
+    expect(joinWrappedRows(rows, lines)).toHaveLength(1);
+  });
+
   it("is a no-op when it cannot tell (mismatched input, or too few rows)", () => {
     expect(joinWrappedRows([], ["a", "b"])).toEqual(["a", "b"]);
     expect(joinWrappedRows([at(0, 0, 10, "only")], ["only"])).toEqual(["only"]);

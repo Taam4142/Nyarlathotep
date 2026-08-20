@@ -6,6 +6,14 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 ## [Unreleased]
 
 ### Fixed
+- **Bulleted requirements are no longer welded together.** A dash-bulleted line
+  is never absorbed into the line above it, however full that line is. Requirements
+  written as bullet lists — the common house style in equipment TORs — were being
+  merged into a single row by the wrapped-line rejoining added earlier the same day.
+  A leading minus sign is still treated as continuation, not a bullet.
+
+
+### Fixed
 - **Requirements that wrap across several PDF lines are no longer split into separate rows.** Measured on
   three real Thai government TORs, the digital path was emitting **~30 rows per page**, of which only a
   quarter to a half carried a real clause reference — the rest were sentence fragments that still had to be
