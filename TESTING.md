@@ -218,6 +218,39 @@ pre-existing, all now measured rather than assumed):
    code discards it; surfacing it would satisfy *flag, never silently fill*
    rather than presenting a confident wrong number.
 
+### Why confidence-flagging was investigated and rejected
+
+The obvious answer to (3) is to surface Tesseract's per-word confidence and flag
+the low scores. **Measured on this document, that does not work**, and the
+measurement is worth keeping so it is not re-proposed:
+
+| Reading | Should be | Word confidence |
+| --- | --- | ---: |
+| `IP ๒๕` | `IP ๖๘` | **96, 96** |
+| `HOMI` | `HDMI` | 84 |
+| `Ethemet` | `Ethernet` | 84 |
+
+Across 1,438 words on one page: median confidence **93**, only **30 below 70**,
+and `choices` was **never** populated with an alternative (0 words had more than
+one candidate). At symbol level the wrong `m` in `Ethemet` — two glyphs, `rn`,
+read as one — scored **99**.
+
+A threshold at 70 would flag ~2 % of words and miss every error in the table. It
+would read as reassurance while the ingress rating is still wrong. **A signal
+that lies is worse than no signal**, so none is shown.
+
+Raising render scale is not a fix either. At scale 4, `HDMI` came out right but
+the resolution figures degraded further (`๓,๘๔๐` → `ows`); page-segmentation mode
+6 changed nothing. Correct on 3 of 8 checked spec values, versus 2 of 8 at the
+current scale 3.
+
+What IS reliable is the *shape* of the failure: it lands on numerals. So the
+browser-OCR warning is keyed to that instead — it counts the rows holding a Thai
+numeral and names the failure mode (`src/lib/ocrtrust.ts`). On this document, 54
+of 80 rows. The real fix is a Thai-tuned engine; **Typhoon on this file has not
+yet been measured** (it needs the deployed proxies and an explicit go-ahead to
+spend API calls).
+
 **None of this is visible to the test suite**, which is why it is written down
 here. The engineer's own AMR documents remain the highest-value test input the
 project has.

@@ -5,6 +5,14 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Changed
+- **Browser OCR now warns which values to double-check.** The post-extraction notice
+  counts the rows containing Thai numerals and names the specific failure — this engine
+  misreads Thai digits (๔ and ๕ especially) while still reporting high confidence, so
+  IP ratings, material grades, sizes and clause numbers need checking against the source
+  page. It replaces a vague "review the Thai accuracy". Per-word confidence was measured
+  and deliberately **not** used: it does not separate correct readings from wrong ones.
+
 ### Fixed
 - **Bulleted requirements are no longer welded together.** A dash-bulleted line
   is never absorbed into the line above it, however full that line is. Requirements

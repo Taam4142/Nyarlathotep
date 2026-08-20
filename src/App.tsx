@@ -19,6 +19,7 @@ import {
   ocrPDFVision,
   ocrPageWithGemini,
 } from "./lib/ocr";
+import { browserOcrWarning } from "./lib/ocrtrust";
 import {
   extractRequirements,
   extractWithGemini,
@@ -1216,9 +1217,10 @@ function App() {
               );
               setRows(mapped);
               setLoadPct(100);
-              setWarning(
-                "Browser OCR done with no AI. Rows were split heuristically — review the clause boundaries and Thai accuracy, then adjust. For cleaner structuring, switch to an AI engine.",
-              );
+              // Names the rows actually at risk and why. Tesseract corrupts Thai
+              // numerals while reporting high confidence, so "review the Thai"
+              // was too vague to act on — see lib/ocrtrust.ts for the measurements.
+              setWarning(browserOcrWarning(mapped));
               setTimeout(() => {
                 setLoading(false);
                 setLoadPct(null);
