@@ -51,16 +51,28 @@ export function countThaiNumeralRows(
  */
 export function browserOcrWarning(
   rows: readonly { requirement?: string }[],
+  furnitureRemoved = 0,
 ): string {
   const n = countThaiNumeralRows(rows);
-  const structure =
-    "Browser OCR done with no AI. Rows were split heuristically — review the clause boundaries, then adjust.";
-  if (n === 0) return structure;
-  const rowWord = n === 1 ? "row contains a Thai numeral" : "rows contain Thai numerals";
-  return (
-    `${structure} ⚠ ${n} ${rowWord}. This engine misreads Thai digits ` +
-    `(๔ and ๕ especially) while still reporting high confidence, so numeric values — ` +
-    `IP ratings, grades, sizes, clause numbers — must be checked against the source page. ` +
-    `Typhoon is Thai-tuned and generally reads these more accurately.`
-  );
+  const parts = [
+    "Browser OCR done with no AI. Rows were split heuristically — review the clause boundaries, then adjust.",
+  ];
+  if (furnitureRemoved > 0) {
+    const l = furnitureRemoved === 1 ? "line" : "lines";
+    parts.push(
+      `Removed ${furnitureRemoved} page-furniture ${l} (signature blocks, ` +
+        `page numbers) that are not requirements.`,
+    );
+  }
+  if (n > 0) {
+    const rowWord =
+      n === 1 ? "row contains a Thai numeral" : "rows contain Thai numerals";
+    parts.push(
+      `⚠ ${n} ${rowWord}. This engine misreads Thai digits (๔ and ๕ especially) ` +
+        `while still reporting high confidence, so numeric values — IP ratings, grades, ` +
+        `sizes, clause numbers — must be checked against the source page. ` +
+        `Typhoon is Thai-tuned and generally reads these more accurately.`,
+    );
+  }
+  return parts.join(" ");
 }

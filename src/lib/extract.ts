@@ -3,6 +3,7 @@ import { fileToBase64 } from "./pdf";
 import { fetchWithRetry } from "./net";
 import type { ExtractedItem, PdfType, Row } from "./types";
 import { matchClauseRef } from "./clauseref";
+import { isPageFurniture } from "./furniture";
 
 export function isLikelyTranslated(txt: string): boolean {
   return !/[฀-๿]/.test(txt) && txt.trim().length > 0;
@@ -88,7 +89,11 @@ export function structureWithoutAI(
   const lines = rawText
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && l !== "--- PAGE BREAK ---");
+    .filter((l) => l.length > 0 && l !== "--- PAGE BREAK ---")
+    // Drop the committee signature block and page number every TOR page
+    // carries. Never requirements, and their share grows with page count.
+    // The count removed is reported to the user, so this is not silent.
+    .filter((l) => !isPageFurniture(l));
 
   const rows: { ref: string; requirement: string; category: string }[] = [];
   for (const line of lines) {

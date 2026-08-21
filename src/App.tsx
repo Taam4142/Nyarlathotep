@@ -20,6 +20,7 @@ import {
   ocrPageWithGemini,
 } from "./lib/ocr";
 import { browserOcrWarning } from "./lib/ocrtrust";
+import { countPageFurniture } from "./lib/furniture";
 import {
   extractRequirements,
   extractWithGemini,
@@ -1220,7 +1221,9 @@ function App() {
               // Names the rows actually at risk and why. Tesseract corrupts Thai
               // numerals while reporting high confidence, so "review the Thai"
               // was too vague to act on — see lib/ocrtrust.ts for the measurements.
-              setWarning(browserOcrWarning(mapped));
+              setWarning(
+                browserOcrWarning(mapped, countPageFurniture(ocrText)),
+              );
               setTimeout(() => {
                 setLoading(false);
                 setLoadPct(null);

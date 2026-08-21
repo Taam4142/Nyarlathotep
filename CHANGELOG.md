@@ -6,6 +6,14 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 ## [Unreleased]
 
 ### Changed
+- **Signature blocks and page numbers are no longer extracted as requirements.** Every
+  page of a Thai government TOR ends with a committee signature block and a page number;
+  these became rows to delete by hand, and the count grew with page count, not document
+  length. They are now dropped, and the notice always says how many — nothing disappears
+  silently. A line opening a clause reference or bullet is never treated as furniture,
+  however short, so a real requirement is never removed.
+
+### Changed
 - **Browser OCR now warns which values to double-check.** The post-extraction notice
   counts the rows containing Thai numerals and names the specific failure — this engine
   misreads Thai digits (๔ and ๕ especially) while still reporting high confidence, so

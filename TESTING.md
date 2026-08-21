@@ -205,11 +205,19 @@ pre-existing, all now measured rather than assumed):
    Tesseract *can* report per-line bounding boxes — the code currently takes
    only `data.text` — so the same geometric fix is reachable, but it is a
    real change, not a tweak.
-2. **Signature blocks and page numbers become requirements.** Every page of a
-   Thai government TOR ends with a committee signature block
-   (`ลงชื่อ … ประธานกรรมการ`) and a centred page number. These are emitted as
-   requirement rows to be deleted by hand — ~7 % here, and it scales with page
-   count, not document length.
+2. **Signature blocks and page numbers become requirements.** ~~Open~~ **FIXED
+   2026-08-21** (`src/lib/furniture.ts`). Every page of a Thai government TOR ends
+   with a committee signature block (`ลงชื่อ … ประธานกรรมการ`) and a centred page
+   number; these were emitted as requirement rows, ~7 % here, scaling with page
+   count rather than requirement count. Three rules, each needing a positive
+   signal: the word `ลงชื่อ`; a line *ending* in a committee role (anchored to the
+   end so a requirement mentioning a committee is untouched, and fuzzy in the
+   middle because one scan read `ประธานกรรมการ` as `ปรัสสานกรรมาร`); and too few
+   letters while carrying a digit. A line opening a clause ref or bullet is
+   never furniture whatever its length — structure beats length, so a page
+   number written `- 1 -` reads as a bullet and deliberately survives. On the AMR
+   document: 80 → 75 rows, the 5 removed all genuine furniture. The count is
+   always reported in the notice, so nothing disappears silently.
 3. **OCR digit errors are silent.** Sampled against the page images, Tesseract
    systematically confuses Thai `๔` and `๕`. Observed: stainless `๓๐๔` read as
    `๓๐๕`; `IP ๖๘` as `IP ๒๕`; `๔๐ นิ้ว` as `๕๐ นิ้ว`; clause `๓.๑๑.๔` as `๓.๑๑.๕`;

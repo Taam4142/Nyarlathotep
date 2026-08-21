@@ -55,4 +55,16 @@ describe("browserOcrWarning", () => {
     expect(w).not.toContain("⚠");
     expect(w).toContain("split heuristically");
   });
+it("reports removed page furniture when there was some", () => {
+    const w = browserOcrWarning([{ requirement: "IP ๖๘" }], 4);
+    expect(w).toContain("Removed 4 page-furniture lines");
+    expect(w).toContain("signature blocks");
+  });
+
+  it("singularizes one removed line, and says nothing when none were", () => {
+    expect(browserOcrWarning([{ requirement: "x" }], 1)).toContain(
+      "Removed 1 page-furniture line ",
+    );
+    expect(browserOcrWarning([{ requirement: "x" }], 0)).not.toContain("Removed");
+  });
 });
