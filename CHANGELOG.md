@@ -6,6 +6,14 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 ## [Unreleased]
 
 ### Accessibility
+- **"Click or drag PDF" is readable now.** The upload prompt was too faint against its panel
+  (3.1:1, below the 4.5:1 standard). It now uses the same accent-text colour the filter chips
+  already use — 7.5:1 in dark, 7.0:1 in light.
+- **The status counts can be scrolled from the keyboard on phones.** On narrow screens the
+  Total / Comply / Partial strip scrolls sideways, and keyboard users previously had no way to
+  reach the counts scrolled out of view. Desktop is unchanged.
+
+### Accessibility
 - **Screen readers can now navigate the app by landmark and heading.** The top bar is a
   proper header, the setup panel an aside, and the product name a level-one heading. Nothing
   moved by a pixel — verified against the live site before and after.

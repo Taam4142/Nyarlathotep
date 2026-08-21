@@ -364,10 +364,14 @@ Run against the **deployed** site, not the dev server, and not jsdom. The CSP al
 allows `cdn.jsdelivr.net` in `script-src` (tesseract.js needs it), so `axe-core` loads
 with no config change:
 
-1. Open the deploy, inject `https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js`.
-2. `await axe.run(document, { resultTypes: ["violations"] })` in each state: empty/upload,
+1. **Clear `localStorage` first.** Autosave restores the last session, and a restored
+   matrix puts controls in states the empty app never shows. One finding on 2026-08-21 was
+   raised and withdrawn purely because a disabled button had been measured while rows were
+   still restored.
+2. Open the deploy, inject `https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js`.
+3. `await axe.run(document, { resultTypes: ["violations"] })` in each state: empty/upload,
    populated matrix, drawer open, help modal open.
-3. **Repeat at BOTH a desktop width and a mobile width — this is not optional.**
+4. **Repeat at BOTH a desktop width and a mobile width — this is not optional.**
    On 2026-08-21 the mobile-only run reported the landmark rule on **one** node; the same
    rule at 1280 px fired on **19**, because the sidebar is collapsed behind the drawer at
    narrow widths and simply is not in the audited DOM. Conversely the scrollable-region

@@ -419,7 +419,13 @@
         line-height: 1.6;
       }
       .upload-txt strong {
-        color: var(--amber);
+        /* --accent-text, not --amber: accent-coloured TEXT on a tint, same as
+           .f-all.on and the two other sites. Was 3.14:1 on the composited
+           upload-zone background in dark — below the 4.5:1 required at 12px
+           bold. Found by the browser axe pass (A11Y_PLAN finding O); the
+           token-pairing guard in contrast.ts could not see it because this is
+           a rendered combination, not a declared pairing. */
+        color: var(--accent-text);
       }
       .file-input {
         display: none;

@@ -190,21 +190,50 @@ structure and cannot be described by landmark navigation.
   fingerprint against the live deploy: `35|17|91|21|block|static` on both, and computed
   `14px / 700 / margin 0` on both. Zero visual change. The global `* { margin: 0 }` reset
   neutralises the `h1` UA margin, and `.brand-name` already pinned size and weight.
-- **M — fixed, and it was bigger than first recorded.** `<div class="topbar">` became
+- **M — fixed, but NOT the way first attempted, and it was bigger than first recorded.**
+
+  > **The `<aside>` attempt was wrong and axe caught it.** Making the sidebar an `<aside>`
+  > passed at desktop and introduced an `aria-allowed-role` violation at compact widths,
+  > where the same element already takes `role="dialog"` as the drawer — `<aside>` has an
+  > implicit `complementary` role that ARIA forbids overriding with `dialog`. It is now a
+  > `<div>` with the role applied conditionally: `dialog` when compact, `complementary`
+  > otherwise. **A fix for one width broke another width**, which is the same lesson as
+  > below, arriving from the opposite direction.
+ `<div class="topbar">` became
   `<header>` *and* `<div id="app-sidebar">` became `<aside>`. The original audit ran at
   **371 px**, where the sidebar is collapsed behind the drawer toggle and therefore was not
   in the DOM being audited — so it reported one node (`.brand`). At **1280 px** the same
   rule fired on **19 nodes**, the whole sidebar. Landmarks are now `HEADER / ASIDE / MAIN`;
   the rule passes at both widths. *Lesson: audit at both widths, every time — half the
   findings are invisible at the other one. Now written into `TESTING.md` §3e.*
-- **K — confirmed MOBILE-ONLY, deferred pending sign-off.** Measured at 1280 px: `.stats`
+- **K — FIXED 2026-08-21 (approved), scoped to mobile.** `tabIndex={isPhone ? 0 : -1}` plus
+  `role="group"` and an `aria-label`, so the strip is reachable exactly where it
+  actually scrolls and adds no tab stop on desktop, where nothing is ever hidden. Verified:
+  focus lands on it and announces *"Compliance status summary"*. Note `.filters` sits in the
+  same media query and was never flagged — its chips are buttons, so keyboard users already
+  had a way in. Original finding below.
+- **K — was confirmed MOBILE-ONLY before fixing.** Measured at 1280 px: `.stats`
   computes `overflow: visible` with `scrollWidth === clientWidth === 395`. The
   `overflow: auto` comes from a mobile media query, so the violation exists only at narrow
   widths — which still includes a split-screen desktop window, not just phones. The fix
   should therefore be **scoped to the mobile breakpoint** rather than adding a tab stop for
   every user. Still gated on §0 sign-off (R13).
 
-#### N. A control that is visually inactive but not marked inactive — **Medium** (WCAG 4.1.2)
+#### N. ~~A control that is visually inactive but not marked inactive~~ — **WITHDRAWN, not a defect**
+
+> **Retracted 2026-08-21, same day it was raised.** The Export button *is* correctly
+> `disabled`. Re-measured in a genuinely empty state (`localStorage` cleared, 0 rows):
+> `disabled: true`, `opacity: 0.35` coming from `.btn-amber:disabled`. The original reading
+> of `disabled: false` was taken in a session that still had rows restored from autosave, so
+> the button was legitimately enabled and the dimming did not apply — I attributed one
+> state's opacity to another state's `disabled` flag.
+>
+> WCAG 1.4.3 exempts inactive components from contrast, and axe flags disabled controls
+> conservatively. **Nothing to fix.** Kept rather than deleted because the lesson is worth
+> keeping: *clear the persisted state before auditing, or you audit a state the user never
+> sees.* Now part of the §3e procedure.
+
+<details><summary>Original (incorrect) writeup</summary>
 Surfaced while checking an axe `color-contrast` failure on `.btn-amber` ("↓ Export .xlsx")
 and refusing to take it at face value.
 
@@ -220,6 +249,8 @@ are actually marked inactive, which would also make axe stop flagging it.
 
 **Fix:** set `disabled` (or `aria-disabled="true"` plus a no-op guard) whenever the dimmed
 state applies. Check every control using the same dimming pattern, not just this one.
+
+</details>
 
 #### O. Real contrast failure on the empty-state call to action — **Serious** (WCAG 1.4.3)
 `.upload-txt > strong`, the words **"Click or drag PDF"** — the primary action on the
@@ -237,7 +268,21 @@ it looks like.
 > evidence yet for P5b**, and it argues for extending `contrast.ts` to cover this pairing so
 > the regression is caught in CI too.
 
-**Fix requires a palette decision**, so it takes the same sign-off gate as P3b (§5 R5).
+**FIXED 2026-08-21** — and it needed no new colour after all. The codebase already has a
+token for exactly this case, `--accent-text`, with the same fix applied at three other sites
+and this comment beside one of them: *"--accent-text, not --amber: accent-coloured TEXT on a
+tint. Was 3.69:1 in dark; now 8.26:1."* `.upload-txt strong` had simply missed it.
+
+One-token change. Measured after, in both themes, by compositing the translucent
+`.upload-zone` tint over the surfaces beneath rather than reading the top layer:
+
+| Theme | Foreground | Effective background | Before | After |
+| --- | --- | --- | ---: | ---: |
+| Dark | `#a5b4fc` | `#22253e` | 3.14 | **7.54** |
+| Light | `#4338ca` | `#f1f0fd` | — | **7.02** |
+
+> **Follow-up worth doing:** teach [`contrast.ts`](src/lib/contrast.ts) about this pairing so the
+> regression is caught in CI rather than only by the release-time browser pass.
 
 #### Not a violation, but flagged for a human
 One `color-contrast` **incomplete** on `.help-sub`: *"background color could not be determined

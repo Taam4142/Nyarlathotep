@@ -2182,13 +2182,20 @@ function App() {
                   aria-hidden="true"
                 />
               )}
-              <aside
+              {/* A <div> with an explicit role, NOT an <aside>. Making this an
+                  <aside> to satisfy the landmark rule introduced an
+                  aria-allowed-role violation at compact widths, where the panel
+                  already takes role="dialog" as the drawer — <aside> has an
+                  implicit complementary role that ARIA forbids overriding with
+                  dialog. Only the desktop branch needs the landmark, so it is
+                  applied there and nowhere else. A11Y_PLAN finding M. */}
+              <div
                 id="app-sidebar"
                 ref={sidebarRef}
                 className={`sidebar${drawerOpen ? " open" : ""}`}
                 {...(isCompact
                   ? { role: "dialog", "aria-modal": true, "aria-label": "Setup panel" }
-                  : {})}
+                  : { role: "complementary", "aria-label": "Setup panel" })}
               >
                 {isPhone && (
                   <div className="sb-sec sb-phone-only">
@@ -2902,7 +2909,7 @@ function App() {
                     </div>
                   )}
                 </div>
-              </aside>
+              </div>
 
               {/* CONTENT */}
               <main className="content">
@@ -2965,7 +2972,18 @@ function App() {
                 {/* toolbar */}
                 {rows.length > 0 && (
                   <div className="toolbar">
-                    <div className="stats">
+                    {/* Keyboard-scrollable only where it actually scrolls. Under 699px
+                        .stats becomes a nowrap overflow-x strip, and unlike .filters
+                        (whose chips are buttons) it holds nothing focusable — so a
+                        keyboard user could not reach the clipped counts at all.
+                        A11Y_PLAN finding K. Desktop keeps no tab stop, because there
+                        the strip does not overflow and one would be pointless. */}
+                    <div
+                      className="stats"
+                      tabIndex={isPhone ? 0 : -1}
+                      role={isPhone ? "group" : undefined}
+                      aria-label={isPhone ? "Compliance status summary" : undefined}
+                    >
                       <div className="stat">
                         <div
                           className="stat-dot"

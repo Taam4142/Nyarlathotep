@@ -86,7 +86,9 @@ describe("App accessibility — semantics only (see header)", () => {
     const { container } = render(<App />);
 
     expect(container.querySelector("header.topbar")).not.toBeNull();
-    expect(container.querySelector("aside#app-sidebar")).not.toBeNull();
+    // A div with role=complementary, not an <aside>: at compact widths the same
+    // element takes role="dialog", which ARIA forbids on <aside>.
+    expect(container.querySelector("#app-sidebar[role='complementary']")).not.toBeNull();
     expect(container.querySelector("main.content")).not.toBeNull();
 
     const h1s = container.querySelectorAll("h1");
