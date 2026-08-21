@@ -5,6 +5,13 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Added
+- **Extraction now tells you how long it will take.** Long OCR runs show a remaining-time
+  estimate beside the page counter — *"OCR page 12 of 31 · about 2 min left"* — so a run that
+  takes several minutes reads as working rather than hung. It measures the document being
+  processed on the machine processing it, rather than assuming a fixed speed, and stays quiet
+  when the wait is under a minute.
+
 ### Documentation
 - **The Excel export is now documented accurately.** README describes exactly what the exported
   file contains — including that three columns appear only when their toggle is on, which is

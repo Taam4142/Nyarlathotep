@@ -38,6 +38,7 @@ import {
   OCR_FEEDERS,
 } from "./lib/models";
 import { fetchWithRetry, apiErrorMessage } from "./lib/net";
+import { createEtaTracker, TESSERACT_MS_PER_PAGE } from "./lib/eta";
 import {
   MEDIA_COMPACT,
   MEDIA_PHONE,
@@ -1188,11 +1189,14 @@ function App() {
                 "First run downloads the Thai language pack (~15MB, cached after)",
               );
               setLoadPct(2);
+              const eta = createEtaTracker(TESSERACT_MS_PER_PAGE);
               const ocrText = await ocrPDFTesseract(
                 pdfFile,
                 (page, total, pct) => {
                   if (page && total) {
-                    setLoadSub(`OCR page ${page} of ${total}`);
+                    setLoadSub(
+                      `OCR page ${page} of ${total}${eta.tick(page, total)}`,
+                    );
                     setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
                   } else if (pct != null) {
                     setLoadSub(`Recognizing text — ${pct}%`);
@@ -1239,10 +1243,13 @@ function App() {
               setLoadMsg("Typhoon OCR (Thai)...");
               setLoadSub("Reading pages with Typhoon — via proxy");
               setLoadPct(2);
+              const eta = createEtaTracker();
               const tOcr = await ocrPDFTyphoon(
                 pdfFile,
                 (page, total) => {
-                  setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                  setLoadSub(
+                    `Typhoon OCR — page ${page} of ${total}${eta.tick(page, total)}`,
+                  );
                   setLoadPct(Math.round(((page - 1) / total) * 85) + 5);
                 },
                 signal,
@@ -1331,11 +1338,14 @@ function App() {
                 setLoadSub(
                   "First run downloads Thai language pack (~15MB, cached)",
                 );
+                const eta = createEtaTracker(TESSERACT_MS_PER_PAGE);
                 ocrText = await ocrPDFTesseract(
                   pdfFile,
                   (page, total, pct) => {
                     if (page && total) {
-                      setLoadSub(`OCR page ${page} of ${total}`);
+                      setLoadSub(
+                        `OCR page ${page} of ${total}${eta.tick(page, total)}`,
+                      );
                       setLoadPct(Math.round(((page - 1) / total) * 55) + 5);
                     } else if (pct != null) {
                       setLoadSub(`Recognizing — ${pct}%`);
@@ -1429,11 +1439,14 @@ function App() {
               } else if (ocrEngine === "typhoon") {
                 setLoadMsg("OCR via Typhoon (Thai)...");
                 setLoadSub("Reading pages with Typhoon — via proxy");
+                const eta = createEtaTracker();
                 ocrText = await ocrPDFTyphoon(
                   pdfFile,
                   (page, total) => {
                     setLoadPct(Math.round((page / total) * 60));
-                    setLoadSub(`Typhoon OCR — page ${page} of ${total}`);
+                    setLoadSub(
+                      `Typhoon OCR — page ${page} of ${total}${eta.tick(page, total)}`,
+                    );
                   },
                   signal,
                 );
