@@ -204,3 +204,86 @@ export function extractPairings(
 
 /** Stable key for allowlisting a known-failing pairing. */
 export const pairingKey = (p: Pairing): string => `${p.colorToken} on ${p.backgroundToken}`;
+
+/**
+ * Surfaces that text can actually be painted on.
+ *
+ * `--sur4` is deliberately excluded: it is the scrollbar thumb colour and
+ * nothing else (one use, `::-webkit-scrollbar-thumb`). Including it made five
+ * perfectly good text tokens "fail" against a background no text ever sits on.
+ */
+export const TEXT_SURFACES = ["--sur0", "--sur1", "--sur2", "--sur3"];
+
+/** A rule that sets a text colour but inherits its background from an ancestor. */
+export interface InheritedRule {
+  selector: string;
+  colorToken: string;
+  color: string;
+  /** The surface this colour scores worst against. */
+  surfaceToken: string;
+  background: string;
+  ratio: number;
+}
+
+/**
+ * Rules that set `color` but no `background` — i.e. text whose background comes
+ * from an ancestor element.
+ *
+ * WHY THIS EXISTS: extractPairings only checks a rule when it declares BOTH a
+ * colour and a background in the same block. Measured 2026-08-21, that is 31
+ * rules, while 62 set a colour and inherit their background — so two thirds of
+ * the stylesheet's text was invisible to the guard. The gap is not theoretical:
+ * it is exactly how `.upload-txt strong` shipped at 3.14:1 (A11Y_PLAN finding O),
+ * caught only by a browser pass a human has to remember to run.
+ *
+ * Static CSS cannot know which ancestor actually paints the background, so this
+ * takes the conservative reading the project already applies to text tokens
+ * (see P3b, where --txt3 was derived to clear every surface): a colour used as
+ * inherited-background text must be legible on ANY surface it could land on.
+ * Each rule is reported against its WORST surface.
+ *
+ * It cannot see translucent tints layered over a surface — for that, and for
+ * anything geometry-dependent, the browser pass in TESTING.md 3e is still the
+ * only real answer.
+ */
+export function extractInheritedColorRules(
+  css: string,
+  scope: "light" | "dark" = "light",
+  compositeBase?: string,
+  surfaces: string[] = TEXT_SURFACES,
+): InheritedRule[] {
+  const tokens = parseTokens(css, scope);
+  const base = compositeBase ?? tokens["--sur0"] ?? "#ffffff";
+  const out: InheritedRule[] = [];
+
+  for (const block of stripComments(css).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = block[1].trim().split("\n").pop()!.trim();
+    const body = block[2];
+    const cm = body.match(/(?:^|[\s;])color:\s*var\((--[\w-]+)\)/);
+    // Any background at all — including a literal or a gradient — means the
+    // rule paints its own ground and extractPairings' territory, not this one.
+    if (!cm || /background(?:-color|-image)?:/.test(body)) continue;
+
+    const colorToken = cm[1];
+    if (!(colorToken in tokens)) continue;
+    const color = resolveToken(tokens[colorToken], tokens, base);
+    if (!color) continue;
+
+    let worst: InheritedRule | null = null;
+    for (const surfaceToken of surfaces) {
+      if (!(surfaceToken in tokens)) continue;
+      const background = resolveToken(tokens[surfaceToken], tokens, base);
+      if (!background) continue;
+      const ratio = contrastRatio(color, background);
+      if (!worst || ratio < worst.ratio) {
+        worst = { selector, colorToken, color, surfaceToken, background, ratio };
+      }
+    }
+    if (worst) out.push(worst);
+  }
+  return out;
+}
+
+/** Stable key for allowlisting a known-failing inherited rule. */
+export const inheritedKey = (r: InheritedRule): string =>
+  r.selector + " { color: " + r.colorToken + " }";

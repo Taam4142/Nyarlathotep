@@ -281,8 +281,27 @@ One-token change. Measured after, in both themes, by compositing the translucent
 | Dark | `#a5b4fc` | `#22253e` | 3.14 | **7.54** |
 | Light | `#4338ca` | `#f1f0fd` | — | **7.02** |
 
-> **Follow-up worth doing:** teach [`contrast.ts`](src/lib/contrast.ts) about this pairing so the
-> regression is caught in CI rather than only by the release-time browser pass.
+> **Follow-up DONE 2026-08-21 — and it found more.** `contrast.ts` gained
+> `extractInheritedColorRules()`, which checks rules that set a colour but inherit their
+> background. Measured first: the old guard checked **31** rules while **62** set a colour and
+> inherited a background, so **two thirds of the stylesheet was invisible to it** — O was not a
+> one-off gap but a representative sample.
+>
+> Static CSS cannot know which ancestor paints the background, so the check takes the reading
+> P3b already applied to `--txt3`: text must be legible on **any** surface it could land on,
+> and each rule is scored against its worst. `--sur4` is excluded by name — it is the
+> scrollbar thumb and nothing else, and including it failed five sound tokens against a
+> background no text sits on.
+>
+> **It immediately caught a second real failure of the same family:** `.btn-ghost:hover` and
+> `.lib-add-btn:hover` set `color: var(--amber)`, which reaches only **2.96:1** on `--sur3` in
+> dark. Both buttons rest at `--txt2`, which passes — so **hovering made the label harder to
+> read than not hovering**. Fixed with `--accent-text`, the same token as O.
+>
+> Observed and deliberately not changed: the matching `border-color: var(--amber)` on those
+> hover states is 2.96:1 against a 3:1 requirement for UI component boundaries (WCAG 1.4.11) —
+> marginal, and changing it is a larger visual decision than the text fix. Flagged here rather
+> than silently altered.
 
 #### Not a violation, but flagged for a human
 One `color-contrast` **incomplete** on `.help-sub`: *"background color could not be determined

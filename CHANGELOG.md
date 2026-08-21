@@ -6,6 +6,11 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 ## [Unreleased]
 
 ### Accessibility
+- **Hovering a secondary button no longer makes its label harder to read.** The hover colour
+  was fainter than the resting one against dark backgrounds; it now uses the same accent-text
+  colour as the other accent labels.
+
+### Accessibility
 - **"Click or drag PDF" is readable now.** The upload prompt was too faint against its panel
   (3.1:1, below the 4.5:1 standard). It now uses the same accent-text colour the filter chips
   already use — 7.5:1 in dark, 7.0:1 in light.

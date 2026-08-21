@@ -12,6 +12,9 @@ import {
   extractPairings,
   pairingKey,
   stripComments,
+  extractInheritedColorRules,
+  inheritedKey,
+  TEXT_SURFACES,
 } from "./contrast";
 
 const CSS = fs.readFileSync(path.resolve(__dirname, "../styles.css"), "utf8");
@@ -190,4 +193,65 @@ describe("styles.css contrast guard (DESIGN_TOKENS.md §2)", () => {
     const onSur4 = extractPairings(CSS, "light").filter((p) => p.backgroundToken === "--sur4");
     expect(onSur4).toEqual([]);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Inherited-background text (A11Y_PLAN finding O).
+//
+// extractPairings only sees rules declaring BOTH colour and background. That is
+// 31 rules; another 62 set a colour and inherit their background, and were
+// invisible. `.upload-txt strong` shipped at 3.14:1 through exactly that gap.
+// ---------------------------------------------------------------------------
+describe("extractInheritedColorRules", () => {
+  it("finds a rule that sets only a colour", () => {
+    const css = [
+      ":root { --sur1: #ffffff; --txt: #000000; }",
+      ".a { color: var(--txt); }",
+    ].join("\n");
+    const rules = extractInheritedColorRules(css, "light", "#ffffff", ["--sur1"]);
+    expect(rules).toHaveLength(1);
+    expect(rules[0].selector).toBe(".a");
+    expect(rules[0].ratio).toBeCloseTo(21, 0);
+  });
+
+  it("ignores rules that paint their own background", () => {
+    // Those are extractPairings' territory; checking them here would double-report
+    // and, worse, check them against surfaces they never sit on.
+    const css = [
+      ":root { --sur1: #ffffff; --txt: #000000; --sur2: #eeeeee; }",
+      ".a { color: var(--txt); background: var(--sur2); }",
+      ".b { color: var(--txt); background-image: linear-gradient(red, blue); }",
+    ].join("\n");
+    expect(extractInheritedColorRules(css, "light", "#ffffff", ["--sur1"])).toHaveLength(0);
+  });
+
+  it("reports the WORST surface, since static CSS cannot know which one applies", () => {
+    const css = [
+      ":root { --sur1: #ffffff; --sur2: #767676; --txt: #949494; }",
+      ".a { color: var(--txt); }",
+    ].join("\n");
+    const [r] = extractInheritedColorRules(css, "light", "#ffffff", ["--sur1", "--sur2"]);
+    // #949494 is closer to #767676 than to white, so --sur2 is the worse ground.
+    expect(r.surfaceToken).toBe("--sur2");
+  });
+
+  it("excludes --sur4 from the default surfaces", () => {
+    // It is the scrollbar thumb colour and nothing else. Including it failed five
+    // sound text tokens against a background no text is ever painted on.
+    expect(TEXT_SURFACES).not.toContain("--sur4");
+  });
+});
+
+describe("every inherited-background text rule meets AA, in both themes", () => {
+  const CSS = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf8");
+
+  for (const scope of ["light", "dark"] as const) {
+    it(`${scope}: no inherited-colour rule falls below AA on any surface it could land on`, () => {
+      const failures = extractInheritedColorRules(CSS, scope)
+        .filter((r) => r.ratio < AA_NORMAL)
+        .map((r) => `${inheritedKey(r)} on ${r.surfaceToken} = ${r.ratio.toFixed(2)}`);
+
+      expect(failures).toEqual([]);
+    });
+  }
 });

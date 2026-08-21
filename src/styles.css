@@ -329,7 +329,12 @@
       }
       .btn-ghost:hover {
         border-color: var(--amber);
-        color: var(--amber);
+        /* --accent-text, not --amber: this is TEXT inheriting a surface, and
+           --amber only reached 2.96:1 on --sur3 in dark — hovering made the
+           label HARDER to read than its resting --txt2. Same fix as
+           .upload-txt strong and .f-all.on. Caught by
+           extractInheritedColorRules (A11Y_PLAN finding O). */
+        color: var(--accent-text);
       }
       .btn-ghost:disabled {
         opacity: 0.3;
@@ -628,7 +633,8 @@
       }
       .lib-add-btn:hover {
         border-color: var(--amber);
-        color: var(--amber);
+        /* --accent-text, not --amber — see .btn-ghost:hover. */
+        color: var(--accent-text);
       }
       .lib-add-form {
         background: var(--sur2);
