@@ -9,6 +9,14 @@
 
 ## ▶ Next up — the remaining plan
 
+> **Deferred (2026-08-21): rewrite `SKILL.md`.** It is frozen at 2026-08-03 and now
+> actively misleading — it documents a Google Document AI path removed in v0.2.0 and a
+> pre-Vite structure. `CLAUDE.md` was rewritten as the working-context doc and `PROMPTS.md`
+> split out; `SKILL.md` was deliberately left out of that pass to keep it reviewable.
+> **Trigger:** before the next release, or whenever someone reads it and is misled.
+> **Decide while doing it** whether it still has a job now that `README.md` + `CLAUDE.md`
+> cover orientation, or whether it should simply be deleted.
+
 Ordered by **ascending risk and dependency**, so cheap protective work lands first and the two big items
 come last, informed by evidence. Each item is independently revertible; nothing here is a prerequisite for
 using the tool as it stands.
