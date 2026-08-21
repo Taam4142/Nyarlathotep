@@ -2,6 +2,7 @@ import { createWorker } from "tesseract.js";
 import { pdfjsLib, rasterizePage } from "./pdf";
 import { fetchWithRetry, apiErrorMessage } from "./net";
 import { extractTyphoonText } from "./typhoon";
+import { cleanModelMarkdown } from "./markdown";
 import { pageTextFromOcr } from "./ocrlines";
 import type { OcrProgress } from "./types";
 import { TYPHOON_MODEL } from "./models";
@@ -10,7 +11,7 @@ import { TYPHOON_MODEL } from "./models";
 export { TYPHOON_MODEL };
 // Verbatim OCR prompt. Can be swapped for the typhoon-ocr package's exact prompt.
 export const TYPHOON_OCR_PROMPT =
-  "Below is an image of one page from a Thai/English document (a Terms of Reference). Read it and return the text exactly as it appears — verbatim, preserving Thai text, numbers, units, and the clause numbering/structure. Return clean Markdown. Do NOT translate, summarize, or add commentary.";
+  "Below is an image of one page from a Thai/English document (a Terms of Reference). Read it and return the text exactly as it appears — verbatim, preserving Thai text, numbers, units, and the clause numbering/structure. Return PLAIN TEXT only, with the original line breaks. Do NOT add Markdown or any formatting: no #, no *, no ** — a clause number must start its line so nothing precedes it. Do NOT translate, summarize, or add commentary.";
 
 const PAGE_BREAK = "\n\n--- PAGE BREAK ---\n\n";
 
@@ -127,7 +128,10 @@ export async function ocrPDFTyphoon(
     // typhoon-ocr wraps its result in {"natural_text": "...\n..."} — unwrap it
     // so the structurer sees real newlines and splits into rows (bug: one giant
     // row of literal \n symbols otherwise).
-    texts.push(extractTyphoonText(txt));
+    // Strip any Markdown the model added anyway. The prompt asks for plain
+    // text, but a prompt is a request: heading markers used to hide the clause
+    // number underneath them, costing 24 refs on a real 24-page TOR.
+    texts.push(cleanModelMarkdown(extractTyphoonText(txt)));
   }
   return texts.join(PAGE_BREAK);
 }
@@ -210,5 +214,10 @@ export async function ocrPageWithGemini(
     throw new Error(e?.error?.message || `Gemini Vision API ${res.status}`);
   }
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  // Same Markdown guard as the Typhoon path — this is a language model too.
+  // Google Vision (ocrPDFVision) is deliberately NOT wrapped: it is an OCR API,
+  // not a model, and returns plain text by construction.
+  return cleanModelMarkdown(
+    data.candidates?.[0]?.content?.parts?.[0]?.text || "",
+  );
 }

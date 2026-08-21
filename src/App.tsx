@@ -39,6 +39,7 @@ import {
 } from "./lib/models";
 import { fetchWithRetry, apiErrorMessage } from "./lib/net";
 import { createEtaTracker, TESSERACT_MS_PER_PAGE } from "./lib/eta";
+import { cleanModelMarkdown } from "./lib/markdown";
 import {
   MEDIA_COMPACT,
   MEDIA_PHONE,
@@ -1432,7 +1433,9 @@ function App() {
                   }
                   const data = await res.json();
                   texts.push(
-                    data.content?.find((b) => b.type === "text")?.text || "",
+                    cleanModelMarkdown(
+                      data.content?.find((b) => b.type === "text")?.text || "",
+                    ),
                   );
                 }
                 ocrText = texts.join("\n\n--- PAGE BREAK ---\n\n");

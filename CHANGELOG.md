@@ -5,6 +5,13 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Fixed
+- **Clause references are no longer lost, and stray #, * and ** no longer appear in requirements.**
+  The Thai OCR engine was being asked to return Markdown, and its formatting ended up inside the
+  requirement text — and in the exported Excel. Worse, a heading marker sat in front of the clause
+  number and hid it, so those rows fell back to placeholder references. On a real 24-page TOR this
+  recovers **43** clause references. Dash bullets, which real TORs use, are left exactly as they were.
+
 ### Added
 - **Extraction now tells you how long it will take.** Long OCR runs show a remaining-time
   estimate beside the page counter — *"OCR page 12 of 31 · about 2 min left"* — so a run that

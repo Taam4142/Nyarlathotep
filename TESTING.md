@@ -457,6 +457,47 @@ matters more than the stopwatch.
 
 ---
 
+## 3g. Markdown leaking into verbatim text (2026-08-21)
+
+Found by the engineer on a real 24-page scanned AMR TOR, extracted with Typhoon.
+
+**Our own prompt caused it.** `TYPHOON_OCR_PROMPT` ended *"Return clean Markdown"*, and the
+reply is treated as verbatim source text. So `####`, `*` and `**bold**` landed in the
+`requirement` field, and from there in the Excel export — a contractual document.
+
+**The damage was not cosmetic.** `matchClauseRef` requires a line to START with its number,
+so a heading marker hid it. On 503 rows:
+
+| | |
+| --- | ---: |
+| Rows with a synthetic `CL-` ref | 320 (64 %) |
+| Refs destroyed by a leading marker | **43** |
+| `####` headings · `*` bullets · `**bold**` | 25 · 62 · 44 |
+
+Including the document’s top-level structure: `## ๓. ข้อกำหนดเฉพาะงาน` and
+`### ๓.๑ รายการก่อสร้างบ่อสูบน้ำ` both came through as `CL-` rows.
+
+### Why removing it is not a verbatim violation
+
+Verified, not assumed: the source page was rendered and read. The line begins `๓.๑.` with
+**no `#` anywhere in the document**. The markers are the model’s, added because we asked for
+them. Removing them *restores* the source.
+
+### The one ambiguous case
+
+A leading `*` cannot be proven either way — it might be a real footnote or emphasis marker,
+and rewriting a real one would corrupt a requirement. So it is rewritten **only when the same
+document contains `####` or `**bold**`**, which proves the model was in Markdown mode and
+explains every asterisk in that response. A document with no other Markdown keeps its
+asterisks. A leading `-` is never touched — real TORs use dash bullets, and 145 rows here did.
+
+### Result on the real document
+
+43 refs recovered · 108 rows changed · **0** headings, asterisk bullets or bold spans left ·
+**207** dash bullets untouched (145 original + 62 converted, the originals intact).
+
+---
+
 ## 4. What cannot be verified in the sandbox
 
 Full table with reasons: [`RISK_REVIEW.md`](RISK_REVIEW.md) → *Verification limits*. In short, these need a
