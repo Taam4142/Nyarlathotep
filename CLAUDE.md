@@ -27,7 +27,7 @@ prompt, and [`TESTING.md`](TESTING.md) §3b for how it is verified.
 ```bash
 npm run dev         # Vite dev server. NOTE: /api/* proxies do NOT exist here.
 npm run typecheck   # tsc --noEmit
-npm run test        # vitest run — 179 tests
+npm run test        # vitest run — 185 tests
 npm run build       # vite build → dist/
 ```
 
@@ -136,14 +136,15 @@ which are invisible; Typhoon's land on Thai words, which a reader catches.**
 | [`ROADMAP.md`](ROADMAP.md) | What is planned, deferred, and why |
 | [`RISK_REVIEW.md`](RISK_REVIEW.md) | Project risk register **R1–R13** |
 | [`A11Y_PLAN.md`](A11Y_PLAN.md) | Accessibility findings A–O, phases P0–P5, and its **own** register **R1–R14** |
-
-> **Two risk registers, overlapping IDs.** `RISK_REVIEW.md` R1–R13 are project risks;
-> `A11Y_PLAN.md` R1–R14 are accessibility risks. "R5" means different things in each. Always
-> name the file.
 | [`DESIGN_TOKENS.md`](DESIGN_TOKENS.md) | Colour/spacing tokens and the contrast rules |
 | [`RESPONSIVE_PLAN.md`](RESPONSIVE_PLAN.md) · [`LIGHTHOUSE_AUDIT.md`](LIGHTHOUSE_AUDIT.md) | Mobile layout · performance/security audit |
 | [`DEPLOY.md`](DEPLOY.md) | Cloudflare Pages setup, env vars, proxy config |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible history |
 
-> `SKILL.md` is **stale** (frozen 2026-08-03: describes a removed Google Document AI path and
-> pre-Vite structure). Treat it as historical until it is rewritten — tracked in `ROADMAP.md`.
+> **Two risk registers, overlapping IDs.** `RISK_REVIEW.md` R1–R13 are project risks;
+> `A11Y_PLAN.md` R1–R14 are accessibility risks. "R5" means different things in each. Always
+> name the file.
+
+> `SKILL.md` was **deleted** on 2026-08-21. Most of it duplicated code or other docs, and
+> much of what did not was wrong. Its one unique piece — the Excel output contract — is now
+> in [`README.md`](README.md), corrected.

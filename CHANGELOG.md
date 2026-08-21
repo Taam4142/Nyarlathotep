@@ -5,6 +5,11 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Documentation
+- **The Excel export is now documented accurately.** README describes exactly what the exported
+  file contains — including that three columns appear only when their toggle is on, which is
+  why column letters shift between exports.
+
 ### Accessibility
 - **Hovering a secondary button no longer makes its label harder to read.** The hover colour
   was fainter than the resting one against dark backgrounds; it now uses the same accent-text

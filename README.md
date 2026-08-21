@@ -112,6 +112,41 @@ Other scripts: `npm run build` (→ `dist/`), `npm run preview` (serve the build
   with a network error.
 - **Browser OCR** and **Gemini** work fully locally.
 
+## Excel output
+
+What the exported `.xlsx` contains, from [`src/lib/xlsx.ts`](src/lib/xlsx.ts). Useful when a
+reviewer asks why a column is missing, or when something downstream parses the file.
+
+**Sheet structure** — title row (project name, merged, 16 pt bold), a generated-on subtitle,
+a spacer, then the header row. The view is **frozen below the header**, so column titles stay
+visible while scrolling a long matrix.
+
+**Columns, in order.** Three are conditional, which is why the letters shift:
+
+| # | Column | Present |
+| ---: | --- | --- |
+| 1 | Item No. | always |
+| 2 | Reference | always |
+| 3 | Requirement / Specification | always — Thai, verbatim |
+| — | English Translation | only if the translation toggle is on **and** some row has one |
+| — | Category | only if the category toggle is on |
+| — | Compliance Status | always — cell text colour-coded per status |
+| — | Remarks | always |
+| — | Verified By · Date | always — pre-filled from the "Verified by…" field |
+| — | Figure | only if at least one row has a snipped figure |
+
+**Thai font.** Every cell is set to **TH Sarabun New** up front, so Thai renders on open with
+no manual font step. A font cannot be *embedded* in a `.xlsx`, so a machine without it
+installed gets a substitute — Thai stays legible either way.
+
+**Filename:** `<project>_Compliance_Matrix_<YYYY-MM-DD>.xlsx`.
+
+> Status colours come from `STAT_COLORS` in [`src/lib/constants.ts`](src/lib/constants.ts),
+> shared with the on-screen matrix so the two cannot drift apart. Don't edit one without the
+> other.
+
+---
+
 ## Known limitations
 
 - **Local-only persistence** — the matrix autosaves to `localStorage` and restores on reload;
@@ -142,7 +177,6 @@ what's planned.
 | `functions/api/vision.js`    | Cloudflare Pages Function — proxy to the Google Vision API.     |
 | `functions/api/_guard.js`    | Shared proxy hardening — origin/model allow-list, body cap, rate limit (R6). |
 | `DEPLOY.md`                  | Cloudflare deploy + proxy-hardening click-steps.               |
-| `SKILL.md`                   | What the tool is and how it's wired (reference).               |
 | `CLAUDE.md`                  | Prompt engineering + AI behaviour rules.                       |
 | `OCR_RESEARCH.md`            | Survey of OCR options + the lineup decision.                   |
 | `ROADMAP.md`                 | Phased development plan + deferred items.                      |

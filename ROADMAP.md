@@ -19,7 +19,7 @@ revertible; none is a prerequisite for using the tool as it stands.
 | # | Item | Effort | Risk | Verifiable by me? | Status |
 | --- | --- | --- | --- | --- | --- |
 | **A1** | Broaden `contrast.ts` to inherited-background text | S | Low | Yes | ✅ **Done — 2026-08-21** (`55dc19a`) |
-| **A2** | Decide `SKILL.md`'s fate — rewrite or delete | S | Low | Yes | ▶ **In progress** |
+| **A2** | Decide `SKILL.md`'s fate | S | Low | Yes | ✅ **Done — 2026-08-21** (deleted) |
 | **B** | Scale profile on a long document | M | Low | Yes, on a public doc | **Next** |
 | **C** | F5 leftovers — keyboard cell nav, column reorder | M | Med | ⚠️ Partly | Engineer's call |
 | **D1** | ESLint from scratch + `eslint-plugin-jsx-a11y` | M | Low | Yes | Deferred, reason below |
@@ -29,7 +29,7 @@ revertible; none is a prerequisite for using the tool as it stands.
 
 ---
 
-### A2 — `SKILL.md`: audited 2026-08-21, decision open
+### A2 — `SKILL.md`: audited and deleted, 2026-08-21
 
 Read in full rather than assumed. It is **not** wholly dead, and the staleness did not fall
 where expected:
@@ -47,9 +47,9 @@ where expected:
 - **More current than README was:** its Known Limitations correctly described persistence
   while README claimed there was none. README has been corrected (`4982671`).
 
-**Recommendation: fold the corrected Excel contract into [`README.md`](README.md) and delete
-`SKILL.md`.** One fewer file, nothing true lost, and the audience for an export contract is
-already reading README.
+**Done:** the Excel contract was corrected against `xlsx.ts` and moved into
+[`README.md`](README.md); `SKILL.md` was deleted. One fewer file, nothing true lost, and the
+audience for an export contract is already reading README.
 
 ---
 
