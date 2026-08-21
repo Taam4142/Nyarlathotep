@@ -274,6 +274,90 @@ project has.
 
 ---
 
+## 3d. Engine bake-off on a real scanned TOR (2026-08-21)
+
+The same real AMR document (2 pages, scanned), read by **browser Tesseract** and
+by **Typhoon** through the deployed site, scored against the source page images.
+
+### Structure — the two now agree
+
+| | rows | per page | furniture rows |
+| --- | ---: | ---: | ---: |
+| Tesseract (after the §3c fixes) | 61 | 30.5 | 0 |
+| Typhoon | 60 | 30.0 | 0 |
+
+Worth stating plainly: **the splitting is no longer the problem.** Before the
+§3c fixes Tesseract produced 80 rows against Typhoon's 60; it now lands within
+one row of a Thai-tuned VLM. Of Typhoon's 60 rows only 3 open with neither a
+clause ref nor a bullet, and all 3 are genuine sub-headings or paragraph bodies
+rather than fragments.
+
+### Accuracy — the two do not agree at all
+
+Tesseract got **every** checked specification value wrong. Typhoon got every one
+right.
+
+| Value | Source | Tesseract | Typhoon |
+| --- | --- | --- | --- |
+| screen size | `๔๐ นิ้ว` | `๕๐ นิ้ว` ✗ | ✓ |
+| video port | `HDMI` | `HOMI` ✗ | ✓ |
+| resolution | `๔,๐๙๖ x ๒,๑๖๐` | `๕,๐๑๒ x ๒,๑๒๐` ✗ | ✓ |
+| aspect ratio | `๑๖:๙` | `๑๒:@` ✗ | ✓ |
+| ingress rating | `IP ๖๘` | `IP ๒๕` ✗ | ✓ |
+| power input | `๒๔ VDC` | `๒๕ VDC` ✗ | ✓ |
+| signal output | `๔-๒๐mA` | `๕-๒๐กา#` ✗ | ✓ |
+| temperature | `-๔๐ ถึง ๘๐` | `-๕๐ ถึง ๕๐` ✗ | ✓ |
+| radar band | `๘๐ GHz` | `๕๐ GHz` ✗ | ✓ |
+| beam angle | `๘°` | `๕*”` ✗ | ✓ |
+| I/O ports | `AI ๔, DI ๑๔` | `Al ๕, Dl ๑๕` ✗ | ✓ |
+| ethernet | `Ethernet` | `Ethemet` ✗ | ✓ |
+| protocol | `Protocol Modbus` | `1๐1๐๕๐!` ✗ | ✓ |
+| cellular | `๓G/๔G` | `๓6/๕6` ✗ | ✓ |
+| GSM bands | `๘๕๐/๙๐๐/๑๘๐๐/๑๙๐๐MHz` | `๕๕๐/๕๐๐/๑๕๐๐/๑๕๐๐|ป12` ✗ | ✓ |
+| serial | `RS-๒๓๒/RS-๔๘๕` | `พ5-๒๓๒/@35-๕๕๕` ✗ | ✓ |
+| steel grade | `๓๐๔` | `๓๐๕` ✗ | ✓ |
+| humidity | `๙๕%` | `๓๕%` ✗ | ✓ |
+| clause ref | `๓.๑๑.๔` | `๓.๑๑.๕` ✗ | ✓ |
+| list item | `๔.` | `๕.` — a **duplicate ref** ✗ | ✓ |
+
+**Evidence classes**, since not all of these are equally verified. Read directly
+off the page images at high magnification: screen size, video port, resolution,
+aspect, ingress, power input, signal output, temperature. Corroborated by
+sequence or by being a standard value rather than by direct reading: the clause
+refs (`๓.๑๑.๓` → `๓.๑๑.๔` → `๓.๑๒`; `๒.๑`–`๒.๔`), stainless `๓๐๔`, `๘๐ GHz` radar,
+quad-band GSM, RS-232/485, 3G/4G. Nothing here rests on Typhoon alone.
+
+### The finding that matters
+
+**The two engines fail in different places, and only one of them fails
+dangerously.**
+
+Tesseract's errors land on **numbers** — an ingress rating, a steel grade, a
+temperature range — and it reports them at 92–99 % confidence (§3c). They are
+invisible: nothing in the output says the value is suspect, and a plausible
+wrong number reads exactly like a right one.
+
+Typhoon's remaining errors land on **Thai words**: `ดัน` read as `ต้น`, `เสายึด` as
+`เสาธียด`, `ควบคุม` as `ความคุม`, `บ่อสูบ` as `บ่อลอบ`, `คอนกรีต` as `คอนกรีท`. Any Thai
+reader spots these immediately, and **none of them changes a specification
+value.**
+
+For a compliance matrix, where the numbers largely *are* the requirement, that
+difference decides the engine. **On scanned Thai documents, prefer Typhoon.**
+Browser OCR remains the right choice offline, for a first look, or where no
+network is available — and it now carries a warning naming exactly this risk
+(`src/lib/ocrtrust.ts`).
+
+### Two things learned about the Typhoon API
+
+- It **rejects JPEG with HTTP 400** and accepts PNG. `rasterizePage` returns PNG,
+  so the app is fine — but anything sending it a snipped figure would not be.
+- It is **layout-sensitive**. A cropped strip of four lines returned only the
+  first; the same crop padded onto a page-shaped white canvas returned just
+  `- 1 -`. It needs whole pages, which is what `ocrPDFTyphoon` sends.
+
+---
+
 ## 4. What cannot be verified in the sandbox
 
 Full table with reasons: [`RISK_REVIEW.md`](RISK_REVIEW.md) → *Verification limits*. In short, these need a
