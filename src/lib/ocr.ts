@@ -2,6 +2,7 @@ import { createWorker } from "tesseract.js";
 import { pdfjsLib, rasterizePage } from "./pdf";
 import { fetchWithRetry } from "./net";
 import { extractTyphoonText } from "./typhoon";
+import { pageTextFromOcr } from "./ocrlines";
 import type { OcrProgress } from "./types";
 import { TYPHOON_MODEL } from "./models";
 
@@ -62,10 +63,14 @@ export async function ocrPDFTesseract(
       if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
       onProgress && onProgress(p, total, 0);
       const b64 = await rasterizePage(pdf, p, 3); // higher scale = better Thai accuracy
-      const {
-        data: { text },
-      } = await worker.recognize("data:image/png;base64," + b64);
-      texts.push(text);
+      // `blocks` carries the per-line bounding boxes, and tesseract.js omits
+      // it unless asked. They are what lets a requirement wrapped across
+      // several lines be rejoined into one row instead of several fragments.
+      const { data } = await worker.recognize("data:image/png;base64," + b64, {}, {
+        blocks: true,
+        text: true,
+      });
+      texts.push(pageTextFromOcr(data));
     }
     return texts.join(PAGE_BREAK);
   } finally {

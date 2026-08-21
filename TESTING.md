@@ -163,6 +163,12 @@ Not automated, because it needs documents this repo does not ship. To redo it:
   being emitted as requirements. It rose from 24–49 % to 61–84 % once wrapped
   lines were joined.
 
+  > **Read this one with care on a bulleted document.** Where requirements are
+  > dash-bulleted spec lines hanging off a numbered clause, most rows correctly
+  > have no ref of their own, and the share stays low however good the split is.
+  > On the AMR TOR it reads 28 % while the extraction is sound. Rows-per-page is
+  > the reliable signal there.
+
 ---
 
 ## 3c. The first real *AMR* document (2026-08-20)
@@ -199,12 +205,15 @@ Measured with the free local Tesseract engine and `structureWithoutAI`:
 Three things are **known-open** on the OCR path (none regressions — all
 pre-existing, all now measured rather than assumed):
 
-1. **Wrapped lines fragment.** The digital path rejoins them from cell geometry;
-   OCR returns plain text, so there is no geometry to consult and the splitter
-   stays strictly one-line-one-row. ~28 % of rows are sentence fragments.
-   Tesseract *can* report per-line bounding boxes — the code currently takes
-   only `data.text` — so the same geometric fix is reachable, but it is a
-   real change, not a tweak.
+1. **Wrapped lines fragment.** ~~Open~~ **FIXED 2026-08-21**
+   (`src/lib/ocrlines.ts`). Tesseract does report per-line bounding boxes — it
+   just omits them unless the caller asks for `blocks`, and the code took only
+   `data.text`. Asking for them makes the same geometric signal the digital path
+   uses available here, so the line boxes are adapted into the `RowCell` shape
+   and fed to the existing `joinWrappedRows` rather than growing a second,
+   separately-wrong copy of the rule. On the AMR document: 75 → 61 rows,
+   80 OCR lines → 65. Falls back to the flat text when no geometry is present —
+   losing the rejoining is untidy, losing the text would be a correctness bug.
 2. **Signature blocks and page numbers become requirements.** ~~Open~~ **FIXED
    2026-08-21** (`src/lib/furniture.ts`). Every page of a Thai government TOR ends
    with a committee signature block (`ลงชื่อ … ประธานกรรมการ`) and a centred page

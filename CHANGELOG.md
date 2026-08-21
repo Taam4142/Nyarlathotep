@@ -5,6 +5,13 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Fixed
+- **Scanned documents no longer split a requirement into fragments.** A requirement
+  wrapping across several OCR lines now becomes one row instead of several, using the
+  line geometry Tesseract already produces. Previously only digital PDFs got this. On a
+  real scanned TOR, 75 rows became 61, with every character preserved. The bullet and
+  clause-reference guards apply here too, so separate requirements are never merged.
+
 ### Changed
 - **Signature blocks and page numbers are no longer extracted as requirements.** Every
   page of a Thai government TOR ends with a committee signature block and a page number;
