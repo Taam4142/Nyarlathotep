@@ -20,7 +20,7 @@ revertible; none is a prerequisite for using the tool as it stands.
 | --- | --- | --- | --- | --- | --- |
 | **A1** | Broaden `contrast.ts` to inherited-background text | S | Low | Yes | ✅ **Done — 2026-08-21** (`55dc19a`) |
 | **A2** | Decide `SKILL.md`'s fate | S | Low | Yes | ✅ **Done — 2026-08-21** (deleted) |
-| **B** | Scale profile on a long document | M | Low | Yes, on a public doc | **Next** |
+| **B** | Scale profile on a long document | M | Low | Yes | ✅ **Done — 2026-08-21** ([`TESTING.md`](TESTING.md) §3f) |
 | **C** | F5 leftovers — keyboard cell nav, column reorder | M | Med | ⚠️ Partly | Engineer's call |
 | **D1** | ESLint from scratch + `eslint-plugin-jsx-a11y` | M | Low | Yes | Deferred, reason below |
 | **D2** | `npm audit` — needs breaking major bumps | S | Med | Yes | **Engineer's decision** |
@@ -53,7 +53,7 @@ audience for an export contract is already reading README.
 
 ---
 
-### B — Scale profile *(next, needs nothing from the engineer)*
+### B — Scale profile ✅ *done 2026-08-21*
 
 **The gap:** everything tested so far is **≤22 pages**, and the one real AMR document was
 **2**. Production TORs may run 50–100+. Untested at that size: browser memory during OCR,
@@ -73,8 +73,24 @@ spent:
 4. Extrapolate Typhoon call volume and cost **before** spending any.
 5. Export `.xlsx` and check file size and open time.
 
-**Report the curve first.** Only after that is it worth confirming on one of the engineer's
-own documents.
+**Result: nothing falls over.** Full numbers in [`TESTING.md`](TESTING.md) §3f. Digital path
+is under a second for 31 pages with heap *falling*; the OCR path holds memory steady across 31
+pages (no R12 regression under sustained load) at ~4.5 s/page; Excel export is 74 ms for 480
+rows. Extrapolated to 100 pages: digital ~3 s, OCR **~7.5 min**, export ~230 ms.
+
+**Time is the only constraint, and it is on the OCR path.** Nothing to fix; worth telling a
+user up front so a 7-minute run does not look like a hang.
+
+**Two things came out of it that were not the point of the exercise:**
+
+1. **The OCR path emits 28 % more rows than the digital path on the same document** (617 vs
+   480) — the wrapped-line fragmentation of §3c, now measured rather than inferred. Roughly 137
+   extra fragments to merge by hand per 31 pages. Strengthens the case for porting the
+   geometric rejoin to the OCR path using Tesseract's line boxes.
+2. **A hardening recommendation collides with long documents.** `_guard.js` caps 60 requests
+   per minute per IP and [`DEPLOY.md`](DEPLOY.md) §4 recommends enabling it; Typhoon makes one
+   call per page. Switching it on could 429 a long document partway through. Check before
+   putting a 100-page TOR through Typhoon.
 
 ---
 

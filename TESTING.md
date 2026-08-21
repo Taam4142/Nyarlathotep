@@ -386,6 +386,77 @@ as findings K, L and M in [`A11Y_PLAN.md`](A11Y_PLAN.md) with the plan to fix th
 
 ---
 
+## 3f. Scale profile (2026-08-21)
+
+Everything tested before this was small: the real AMR document was **2 pages**, the published
+TORs 9–22. Production TORs may run 50–100+, so the question was whether anything falls over
+at size. Measured on a **31-page, 5 MB** published Thai document (a TOR-drafting manual, so
+genuinely Thai and genuinely long), plus a 30-page and a 9-page control.
+
+> Method note: a `grep` for `/Type /Page` said 54 pages; pdf.js said **31**. The parser wins —
+> do not size a document by regex.
+
+### Digital path — no scale concern
+
+| Doc | Pages | Extract | ms/page | Structure | Rows | Rows/page | Heap |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 5.03 MB | 31 | **908 ms** | 29 | 6 ms | 480 | 15.5 | 21 → **16** MB |
+| 0.36 MB | 30 | 674 ms | 22 | 8 ms | 436 | 14.5 | 16 → **11** MB |
+| 0.17 MB | 9 | 627 ms | 70 | 1 ms | 157 | 17.4 | 11 → 12 MB |
+
+Under a second for 31 pages, and **heap goes down, not up** — the garbage collector reclaims
+faster than extraction allocates. Extrapolated to 100 pages: **~3 s, ~1,550 rows.** Nothing to
+fix.
+
+### OCR path (browser Tesseract) — slow but sound
+
+Run end-to-end through the real `ocrPDFTesseract`, all 31 pages, sampling on its progress
+callback:
+
+| Measure | Value |
+| --- | --- |
+| Total | **137.8 s** (2 min 18 s) |
+| Per page | mean **4.5 s**, range 1.1–8.6 s |
+| Rows produced | 617 (**19.9/page**) |
+| Heap | 15 → 25 MB, peak 28, **23 MB after teardown** |
+
+**No leak.** Heap grew ~10 MB across 31 pages and came back down on `terminate()` — the R12
+fix holds under sustained load, which a 2-page document could never have shown.
+
+**Time is the only real constraint.** Extrapolated to 100 pages: **~7.5 minutes**. The progress
+UI already reports page *n* of *N*, so this is a "leave it running" cost, not a broken one.
+Worth telling a user up front rather than letting them think it has hung.
+
+> **Also quantified: the OCR path produces 28 % more rows than the digital path on the SAME
+> document** — 617 against 480. That is the wrapped-line fragmentation from §3c, measured
+> directly rather than inferred: the digital path rejoins wrapped lines from cell geometry,
+> and OCR has no geometry to rejoin from. Every one of those extra ~137 rows is a fragment
+> someone has to read and merge by hand.
+
+### Excel export — no concern
+
+480 rows → **74 ms**, **37 KB** (build 4 ms, serialise 70 ms). Extrapolated to 1,500 rows:
+~230 ms, ~115 KB. Opens normally.
+
+### Typhoon at scale — NOT measured, and one thing to check first
+
+Typhoon makes **one API call per page**, so a 100-page document is 100 calls. That was not
+measured here, because doing so means sending 100 pages through a paid proxy — the extrapolation
+matters more than the stopwatch.
+
+> ⚠️ **A hardening recommendation and long documents can collide.** `_guard.js` enforces
+> **60 requests per minute per IP**, and [`DEPLOY.md`](DEPLOY.md) §4 recommends switching it on
+> by binding a `RATE_LIMIT` KV namespace. It is **off by default** and appears to be off today
+> (`ALLOWED_ORIGINS` is set — localhost is CORS-blocked — but the rate limit is a separate
+> binding). If it is switched on, a long document OCR-ing faster than ~1 page/second would
+> start receiving 429s partway through. `fetchWithRetry` backs off and retries, so it should
+> survive, but it would slow down mysteriously.
+>
+> **Check before running a 100-page document through Typhoon**, and consider whether 60/min is
+> the right ceiling once one legitimate document can consume 100 calls in a sitting.
+
+---
+
 ## 4. What cannot be verified in the sandbox
 
 Full table with reasons: [`RISK_REVIEW.md`](RISK_REVIEW.md) → *Verification limits*. In short, these need a
