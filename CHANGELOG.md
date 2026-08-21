@@ -6,6 +6,12 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 ## [Unreleased]
 
 ### Fixed
+- **Typhoon errors now say what went wrong.** Typhoon reports the reason in a different
+  field than the other engines, so every upstream failure (rate limit, quota, a page the
+  model rejects) reached you as a bare status code with the explanation discarded. The
+  reason was always being sent; it was dropped at the last step.
+
+### Fixed
 - **Scanned documents no longer split a requirement into fragments.** A requirement
   wrapping across several OCR lines now becomes one row instead of several, using the
   line geometry Tesseract already produces. Previously only digital PDFs got this. On a

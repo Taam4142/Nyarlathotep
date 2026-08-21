@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchWithRetry } from "./net";
+import { fetchWithRetry, apiErrorMessage } from "./net";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -73,5 +73,41 @@ describe("fetchWithRetry (R9)", () => {
       fetchWithRetry("/x", undefined, { retries: 3, baseDelayMs: 1 }),
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("apiErrorMessage", () => {
+  it("reads the Anthropic/Google shape", () => {
+    expect(
+      apiErrorMessage({ error: { message: "rate limited" } }, "fallback"),
+    ).toBe("rate limited");
+  });
+
+  it("reads Typhoon's FastAPI `detail` string", () => {
+    // The shape that was being dropped: a real Typhoon 400 body.
+    expect(
+      apiErrorMessage(
+        { detail: "An error occurred during model processing" },
+        "Typhoon OCR API 400",
+      ),
+    ).toBe("An error occurred during model processing");
+  });
+
+  it("joins FastAPI validation arrays", () => {
+    expect(
+      apiErrorMessage({ detail: [{ msg: "bad image" }, { msg: "too large" }] }, "f"),
+    ).toBe("bad image; too large");
+  });
+
+  it("falls back when the body carries nothing usable", () => {
+    expect(apiErrorMessage({}, "HTTP 500")).toBe("HTTP 500");
+    expect(apiErrorMessage(null, "HTTP 500")).toBe("HTTP 500");
+    expect(apiErrorMessage({ detail: "   " }, "HTTP 500")).toBe("HTTP 500");
+  });
+
+  it("prefers the more specific field when both are present", () => {
+    expect(
+      apiErrorMessage({ error: { message: "specific" }, detail: "generic" }, "f"),
+    ).toBe("specific");
   });
 });

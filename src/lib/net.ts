@@ -72,3 +72,37 @@ export async function fetchWithRetry(
   }
   throw lastErr ?? new Error("fetchWithRetry: retries exhausted");
 }
+
+/**
+ * A human-readable message out of an API error body.
+ *
+ * Providers disagree about where they put it. Anthropic and Google use
+ * `{ error: { message } }`; Typhoon runs FastAPI, which uses `{ detail }` —
+ * either a string or, for validation errors, an array of `{ msg }`.
+ *
+ * Reading only `error.message` discarded Typhoon's reason entirely. Measured
+ * 2026-08-21: a real 400 carried
+ * `{"detail":"An error occurred during model processing"}` and reached the user
+ * as the bare string "Typhoon OCR API 400". The proxy passes the upstream body
+ * through verbatim, so the reason was always arriving — it was being dropped at
+ * the last step, on the engine now recommended for scanned Thai documents.
+ */
+export function apiErrorMessage(body: unknown, fallback: string): string {
+  const b = body as any;
+  const candidates = [
+    b?.error?.message,
+    typeof b?.detail === "string" ? b.detail : undefined,
+    Array.isArray(b?.detail)
+      ? b.detail
+          .map((d: any) => d?.msg)
+          .filter(Boolean)
+          .join("; ")
+      : undefined,
+    typeof b?.error === "string" ? b.error : undefined,
+    b?.message,
+  ];
+  const found = candidates.find(
+    (v) => typeof v === "string" && v.trim().length > 0,
+  );
+  return found ? found.trim() : fallback;
+}

@@ -37,7 +37,7 @@ import {
   EXTRACTION_ENGINES,
   OCR_FEEDERS,
 } from "./lib/models";
-import { fetchWithRetry } from "./lib/net";
+import { fetchWithRetry, apiErrorMessage } from "./lib/net";
 import {
   MEDIA_COMPACT,
   MEDIA_PHONE,
@@ -1710,7 +1710,8 @@ function App() {
               });
               const data = await res.json().catch(() => ({}));
               if (!res.ok) {
-                const msg = data?.error?.message || `HTTP ${res.status}`;
+                // Typhoon puts the reason in `detail`; error.message is Anthropic/Google shape.
+                const msg = apiErrorMessage(data, `HTTP ${res.status}`);
                 const lower = msg.toLowerCase();
                 setTestStatus("fail");
                 if (res.status === 404) {

@@ -1,6 +1,6 @@
 import { createWorker } from "tesseract.js";
 import { pdfjsLib, rasterizePage } from "./pdf";
-import { fetchWithRetry } from "./net";
+import { fetchWithRetry, apiErrorMessage } from "./net";
 import { extractTyphoonText } from "./typhoon";
 import { pageTextFromOcr } from "./ocrlines";
 import type { OcrProgress } from "./types";
@@ -116,7 +116,11 @@ export async function ocrPDFTyphoon(
     });
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
-      throw new Error(e?.error?.message || `Typhoon OCR API ${res.status}`);
+      // Typhoon reports the reason in `detail`, not `error.message` — reading
+      // only the latter reduced every upstream failure to a bare status code.
+      throw new Error(
+        apiErrorMessage(e, `Typhoon OCR API ${res.status}`),
+      );
     }
     const data = await res.json();
     const txt = data.choices?.[0]?.message?.content || "";
