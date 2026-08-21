@@ -5,6 +5,11 @@ Tagged releases start at `v0.1.0`; older history below is grouped by date and gi
 
 ## [Unreleased]
 
+### Accessibility
+- **Screen readers can now navigate the app by landmark and heading.** The top bar is a
+  proper header, the setup panel an aside, and the product name a level-one heading. Nothing
+  moved by a pixel — verified against the live site before and after.
+
 ### Fixed
 - **Typhoon errors now say what went wrong.** Typhoon reports the reason in a different
   field than the other engines, so every upstream failure (rate limit, quota, a page the

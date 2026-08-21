@@ -2014,8 +2014,10 @@ function App() {
                 </button>
               </div>
             )}
-            {/* TOPBAR */}
-            <div className="topbar">
+            {/* TOPBAR — a <header> landmark, not a <div>: everything here (brand,
+                undo/redo, export, overflow) sat outside any landmark, so landmark
+                navigation could not describe it. A11Y_PLAN finding M. */}
+            <header className="topbar">
               <button
                 ref={drawerToggleRef}
                 className="btn btn-ghost btn-sm drawer-toggle"
@@ -2029,7 +2031,11 @@ function App() {
               </button>
               <div className="brand">
                 <div className="brand-pulse" />
-                <span className="brand-name">Nyarlathotep</span>
+                {/* <h1>, not a <span>: the page had no level-one heading at all, so
+                    the heading outline started nowhere. A11Y_PLAN finding L. The global
+                    * { margin: 0 } reset plus .brand-name pinning font-size/weight means
+                    this renders identically — verified by computed style, not assumed. */}
+                <h1 className="brand-name">Nyarlathotep</h1>
               </div>
               <button
                 className="btn btn-ghost btn-sm help-btn"
@@ -2165,7 +2171,7 @@ function App() {
                   )}
                 </div>
               </div>
-            </div>
+            </header>
 
             <div className="body">
               {/* SIDEBAR */}
@@ -2176,7 +2182,7 @@ function App() {
                   aria-hidden="true"
                 />
               )}
-              <div
+              <aside
                 id="app-sidebar"
                 ref={sidebarRef}
                 className={`sidebar${drawerOpen ? " open" : ""}`}
@@ -2895,7 +2901,7 @@ function App() {
                     </div>
                   )}
                 </div>
-              </div>
+              </aside>
 
               {/* CONTENT */}
               <main className="content">

@@ -184,6 +184,61 @@ A screen-reader user gets no document title in the heading outline.
 plain `<div>`, so the brand, undo/redo, export and overflow controls sit outside the landmark
 structure and cannot be described by landmark navigation.
 
+#### Status after the 2026-08-21 implementation pass
+
+- **L — fixed.** `<span class="brand-name">` is now an `<h1>`. Verified by geometry
+  fingerprint against the live deploy: `35|17|91|21|block|static` on both, and computed
+  `14px / 700 / margin 0` on both. Zero visual change. The global `* { margin: 0 }` reset
+  neutralises the `h1` UA margin, and `.brand-name` already pinned size and weight.
+- **M — fixed, and it was bigger than first recorded.** `<div class="topbar">` became
+  `<header>` *and* `<div id="app-sidebar">` became `<aside>`. The original audit ran at
+  **371 px**, where the sidebar is collapsed behind the drawer toggle and therefore was not
+  in the DOM being audited — so it reported one node (`.brand`). At **1280 px** the same
+  rule fired on **19 nodes**, the whole sidebar. Landmarks are now `HEADER / ASIDE / MAIN`;
+  the rule passes at both widths. *Lesson: audit at both widths, every time — half the
+  findings are invisible at the other one. Now written into `TESTING.md` §3e.*
+- **K — confirmed MOBILE-ONLY, deferred pending sign-off.** Measured at 1280 px: `.stats`
+  computes `overflow: visible` with `scrollWidth === clientWidth === 395`. The
+  `overflow: auto` comes from a mobile media query, so the violation exists only at narrow
+  widths — which still includes a split-screen desktop window, not just phones. The fix
+  should therefore be **scoped to the mobile breakpoint** rather than adding a tab stop for
+  every user. Still gated on §0 sign-off (R13).
+
+#### N. A control that is visually inactive but not marked inactive — **Medium** (WCAG 4.1.2)
+Surfaced while checking an axe `color-contrast` failure on `.btn-amber` ("↓ Export .xlsx")
+and refusing to take it at face value.
+
+Axe reported `#686a6f` on `#303366` at **2.16:1**. Those are not the button's colours. Its
+real computed values are `color: rgb(255,255,255)` on `background: rgb(95,98,231)` — fine
+contrast — but with `opacity: 0.35`. Axe was measuring the *blended* result.
+
+So the contrast number is a symptom. The actual defect is that the button is dimmed to 35 %
+to say "unavailable" while `disabled` is `false` and no `aria-disabled` is set. Sighted
+users are told it is inactive; assistive technology is told it is a normal, available
+control. WCAG 1.4.3 exempts genuinely *inactive* components from contrast — but only if they
+are actually marked inactive, which would also make axe stop flagging it.
+
+**Fix:** set `disabled` (or `aria-disabled="true"` plus a no-op guard) whenever the dimmed
+state applies. Check every control using the same dimming pattern, not just this one.
+
+#### O. Real contrast failure on the empty-state call to action — **Serious** (WCAG 1.4.3)
+`.upload-txt > strong`, the words **"Click or drag PDF"** — the primary action on the
+first screen a user ever sees.
+
+`#5f62e7` on `#22253e` = **3.12:1**, against a required **4.5:1**. At 12 px bold it does not
+reach the 18.66 px large-text threshold, so the 4.5 requirement applies. Verified from
+computed styles (`opacity: 1`, no blending involved) — unlike N, this one is exactly what
+it looks like.
+
+> **Why [`contrast.ts`](src/lib/contrast.ts) did not catch it.** That guard analyses declared
+> **token pairings** in the stylesheet. This failure is a *rendered* combination — accent
+> foreground over a surface the guard never pairs it with. The static guard and the browser
+> run cover genuinely different ground; neither replaces the other. **This is the clearest
+> evidence yet for P5b**, and it argues for extending `contrast.ts` to cover this pairing so
+> the regression is caught in CI too.
+
+**Fix requires a palette decision**, so it takes the same sign-off gate as P3b (§5 R5).
+
 #### Not a violation, but flagged for a human
 One `color-contrast` **incomplete** on `.help-sub`: *"background color could not be determined
 because it partially overlaps other elements."* Axe declines to judge it rather than failing

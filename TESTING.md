@@ -367,8 +367,11 @@ with no config change:
 1. Open the deploy, inject `https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js`.
 2. `await axe.run(document, { resultTypes: ["violations"] })` in each state: empty/upload,
    populated matrix, drawer open, help modal open.
-3. Repeat at a **desktop width** and a **mobile width** — several rules are layout-dependent
-   and fire only at one of them.
+3. **Repeat at BOTH a desktop width and a mobile width — this is not optional.**
+   On 2026-08-21 the mobile-only run reported the landmark rule on **one** node; the same
+   rule at 1280 px fired on **19**, because the sidebar is collapsed behind the drawer at
+   narrow widths and simply is not in the audited DOM. Conversely the scrollable-region
+   finding exists *only* at narrow widths. Each width hides about half the findings.
 
 Do not trust a violation without measuring it. Axe reports the rule; confirm the cause from
 computed values (`scrollWidth` vs `clientWidth`, `tabIndex`, whether the region contains
