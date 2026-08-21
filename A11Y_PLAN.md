@@ -150,6 +150,48 @@ Ten `<th>` elements, none with `scope="col"`. Cheap, invisible fix.
   work lands in `App.tsx` + `styles.css` — precisely the untested surface. **This is the single biggest
   process risk** and it shapes the whole plan (§4 P0, §5 R1).
 
+### K-M. Found by an actual axe run *(2026-08-21, axe-core 4.10.2, live deploy)*
+
+Findings A-J were reasoned from the source. These three came from **running axe against the
+deployed site**, which the CSP permits because `script-src` already allows `cdn.jsdelivr.net`
+(tesseract.js needs it). Four states were audited: empty/upload, populated matrix, drawer
+open, help modal open.
+
+**37-40 rules pass in every state** - the A-J work holds up. Three violations remain.
+
+#### K. Scrollable region without keyboard access - **Serious** (WCAG 2.1.1)
+`scrollable-region-focusable` on `.stats`, and on `.help-body` when the modal is open.
+
+Measured rather than taken on axe's word: `.stats` computes `overflow: auto` with
+`scrollWidth 395` against `clientWidth 347`, has `tabIndex -1`, and **contains no focusable
+children** - so a keyboard-only user cannot scroll it and cannot reach the clipped statistics.
+
+> `.table-area` also scrolls (`scrollHeight 1046` vs `clientHeight 85`) and axe **passes** it,
+> because its children *are* focusable - the row inputs give keyboard users a way in. That is
+> the distinction any fix must respect: the rule is about reachability, not about `overflow`.
+
+**Open question before fixing:** this was measured at a **371 px** viewport. `.stats` needs
+395 px of content, so at desktop widths it should not overflow at all, which would make this
+**mobile-only**. Confirm at >= 768 px before deciding scope - the browser pane used for the
+audit could not be resized.
+
+#### L. No level-one heading - **Moderate** (WCAG 1.3.1 / 2.4.6)
+`page-has-heading-one`. Measured `h1Count: 0`; the product name is a `<div class="brand">`.
+A screen-reader user gets no document title in the heading outline.
+
+#### M. Content outside any landmark - **Moderate** (WCAG 1.3.1)
+`region` on `.brand`. The only landmark on the page is `MAIN`; the entire top bar is a
+plain `<div>`, so the brand, undo/redo, export and overflow controls sit outside the landmark
+structure and cannot be described by landmark navigation.
+
+#### Not a violation, but flagged for a human
+One `color-contrast` **incomplete** on `.help-sub`: *"background color could not be determined
+because it partially overlaps other elements."* Axe declines to judge it rather than failing
+it. [`contrast.ts`](src/lib/contrast.ts) checks the *tokens* statically and passes, so this is an
+overlap-geometry question, not a palette question. Worth one manual look.
+
+---
+
 ---
 
 ## 4. Phased process
@@ -254,9 +296,89 @@ trap + focus restore (finding G).
 Not started; revisit only if someone actually needs keyboard-only figure capture. **Needs explicit
 go-ahead** given §0 — this is the one phase that adds a feature rather than a label/style.
 
-### P5 — Tooling *(optional, not started)*
-ESLint + `eslint-plugin-jsx-a11y` + an axe pass. Ongoing guardrail so regressions get caught automatically.
-Bigger than it sounds (§3-J) — propose only if the earlier phases prove worth defending.
+### P5 — Automated guardrails *(planned 2026-08-21, not started)*
+
+A-J were fixed by hand and nothing stops a later edit undoing them. This phase is a
+**regression net**, not a discovery exercise - with one exception (P5b), which already found
+three real issues on its first run.
+
+> **The honest justification, stated up front.** The finding that matters most (K, *serious*)
+> is **layout-dependent**. jsdom has no layout engine, so `scrollWidth` always equals
+> `clientWidth` there and a jsdom axe run **cannot** see it. Every accessibility bug this
+> project has actually hit - contrast (B, P3b), focus visibility (A), the drawer focus bug,
+> target size - falls in that same category. **P5a would not have caught a single one of
+> them.** That is not an argument against P5a; it is an argument against overselling it, and
+> it is the reason P5b exists.
+
+#### P5a - axe inside Vitest *(cheap, automated, runs in CI)*
+
+`jest-axe` is not an alternative to Vitest - it is an assertion helper that runs *inside*
+it (`expect.extend(toHaveNoViolations)`). [`src/App.test.tsx`](src/App.test.tsx) already renders
+the whole `<App />`, so this is one dependency and one test.
+
+**Catches:** missing form labels, invalid or contradictory ARIA, duplicate IDs, controls with
+no accessible name, heading order, bad roles. Precisely what a refactor of a 2,900-line
+`App.tsx` could silently break, and precisely what the 6 behaviour smoke tests do not check.
+
+**Rules that MUST be disabled, each with its reason recorded beside it** - an axe run that
+silently skips rules while looking like full coverage is worse than no run at all:
+
+| Rule | Why it cannot run here |
+| --- | --- |
+| `color-contrast` | No layout or paint in jsdom. Already covered, and better, by [`contrast.ts`](src/lib/contrast.ts) - static stylesheet analysis, 17 tests, token-level. |
+| `scrollable-region-focusable` | Needs real `scrollWidth`/`clientWidth`; always equal in jsdom. **This is finding K - P5b covers it.** |
+| `target-size` | Needs box geometry. |
+
+**Two traps to expect.** RTL renders into a bare jsdom document, so `html-has-lang` and
+`document-title` will fail against the *test harness* rather than the app - `index.html` is
+never loaded. Set both in the test setup rather than disabling the rules, so the real page
+stays covered by P5b. Second, run axe against the app's own container rather than
+`document.body`, or leftover RTL wrappers get audited too.
+
+**Scope:** one test asserting no violations in the default state. Resist growing it into a
+per-state matrix - that is P5b's job, where the rules actually work.
+
+*Estimate: ~1 h. One devDependency (`jest-axe`, plus its types).*
+
+#### P5b - axe in a real browser *(higher value, not CI-able)*
+
+Everything P5a cannot do. Load `axe-core` from `cdn.jsdelivr.net` - **already permitted by
+the CSP**, so no config change - and run it against the deployed site across states. This is
+what produced K, L and M in an afternoon.
+
+**Catches additionally:** contrast in situ, scrollable-region reachability, target size, focus
+visibility, and anything else that depends on real CSS.
+
+**Cost:** it is a *procedure*, not a test - it needs a browser and someone to run it. Record it
+in [`TESTING.md`](TESTING.md) section 3 as a release-time step, not a per-commit one.
+
+*Estimate: ~1 h to script and document; re-runnable in minutes thereafter.*
+
+#### P5c - fix K, L and M
+
+Ordered by impact. **All three are semantic or structural; none changes a pixel.**
+
+1. **M - wrap the top bar in `<header>`** (or `role="banner"`). Pure markup; no style hook
+   changes if the class stays on the same element.
+2. **L - promote the brand to `<h1>`**, styled identically to the current `div`. Verify the
+   *computed* font-size and weight are unchanged rather than trusting the CSS - this project
+   has been bitten four times by cascade collisions (section 5, R2).
+3. **K - give `.stats` `tabindex="0"`** plus an accessible name (`role="group"` and
+   `aria-label`), *if* it is confirmed to overflow at desktop width. If it turns out to be
+   mobile-only, scope the fix to the mobile breakpoint rather than adding a tab stop for
+   everyone.
+
+> **K breaches section 0.** Adding `tabindex="0"` adds a **tab stop**, which is an interaction
+> change - forbidden by the prime directive without explicit sign-off. That is the entire
+> point of the fix, so it needs the same gate P2 and P3b were given: proposed, approved, and
+> committed alone. L and M are invisible and need no gate.
+
+*Estimate: ~1 h total, one commit each.*
+
+#### What P5 does **not** include
+ESLint + `eslint-plugin-jsx-a11y` (section 3-J). Still "introduce ESLint from scratch", still
+larger than it sounds, and now demonstrably *lower* value than P5b: a linter reads source, and
+**none of K, L or M is visible in source**. Deferred, with the reason recorded.
 
 ---
 
@@ -275,6 +397,9 @@ Bigger than it sounds (§3-J) — propose only if the earlier phases prove worth
 | **R9** | Claiming accessibility that wasn't verified (no real screen reader here). | Med | High | §6 honesty rule: state exactly what was and wasn't tested. Never assert NVDA/JAWS/VoiceOver results. |
 | **R10** | Snip a11y can't be verified in the preview pane — pdf.js `render` needs `requestAnimationFrame`, which is paused while the pane is hidden (proven previously). | High | Low | P4 verification requires the engineer's real browser; plan for that, don't fake it. |
 | **R11** | Drift into the certification programme (§1) — cost with no benefit here. | Low | Med | §8 out-of-scope list is binding. |
+| **R12** | **False confidence from P5a.** A green jsdom axe run reads as "accessible" while the rules that actually matter sit disabled. | High | Med | The disabled-rules table lives *in the test file*, not only in this doc; the test name says `semantics only`; P5b is where contrast and geometry are judged. |
+| **R13** | **P5c-K adds a tab stop**, breaching section 0's zero-interaction-change rule. | Med | Med | Explicit sign-off gate before it ships, as with P2/P3b; committed alone so `git revert` restores the previous tab order exactly. |
+| **R14** | `jest-axe` is Jest-branded while this repo runs Vitest; a future reader assumes it is dead weight or swaps frameworks over it. | Low | Low | It is framework-agnostic (`expect.extend`); say so in the test file so nobody "cleans it up". |
 
 ---
 

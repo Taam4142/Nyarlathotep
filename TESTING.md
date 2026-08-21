@@ -358,6 +358,27 @@ network is available — and it now carries a warning naming exactly this risk
 
 ---
 
+## 3e. Accessibility audit with axe (release-time)
+
+Run against the **deployed** site, not the dev server, and not jsdom. The CSP already
+allows `cdn.jsdelivr.net` in `script-src` (tesseract.js needs it), so `axe-core` loads
+with no config change:
+
+1. Open the deploy, inject `https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js`.
+2. `await axe.run(document, { resultTypes: ["violations"] })` in each state: empty/upload,
+   populated matrix, drawer open, help modal open.
+3. Repeat at a **desktop width** and a **mobile width** — several rules are layout-dependent
+   and fire only at one of them.
+
+Do not trust a violation without measuring it. Axe reports the rule; confirm the cause from
+computed values (`scrollWidth` vs `clientWidth`, `tabIndex`, whether the region contains
+focusable children) before changing anything.
+
+Baseline as of 2026-08-21: **37–40 rules pass** in every state; three violations open, recorded
+as findings K, L and M in [`A11Y_PLAN.md`](A11Y_PLAN.md) with the plan to fix them (P5).
+
+---
+
 ## 4. What cannot be verified in the sandbox
 
 Full table with reasons: [`RISK_REVIEW.md`](RISK_REVIEW.md) → *Verification limits*. In short, these need a
