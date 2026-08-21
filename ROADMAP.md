@@ -3,33 +3,97 @@
 > Where the tool is going. Phased so the low-risk, high-value work lands first. Risk IDs (R1–R13) refer
 > to [`RISK_REVIEW.md`](RISK_REVIEW.md); feature/architecture IDs (F/A) are defined here.
 > Testing procedure + fixtures: [`TESTING.md`](TESTING.md). Accessibility: [`A11Y_PLAN.md`](A11Y_PLAN.md).
-> Last updated 2026-08-07.
+> Last updated 2026-08-21.
 
 ---
 
 ## ▶ Next up — the remaining plan
 
-> **Deferred (2026-08-21): rewrite `SKILL.md`.** It is frozen at 2026-08-03 and now
-> actively misleading — it documents a Google Document AI path removed in v0.2.0 and a
-> pre-Vite structure. `CLAUDE.md` was rewritten as the working-context doc and `PROMPTS.md`
-> split out; `SKILL.md` was deliberately left out of that pass to keep it reviewable.
-> **Trigger:** before the next release, or whenever someone reads it and is misled.
-> **Decide while doing it** whether it still has a job now that `README.md` + `CLAUDE.md`
-> cover orientation, or whether it should simply be deleted.
+> The 2026-08-07 table that stood here is preserved below under **Shipped**; items 1–5 all
+> landed, item 4's evidence arrived, and item 6's gate has since resolved (see *Closed
+> questions*). What follows is the plan as of **2026-08-21**.
 
-Ordered by **ascending risk and dependency**, so cheap protective work lands first and the two big items
-come last, informed by evidence. Each item is independently revertible; nothing here is a prerequisite for
-using the tool as it stands.
+Ordered so work needing nothing from the engineer comes first. Each item is independently
+revertible; none is a prerequisite for using the tool as it stands.
 
-| # | Item | Effort | Risk | Fully verifiable by me? | Status |
+| # | Item | Effort | Risk | Verifiable by me? | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | **CI** — GitHub Actions | S | Very low | Yes | ✅ **Done — 2026-08-06** |
-| 2 | **R12** — Tesseract teardown + rasterize scale fallback | S | Low–Med | ⚠️ Partly | ✅ **Done — 2026-08-06** |
-| 3 | **R8** — prompt-injection framing | S | **Med** | ⚠️ Partly | ✅ **Done — 2026-08-07** |
-| 4 | *(engineer)* Run [`TESTING.md`](TESTING.md) on real PDFs | — | — | **No — needs you** | Fixtures delivered |
-| 5 | **Drop `@ts-nocheck`** from `App.tsx` | ~~L~~ **S** | ~~High~~ **Low** | Yes | ✅ **Done — 2026-08-07** |
-| 6 | **AI table-prompt** for messy tables | L | Med | Gated on #4 | Not started |
-| 7 | **P5** (ESLint + jsx-a11y + axe) · **npm audit** decision | M | Low | Yes | Optional |
+| **A1** | Broaden `contrast.ts` to inherited-background text | S | Low | Yes | ✅ **Done — 2026-08-21** (`55dc19a`) |
+| **A2** | Decide `SKILL.md`'s fate — rewrite or delete | S | Low | Yes | ▶ **In progress** |
+| **B** | Scale profile on a long document | M | Low | Yes, on a public doc | **Next** |
+| **C** | F5 leftovers — keyboard cell nav, column reorder | M | Med | ⚠️ Partly | Engineer's call |
+| **D1** | ESLint from scratch + `eslint-plugin-jsx-a11y` | M | Low | Yes | Deferred, reason below |
+| **D2** | `npm audit` — needs breaking major bumps | S | Med | Yes | **Engineer's decision** |
+| **E1** | Screen-reader pass (NVDA / VoiceOver) | — | — | **No — needs you** | Open |
+| **E2** | Real-phone check | — | — | **No — needs you** | Open |
+
+---
+
+### A2 — `SKILL.md`: audited 2026-08-21, decision open
+
+Read in full rather than assumed. It is **not** wholly dead, and the staleness did not fall
+where expected:
+
+- **Genuinely unique:** the **Excel output contract** — column map, Thai-font behaviour,
+  filename convention. It appears in no other doc.
+- **But that contract is itself stale.** `xlsx.ts:72-76` builds the header
+  *conditionally*: Translation, Category and Figure appear only when their toggle is on. The
+  label is **"English Translation"**, and there is a **Figure** column `SKILL.md` never
+  mentions. Its fixed `A→I` lettering is therefore wrong.
+- **Duplicates code:** status values and the Comply Library restate `constants.ts`
+  (`STATUS_OPTS`, `STATUS_LABELS`, `STAT_COLORS`, `DEFAULT_LIB`) — the same
+  drift trap that broke the old `CLAUDE.md`.
+- **Dead weight:** a ~68-line Google Document AI section for an engine removed in v0.2.0.
+- **More current than README was:** its Known Limitations correctly described persistence
+  while README claimed there was none. README has been corrected (`4982671`).
+
+**Recommendation: fold the corrected Excel contract into [`README.md`](README.md) and delete
+`SKILL.md`.** One fewer file, nothing true lost, and the audience for an export contract is
+already reading README.
+
+---
+
+### B — Scale profile *(next, needs nothing from the engineer)*
+
+**The gap:** everything tested so far is **≤22 pages**, and the one real AMR document was
+**2**. Production TORs may run 50–100+. Untested at that size: browser memory during OCR,
+wall-clock time, Typhoon call volume and cost, and whether the Excel export stays usable at
+~1,500 rows.
+
+This is the likeliest place a real failure is still hiding, because every failure so far
+appeared only when real documents were used at real size.
+
+**Method** — on a **long public Thai TOR**, so no AMR material is involved and nothing is
+spent:
+
+1. Record pages, bytes, and `detectPDFType`.
+2. Time and profile the **digital** path end-to-end; capture rows produced and rows/page.
+3. Time the **Tesseract** path per page; watch heap across pages (R12 territory — the worker
+   used to leak).
+4. Extrapolate Typhoon call volume and cost **before** spending any.
+5. Export `.xlsx` and check file size and open time.
+
+**Report the curve first.** Only after that is it worth confirming on one of the engineer's
+own documents.
+
+---
+
+### Closed questions
+
+- **AI table-prompt — the gate has resolved to *don't build it*.** It was gated on real-PDF
+  testing showing the deterministic path falls short. That testing has now happened (three
+  published TORs plus a real AMR one, [`TESTING.md`](TESTING.md) §3b–§3d) and the
+  deterministic splitter landed **within one row** of a Thai-tuned VLM (61 vs 60) once wrapped
+  lines and page furniture were handled. **No evidence of the shortfall the feature was meant
+  to fix.** Revisit only if a real document defeats the column detector.
+- **ESLint — deferred, and the accessibility argument for it is now weaker.** It was justified
+  partly as an a11y guardrail. Findings K, L, M and O were all found by running axe in a
+  browser, and **none of them is visible in source**, which is all a linter reads. It remains
+  reasonable for general code hygiene; it is no longer an accessibility measure.
+- **P5 (axe) — done**, split into a CI semantics test and a release-time browser pass. See
+  [`A11Y_PLAN.md`](A11Y_PLAN.md) §P5 and [`TESTING.md`](TESTING.md) §3e.
+
+---
 
 ### 1. CI — GitHub Actions ✅ Done
 [`​.github/workflows/ci.yml`](.github/workflows/ci.yml): triggered on push to `master` + pull requests —
