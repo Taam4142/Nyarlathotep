@@ -2229,6 +2229,7 @@ function App() {
                         type="file"
                         accept="application/pdf"
                         className="file-input"
+                        aria-label="Choose a PDF file"
                         onChange={(e) => handleFile(e.target.files[0])}
                       />
                     </div>

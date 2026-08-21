@@ -395,6 +395,15 @@ per-state matrix - that is P5b's job, where the rules actually work.
 
 *Estimate: ~1 h. One devDependency (`jest-axe`, plus its types).*
 
+> **P5a shipped 2026-08-21** — [`src/App.a11y.test.tsx`](src/App.a11y.test.tsx), 2 tests, 179 total.
+> It found a **critical** violation on its very first run, which was **a false positive** and
+> worth recording: the hidden file input reported "form elements must have labels". Vitest
+> applies **no CSS**, so jsdom computed no `display: none` and axe audited an element the
+> browser correctly ignores. Resolved by giving the input a real `aria-label` rather than
+> disabling the rule — harmless, and correct if it is ever exposed. **This is a third kind of
+> jsdom blindness beyond "no layout": no styles at all, so hidden elements are audited as
+> visible.** If such false positives accumulate, enabling `test.css` is the faithful fix.
+
 #### P5b - axe in a real browser *(higher value, not CI-able)*
 
 Everything P5a cannot do. Load `axe-core` from `cdn.jsdelivr.net` - **already permitted by
