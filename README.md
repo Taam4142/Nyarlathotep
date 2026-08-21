@@ -114,7 +114,9 @@ Other scripts: `npm run build` (→ `dist/`), `npm run preview` (serve the build
 
 ## Known limitations
 
-- **No persistence** — all state lives in React memory; refreshing the page clears the matrix.
+- **Local-only persistence** — the matrix autosaves to `localStorage` and restores on reload;
+  **Save / Load .json** moves it between machines. There is no account or server-side sync, so
+  clearing the browser, or opening the tool on another device without the JSON, loses it.
 - **Large PDFs** — very long TORs (~100+ pages) can exceed model document limits.
 - **Browser OCR / heuristic rows** — Tesseract and the Typhoon standalone path split rows heuristically
   (review clause boundaries); for clean rows, use Typhoon as a feeder under Claude/Gemini.
